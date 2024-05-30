@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
+	"github.com/treenq/treenq/src/api"
 )
 
 // CopyFile copies a file from src to dst. If dst does not exist, it will be created.
@@ -84,7 +86,12 @@ func Deploy() error {
 }
 
 func main() {
-	if err := Deploy(); err != nil {
-		log.Fatalln(err)
+	// if err := Deploy(); err != nil {
+	// 	log.Fatalln(err)
+	// }
+
+	m := api.New()
+	if err := http.ListenAndServe(":8000", m); err != nil {
+		log.Println(err)
 	}
 }

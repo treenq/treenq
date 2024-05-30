@@ -6,3 +6,8 @@ cmd/server/tq.json
 
 # test build output
 cmd/server/main
+
+
+# IDE specific
+.vscode
+__debug*
