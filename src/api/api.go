@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 	"unsafe"
 
 	"github.com/treenq/treenq/src/handlers"
+	"github.com/treenq/treenq/src/repo"
 )
 
-func NewHandler[I, O comparable](call func(ctx context.Context, i I) (O, *handlers.Error)) http.HandlerFunc {
+type Handler[I, O comparable] func(ctx context.Context, i I) (O, *handlers.Error)
+
+func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var i I
 
@@ -27,13 +29,14 @@ func NewHandler[I, O comparable](call func(ctx context.Context, i I) (O, *handle
 
 		res, callErr := call(r.Context(), i)
 		if callErr != nil {
-			w.WriteHeader(callErr.Status)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(callErr)
 			return
 		}
 
 		if unsafe.Sizeof(res) != 0 {
 			if err := json.NewEncoder(w).Encode(res); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(handlers.Error{
 					Code:    "FAILED_ENCODING",
 					Message: err.Error(),
@@ -43,21 +46,17 @@ func NewHandler[I, O comparable](call func(ctx context.Context, i I) (O, *handle
 	}
 }
 
-type GetReq struct {
-	ID int
-}
-
-type GetRes struct {
-	Value string
-	Time  time.Time
-}
-
-func New() http.Handler {
+func New() (http.Handler, error) {
+	store, err := repo.NewStore()
+	if err != nil {
+		return nil, err
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", NewHandler(handlers.Health))
 
 	mux.Handle("POST /deploy", NewHandler(handlers.Deploy))
+	mux.Handle("POST /connect", NewHandler(handlers.NewConnect(store)))
 
-	return mux
+	return mux, nil
 }
