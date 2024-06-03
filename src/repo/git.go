@@ -3,7 +3,6 @@ package repo
 import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -56,7 +55,7 @@ func main() {
 func getRepoId(repoURL string) (string, error) {
 	parsedURL, err := url.Parse(repoURL)
 	if err != nil {
-		return "", fmt.Errorf("%w", err)
+		return "", fmt.Errorf("%w", err) //it's working here though
 	}
 
 	path := parsedURL.Path
