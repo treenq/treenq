@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"errors"
 )
+
 
 //Clone repo component
 
@@ -15,7 +15,7 @@ func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) 
 	
 	var repoURL string
 	var err error
-
+	
 	fmt.Printf("Enter Your GitHub Repo URL : ")
 	fmt.Scan(&repoURL)
 
@@ -41,10 +41,7 @@ func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) 
 	})
 
 	if err != nil {
-		//return "", fmt.Errorf("Failed to clone the repo !!!%w", err)
-		//I'm getting error if I'm using the above line so for now I'm printing the err below like that
-		err := fmt.Errorf("Failed to clone the repo !!!%w", err)
-		fmt.Println(err)
+		return "", fmt.Errorf("Failed to clone the repo !!!%w", err)
 	}
 
 	fmt.Println("GitHub repo successfully cloned to", tempfile)
@@ -55,9 +52,8 @@ func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) 
 func getRepoId(repoURL string) (string, error) {
 	parsedURL, err := url.Parse(repoURL)
 	if err != nil {
-		return "", fmt.Errorf("%w", err) //it's working here though
+		return "", fmt.Errorf("%w", err)
 	}
-
 	path := parsedURL.Path
 	segments := strings.Split(path, "/")
 
