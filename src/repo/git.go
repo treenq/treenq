@@ -8,20 +8,19 @@ import (
 	"strings"
 )
 
-
 //Clone repo component
 
-func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) {
-	
+func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string, error) {
+
 	var repoURL string
 	var err error
-	
+
 	fmt.Printf("Enter Your GitHub Repo URL : ")
 	fmt.Scan(&repoURL)
 
 	repoName, err := getRepoId(repoURL)
 	if err != nil {
-		return "", fmt.Errorf("%w", err) 
+		return "", fmt.Errorf("%w", err)
 	}
 
 	//intializing a temp directory
@@ -32,8 +31,10 @@ func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) 
 	}
 
 	defer func() {
-		if err != nil { os.Remove(tempfile) }
-	  } () // to remove the file incase of error
+		if err != nil {
+			os.Remove(tempfile)
+		}
+	}() // to remove the file incase of error
 
 	//using go-git lib to clone the repo
 	_, err = git.PlainClone(tempfile, false, &git.CloneOptions{
