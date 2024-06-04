@@ -6,42 +6,42 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"errors"
 )
 
 //Clone repo component
 
-func main() {
+func (g *Git) Clone(ctx context.Context, url, branch, id string) (path, string) {
+	
 	var repoURL string
+	var err error
 
 	fmt.Printf("Enter Your GitHub Repo URL : ")
 	fmt.Scan(&repoURL)
 
 	repoName, err := getRepoId(repoURL)
 	if err != nil {
-		err := fmt.Errorf("%w",err)
-		fmt.Println(err)
+		return "", fmt.Errorf("%w", err) 
 	}
 
 	//intializing a temp directory
 
 	tempfile, err := os.MkdirTemp("", repoName)
 	if err != nil {
-		err := fmt.Errorf("Failed to create TempDir !!!%w", err)
-		fmt.Println(err)
+		return "", fmt.Errorf("Failed to create TempDir !!!%w", err)
 	}
 
-	defer os.Remove(tempfile) // to remove the file incase of error
-
-	fmt.Println("Cloning the repo...")
+	defer func() {
+		if err != nil { os.Remove(tempfile) }
+	  } () // to remove the file incase of error
 
 	//using go-git lib to clone the repo
 	_, err = git.PlainClone(tempfile, false, &git.CloneOptions{
-		URL:      repoURL,
-		Progress: os.Stdout,
+		URL: repoURL,
 	})
 
 	if err != nil {
-		//return "", fmt.Errorf("Failed to clone the repo !!!%w", err)  
+		//return "", fmt.Errorf("Failed to clone the repo !!!%w", err)
 		//I'm getting error if I'm using the above line so for now I'm printing the err below like that
 		err := fmt.Errorf("Failed to clone the repo !!!%w", err)
 		fmt.Println(err)
