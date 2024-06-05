@@ -13,10 +13,13 @@ import (
 type Handler[I, O comparable] func(ctx context.Context, i I) (O, *handlers.Error)
 
 func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
+	hasReqBody := unsafe.Sizeof(i) != 0
+	hasResBody := unsafe.Sizeof(res) != 0
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var i I
 
-		if unsafe.Sizeof(i) != 0 {
+		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(handlers.Error{
@@ -34,7 +37,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 			return
 		}
 
-		if unsafe.Sizeof(res) != 0 {
+		if hasResBody {
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(handlers.Error{

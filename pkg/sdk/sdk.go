@@ -1,21 +1,36 @@
 package tqsdk
 
 type Resource struct {
-	Size int
+	App App
 }
 
-var connStr string
+type App struct {
+	Name string
+	Git  AppGit
+
+	Port         string
+	BuildCommand string
+	RunCommand   string
+	Envs         map[string]string
+}
+
+type AppGit struct {
+	Url    string
+	Branch string
+}
 
 func (r Resource) AsConfig() Config {
-	if r.Size == 1 {
-		return Config{
-			ConnStr: connStr,
-		}
+	return Config{
+		App: AppConfig{
+			Host: "super host",
+		},
 	}
-
-	return Config{}
 }
 
 type Config struct {
-	ConnStr string
+	App AppConfig
+}
+
+type AppConfig struct {
+	Host string
 }
