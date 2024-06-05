@@ -1,0 +1,30 @@
+@startuml deploy
+
+actor User
+participant Backend
+participant GitHub
+participant Database
+participant Secret
+participant Pulumi
+participant DO as DigitalOcean
+participant IaC as Pulumi
+
+GitHub -> Backend: Push event (webhook)
+Backend -> GitHub: Clone repository
+Backend -> GitHub: Gives repository
+
+Backend -> Backend: Builds condfig and stores to a database
+
+Backend -> IaC: Plan the config
+IaC -> DO: Apply changes
+DO -> IaC: Give the resource definition
+IaC -> Backend: Gives the created resources
+Backend -> Database: stores new state infra state
+Backend -> Secret: stores new created secrets
+
+Secret -> Backend: Gives the config to prepare app running
+Backend -> IaC: Re-create new resource with updated secrets
+
+Backend -> User: Return host information from created resources
+
+@enduml
