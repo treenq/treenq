@@ -6,9 +6,11 @@ import (
 )
 
 type GithubWebhookRequest struct {
+	F string
 }
 
 type GithubWebhookResponse struct {
+	Else string
 }
 
 func GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *Error) {
