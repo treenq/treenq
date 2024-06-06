@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	sq "github.com/Masterminds/squirrel"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/handlers"
 )
@@ -20,31 +18,26 @@ type Store struct {
 }
 
 func NewStore() (*Store, error) {
-	path, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get store path: %w", err)
-	}
-	path = filepath.Join(path, "sqlite")
-	db, err := sql.Open("sqlite3", path)
+	db, err := sql.Open("postgres", "postgresql://postgres@localhost:5432/tq?sslmode=disable")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sql connection: % w", err)
 	}
 
 	initDbDdl := `CREATE TABLE IF NOT EXISTS repos (
-		id uuid DEFAULT gen_random_uuid(),
-		url varchar(255) NOT NULL
+		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+		url VARCHAR(255) NOT NULL
 	);
 	
 	CREATE TABLE IF NOT EXISTS apps (
-		id uuid DEFAULT gen_random_uuid(),
-		name varchar(255) NOT NULL,
-		gitUrl varchar(255) NOT NULL,
-		gitBranch varchar(255) NOT NULL,
-		port varchar(8) NOT NULL,
-		buildCommand varchar(1023) NOT NULL,
-		runCommand varchar(1023) NOT NULL,
+		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+		name VARCHAR(255) NOT NULL,
+		gitUrl VARCHAR(255) NOT NULL,
+		gitBranch VARCHAR(255) NOT NULL,
+		port VARCHAR(8) NOT NULL,
+		buildCommand VARCHAR(1023) NOT NULL,
+		runCommand VARCHAR(1023) NOT NULL,
 		envs TEXT NOT NULL
-	)
+	);
 	`
 
 	_, err = db.Exec(initDbDdl)

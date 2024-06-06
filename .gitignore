@@ -14,3 +14,6 @@ __debug*
 
 # state
 sqlite
+
+# useless staff
+.DS_Store

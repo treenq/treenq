@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/lib/pq v1.10.9
 )
 
 require (

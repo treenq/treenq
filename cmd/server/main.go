@@ -71,9 +71,7 @@ func Deploy() error {
 		return fmt.Errorf("failed to read config: %w", err)
 	}
 	connStringValue := ""
-	if conf.Size > 0 {
-		connStringValue = "postgres://some.com"
-	}
+	_ = conf
 	buildFlags := fmt.Sprintf("-X 'github.com/treenq/treenq/pkg/sdk.connStr=%s'", connStringValue)
 
 	// build image passing the config values

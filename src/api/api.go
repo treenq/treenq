@@ -13,8 +13,10 @@ import (
 type Handler[I, O comparable] func(ctx context.Context, i I) (O, *handlers.Error)
 
 func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
-	hasReqBody := unsafe.Sizeof(i) != 0
-	hasResBody := unsafe.Sizeof(res) != 0
+	var iType I
+	var oType O
+	hasReqBody := unsafe.Sizeof(iType) != 0
+	hasResBody := unsafe.Sizeof(oType) != 0
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var i I
@@ -60,6 +62,8 @@ func New() (http.Handler, error) {
 
 	mux.Handle("POST /deploy", NewHandler(handlers.Deploy))
 	mux.Handle("POST /connect", NewHandler(handlers.NewConnect(store)))
+
+	mux.Handle("POST /githubWebhook", NewHandler(handlers.GithubWebhook))
 
 	return mux, nil
 }
