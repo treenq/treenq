@@ -14,3 +14,5 @@ TBD
 - install sqlite (temporary solution to keep the persistent state) https://sqlite.org/download.html
 - run `go run cmd/server/main.go`
 - start using api: e.g. create your repository connection `curl -X POST -v http://localhost:8000/connect -d '{"url": "http://github.com/whatever/youwant"}'` 
+
+test webhook
