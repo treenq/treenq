@@ -24,7 +24,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 		var i I
 
 		body, _ := io.ReadAll(r.Body)
-		fmt.Println(body)
+		fmt.Println(string(body))
 		// useless comment
 
 		if hasReqBody {
