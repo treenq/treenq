@@ -25,6 +25,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 
 		body, _ := io.ReadAll(r.Body)
 		fmt.Println(body)
+		// useless comment
 
 		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
