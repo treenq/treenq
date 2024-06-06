@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"unsafe"
 
@@ -20,6 +22,9 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var i I
+
+		body, _ := io.ReadAll(r.Body)
+		fmt.Println(body)
 
 		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
