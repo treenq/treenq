@@ -11,6 +11,7 @@ cmd/server/main
 # IDE specific
 .vscode
 __debug*
+.idea
 
 # state
 sqlite
