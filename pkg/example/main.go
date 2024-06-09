@@ -11,5 +11,5 @@ func main() {
 	conf := def.AsConfig()
 
 	fmt.Println("ConnStr")
-	fmt.Println(conf.ConnStr)
+	fmt.Println(conf)
 }
