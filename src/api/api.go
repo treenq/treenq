@@ -70,6 +70,7 @@ func New() (http.Handler, error) {
 	mux.Handle("POST /connect", NewHandler(handlers.NewConnect(store)))
 
 	mux.Handle("POST /githubWebhook", NewHandler(handlers.GithubWebhook))
+	mux.Handle("GET /info", NewHandler(handlers.Info))
 
 	return mux, nil
 }
