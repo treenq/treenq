@@ -4,6 +4,7 @@ import "context"
 
 var version = "develop" // unstable
 
+
 type InfoResponse struct {
 	Version string `json:"version"`
 }
