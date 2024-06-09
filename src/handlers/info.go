@@ -2,7 +2,7 @@ package handlers
 
 import "context"
 
-const version = "develop" // unstable
+var Version = "develop" // unstable
 
 type InfoResponse struct {
 	Version string `json:"version"`
@@ -10,7 +10,7 @@ type InfoResponse struct {
 
 func Info(ctx context.Context, _ struct{}) (InfoResponse, *Error) {
 	resp := InfoResponse{
-		Version: version,
+		Version: Version,
 	}
 	return resp, nil
 }
