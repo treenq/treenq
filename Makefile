@@ -11,5 +11,5 @@ else
 endif
 
 build:
-	go build -ldflags="-X 'github.com/treenq/treenq/src/handlers.Version=$(VERSION_STRING)'" ./cmd/server/main.go
+	go build -ldflags="-X 'github.com/treenq/treenq/src/handlers.version=$(VERSION_STRING)'" ./cmd/server/main.go
 
