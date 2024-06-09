@@ -2,7 +2,8 @@ package handlers
 
 import "context"
 
-const version = "develop" // unstable
+var version = "develop" // unstable
+
 
 type InfoResponse struct {
 	Version string `json:"version"`
