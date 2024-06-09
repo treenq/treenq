@@ -2,7 +2,9 @@ package handlers
 
 import "context"
 
+
 var Version = "develop" // unstable
+
 
 type InfoResponse struct {
 	Version string `json:"version"`
