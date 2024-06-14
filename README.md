@@ -11,14 +11,7 @@ TBD
 
 ## How to run 
 - install go https://go.dev/doc/install
-- install sqlite (temporary solution to keep the persistent state) https://sqlite.org/download.html
+- install docker or colima in order to run docker-compose dev environment
+- run the dev environment using `docker compose up` or `docker-compose up`
 - run `go run cmd/server/main.go`
 - start using api: e.g. create your repository connection `curl -X POST -v http://localhost:8000/connect -d '{"url": "http://github.com/whatever/youwant"}'` 
-
-test webhook
-one more
-check payload and save to fixtures
-one more
-didn't come
-some
-some change

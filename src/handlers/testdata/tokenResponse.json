@@ -1,0 +1,9 @@
+{
+    "token": "secret-token",
+    "expires_at": "2024-06-06T23:36:19Z",
+    "permissions": {
+        "contents": "read",
+        "metadata": "read"
+    },
+    "repository_selection": "all"
+}

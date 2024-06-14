@@ -57,20 +57,61 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 	}
 }
 
+type Router struct {
+	mux *http.ServeMux
+
+	handlersMeta []HandlerMeta
+}
+
+func (r *Router) Mux() *http.ServeMux {
+	return r.mux
+}
+
+func (r *Router) Meta() []HandlerMeta {
+	meta := make([]HandlerMeta, len(r.handlersMeta))
+	copy(meta, r.handlersMeta)
+	return meta
+}
+
+type HandlerMeta struct {
+	Input       any
+	Output      any
+	OperationID string
+}
+
+func NewRouter() *Router {
+	mux := http.NewServeMux()
+	mux.Handle("GET /healthz", NewHandler(handlers.Health))
+
+	return &Router{mux: mux}
+}
+
+func Register[I, O comparable](r *Router, operationID string, handler Handler[I, O]) {
+	var i I
+	var o O
+	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
+		Input:       i,
+		Output:      o,
+		OperationID: operationID,
+	})
+
+	r.mux.Handle("POST /"+operationID, NewHandler(handler))
+}
+
 func New() (http.Handler, error) {
 	store, err := repo.NewStore()
 	if err != nil {
 		return nil, err
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /healthz", NewHandler(handlers.Health))
+	router := NewRouter()
+	Register(router, "deploy", handlers.Deploy)
+	Register(router, "connect", handlers.NewConnect(store))
+	Register(router, "githubWebhook", handlers.GithubWebhook)
+	Register(router, "info", handlers.Info)
 
-	mux.Handle("POST /deploy", NewHandler(handlers.Deploy))
-	mux.Handle("POST /connect", NewHandler(handlers.NewConnect(store)))
+	meta := router.Meta()
+	meta[0] = HandlerMeta{}
 
-	mux.Handle("POST /githubWebhook", NewHandler(handlers.GithubWebhook))
-	mux.Handle("GET /info", NewHandler(handlers.Info))
-
-	return mux, nil
+	return router.Mux(), nil
 }
