@@ -2,25 +2,22 @@ package main
 
 import (
 	"encoding/json"
-	"os"
+	"fmt"
+	"log"
 
 	"github.com/treenq/treenq/pkg/builder/tq"
 )
 
 func main() {
-	res, _ := tq.Build()
-	if res.Size != 1 {
-		panic("not 1")
-	}
-
-	f, err := os.Create("tq.json")
+	res, err := tq.Build()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
-	defer f.Close()
-
-	if err := json.NewEncoder(f).Encode(res); err != nil {
-		panic(err)
+	data, err := json.Marshal(res)
+	if err != nil {
+		log.Fatalln(err)
 	}
+
+	fmt.Print(string(data))
 }
