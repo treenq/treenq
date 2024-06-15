@@ -1,6 +1,3 @@
-# build exctra files
-pkg/builder/tq/build.go
-
 # build config location
 cmd/server/tq.json
 
