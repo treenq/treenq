@@ -1,4 +1,4 @@
-package gen
+package tqsdk
 
 import (
 	"github.com/digitalocean/terraform-provider-digitalocean/digitalocean"
