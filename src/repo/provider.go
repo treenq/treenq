@@ -4,58 +4,82 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/digitalocean/terraform-provider-digitalocean/digitalocean"
-	"github.com/digitalocean/terraform-provider-digitalocean/digitalocean/config"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/digitalocean/godo"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
 type Provider struct {
-	doToken string
-
-	conf *config.CombinedConfig
+	client *godo.Client
 }
 
-func NewProvider(conf *config.CombinedConfig) *Provider {
-	doToken := ""
-
-	doConfig := config.Config{
-		Token: doToken,
-	}
-
-	combinedConfig, err := doConfig.Client()
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
-	}
+func NewProvider(client *godo.Client) *Provider {
 	return &Provider{
-		doToken: doToken,
-
-		conf: combinedConfig,
+		client: client,
 	}
 }
 
-const appKey = "digitalocean_app"
-
-func errFromDiags(msg string, diags []diag.Diagnostic) error {
-	for _, d := range diags {
-		if d.Severity == diag.Error {
-			return fmt.Errorf("%s: %s | %s", d.Summary, d.Detail)
+func (p *Provider) CreateAppResource(ctx context.Context, projectID, image, sizeSlug string, app tqsdk.App) error {
+	services := make([]*godo.AppServiceSpec, len(app.Services))
+	for i, s := range app.Services {
+		envs := make([]*godo.AppVariableDefinition, 0, len(s.RuntimeEnvs)+len(s.BuildEnvs)+len(s.RuntimeSecrets)+len(s.BuildSecrets))
+		for k, v := range s.RuntimeEnvs {
+			envs = append(envs, &godo.AppVariableDefinition{
+				Key:   k,
+				Value: v,
+				Scope: godo.AppVariableScope_RunTime,
+				Type:  godo.AppVariableType_General,
+			})
 		}
+		for k, v := range s.BuildEnvs {
+			envs = append(envs, &godo.AppVariableDefinition{
+				Key:   k,
+				Value: v,
+				Scope: godo.AppVariableScope_BuildTime,
+				Type:  godo.AppVariableType_General,
+			})
+		}
+		for k, v := range s.RuntimeSecrets {
+			envs = append(envs, &godo.AppVariableDefinition{
+				Key:   k,
+				Value: v,
+				Scope: godo.AppVariableScope_RunTime,
+				Type:  godo.AppVariableType_Secret,
+			})
+		}
+		for k, v := range s.BuildSecrets {
+			envs = append(envs, &godo.AppVariableDefinition{
+				Key:   k,
+				Value: v,
+				Scope: godo.AppVariableScope_BuildTime,
+				Type:  godo.AppVariableType_Secret,
+			})
+		}
+
+		services[i] = &godo.AppServiceSpec{
+			Name: s.Name,
+			Image: &godo.ImageSourceSpec{
+				RegistryType: godo.ImageSourceSpecRegistryType_DOCR,
+				Repository:   image,
+				DeployOnPush: &godo.ImageSourceSpecDeployOnPush{
+					Enabled: true,
+				},
+			},
+			InstanceSizeSlug: sizeSlug,
+			InstanceCount:    int64(s.InstanceCount),
+			HTTPPort:         int64(s.HttpPort),
+			Envs:             envs,
+		}
+	}
+	_, _, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
+		ProjectID: app.ProjectID,
+		Spec: &godo.AppSpec{
+			Name:     app.Name,
+			Region:   app.Region,
+			Services: services,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create app resource: %w", err)
 	}
 	return nil
-}
-
-func (p *Provider) CreateAppResource(ctx context.Context, app tqsdk.App) error {
-	provider := digitalocean.Provider()
-	resource := provider.ResourcesMap[appKey]
-
-	resourceData := tqsdk.MakeAppResourceData(app)
-	diag := resource.CreateContext(ctx, resourceData, p.conf)
-	if len(diag) != 0 {
-		if diag.HasError() {
-			return errFromDiags("failed to create app", diag)
-		}
-	}
-
-	return nil55
 }
