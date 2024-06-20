@@ -1,0 +1,10 @@
+package tqsdk
+
+type SizeSlug string
+
+const (
+    {{ range .Sizes }}
+    // Ram: {{ .MemoryGB }}GB, Cpu: {{ .Vcpus }}, Disk: {{ .Disk }}GB, Transfer: {{ .Transfer }}TB, Price: {{ .PriceMonthly }}$
+    SizeSlug{{ .SlugCamel }} SizeSlug = "{{ .Slug }}"
+    {{ end }}
+)
