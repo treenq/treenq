@@ -18,64 +18,62 @@ func NewProvider(client *godo.Client) *Provider {
 	}
 }
 
-func (p *Provider) CreateAppResource(ctx context.Context, projectID, image, sizeSlug string, app tqsdk.App) error {
-	services := make([]*godo.AppServiceSpec, len(app.Services))
-	for i, s := range app.Services {
-		envs := make([]*godo.AppVariableDefinition, 0, len(s.RuntimeEnvs)+len(s.BuildEnvs)+len(s.RuntimeSecrets)+len(s.BuildSecrets))
-		for k, v := range s.RuntimeEnvs {
-			envs = append(envs, &godo.AppVariableDefinition{
-				Key:   k,
-				Value: v,
-				Scope: godo.AppVariableScope_RunTime,
-				Type:  godo.AppVariableType_General,
-			})
-		}
-		for k, v := range s.BuildEnvs {
-			envs = append(envs, &godo.AppVariableDefinition{
-				Key:   k,
-				Value: v,
-				Scope: godo.AppVariableScope_BuildTime,
-				Type:  godo.AppVariableType_General,
-			})
-		}
-		for k, v := range s.RuntimeSecrets {
-			envs = append(envs, &godo.AppVariableDefinition{
-				Key:   k,
-				Value: v,
-				Scope: godo.AppVariableScope_RunTime,
-				Type:  godo.AppVariableType_Secret,
-			})
-		}
-		for k, v := range s.BuildSecrets {
-			envs = append(envs, &godo.AppVariableDefinition{
-				Key:   k,
-				Value: v,
-				Scope: godo.AppVariableScope_BuildTime,
-				Type:  godo.AppVariableType_Secret,
-			})
-		}
-
-		services[i] = &godo.AppServiceSpec{
-			Name: s.Name,
-			Image: &godo.ImageSourceSpec{
-				RegistryType: godo.ImageSourceSpecRegistryType_DOCR,
-				Repository:   image,
-				DeployOnPush: &godo.ImageSourceSpecDeployOnPush{
-					Enabled: true,
-				},
-			},
-			InstanceSizeSlug: sizeSlug,
-			InstanceCount:    int64(s.InstanceCount),
-			HTTPPort:         int64(s.HttpPort),
-			Envs:             envs,
-		}
+func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsdk.App) error {
+	envs := make([]*godo.AppVariableDefinition, 0, len(app.Service.RuntimeEnvs)+len(app.Service.BuildEnvs)+len(app.Service.RuntimeSecrets)+len(app.Service.BuildSecrets))
+	for k, v := range app.Service.RuntimeEnvs {
+		envs = append(envs, &godo.AppVariableDefinition{
+			Key:   k,
+			Value: v,
+			Scope: godo.AppVariableScope_RunTime,
+			Type:  godo.AppVariableType_General,
+		})
 	}
+	for k, v := range app.Service.BuildEnvs {
+		envs = append(envs, &godo.AppVariableDefinition{
+			Key:   k,
+			Value: v,
+			Scope: godo.AppVariableScope_BuildTime,
+			Type:  godo.AppVariableType_General,
+		})
+	}
+	for k, v := range app.Service.RuntimeSecrets {
+		envs = append(envs, &godo.AppVariableDefinition{
+			Key:   k,
+			Value: v,
+			Scope: godo.AppVariableScope_RunTime,
+			Type:  godo.AppVariableType_Secret,
+		})
+	}
+	for k, v := range app.Service.BuildSecrets {
+		envs = append(envs, &godo.AppVariableDefinition{
+			Key:   k,
+			Value: v,
+			Scope: godo.AppVariableScope_BuildTime,
+			Type:  godo.AppVariableType_Secret,
+		})
+	}
+
 	_, _, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
 		ProjectID: app.ProjectID,
 		Spec: &godo.AppSpec{
-			Name:     app.Name,
-			Region:   app.Region,
-			Services: services,
+			Name:   app.Name,
+			Region: app.Region,
+			Services: []*godo.AppServiceSpec{
+				{
+					Name: app.Name,
+					Image: &godo.ImageSourceSpec{
+						RegistryType: godo.ImageSourceSpecRegistryType_DOCR,
+						Repository:   image,
+						DeployOnPush: &godo.ImageSourceSpecDeployOnPush{
+							Enabled: true,
+						},
+					},
+					InstanceSizeSlug: string(app.SizeSlug),
+					InstanceCount:    int64(app.Service.InstanceCount),
+					HTTPPort:         int64(app.Service.HttpPort),
+					Envs:             envs,
+				},
+			},
 		},
 	})
 	if err != nil {

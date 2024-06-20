@@ -13,7 +13,3 @@ func New(template string, handlersmeta []api.HandlerMeta) *ClientGen {
 		handlersmeta: handlersmeta,
 	}
 }
-
-func (g *ClientGen) Generate() ([]byte, error) {
-
-}

@@ -4,8 +4,9 @@ type App struct {
 	ProjectID string
 	Name      string
 	Region    string
+	SizeSlug  SizeSlug
 
-	Services []Service
+	Service Service
 }
 
 type Service struct {
