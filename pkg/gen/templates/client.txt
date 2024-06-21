@@ -1,0 +1,47 @@
+package gen
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+type {{ .UpperName }}Response struct {
+	Version string `json:"version"`
+}
+
+type {{ .UpperName }}Client struct {
+	client  *http.Client
+	baseUrl string
+}
+
+func (i *{{ .UpperName }}Client) Get(ctx context.Context) ({{ .UpperName }}Response, error) {
+	r, err := http.NewRequest("GET", i.baseUrl+"/{{ .Url }}", nil)
+	r = r.WithContext(ctx)
+	resp, err := i.client.Do(r)
+	var {{ .LowerName }} {{ .UpperName }}Response
+	if err != nil {
+		return info, fmt.Errorf("failed to get {{ .LowerName }}: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = gen.CheckResp(resp)
+	if err != nil {
+		return {{ .LowerName }}, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&{{ .LowerName }})
+	if err != nil {
+		return {{ .LowerName }}, fmt.Errorf("failed to decode {{ .LowerName }}: %w", err)
+	}
+
+	return {{ .LowerName }}, nil
+}
+
+func New{{ .UpperName }}Client(baseUrl string, client *http.Client) *{{ .UpperName }}Client {
+	return &{{ .UpperName }}Client{
+		client:  client,
+		baseUrl: baseUrl,
+	}
+}

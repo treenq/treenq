@@ -1,11 +1,28 @@
 package gen
 
-import "github.com/treenq/treenq/src/api"
+import (
+	_ "embed"
+	"github.com/treenq/treenq/src/api"
+	"html/template"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+type Client struct {
+	UpperName string
+	LowerName string
+	Url       string
+}
 
 type ClientGen struct {
 	template     string
 	handlersmeta []api.HandlerMeta
 }
+
+//go:embed templates/client.txt
+var clientTemplate string
 
 func New(template string, handlersmeta []api.HandlerMeta) *ClientGen {
 	return &ClientGen{
@@ -14,6 +31,25 @@ func New(template string, handlersmeta []api.HandlerMeta) *ClientGen {
 	}
 }
 
-func (g *ClientGen) Generate() ([]byte, error) {
+func (g *ClientGen) Generate(name string, endUrl string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fileName := filepath.Join(wd, "../../pkg/sdk/"+name+"client.go")
 
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0660)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	tmpl, err := template.New("goTemplate").Parse(clientTemplate)
+	if err != nil {
+		return err
+	}
+	var client Client
+	client.UpperName = strings.ToUpper(name)
+	client.LowerName = name
+	client.Url = endUrl
+
+	return tmpl.Execute(file, client)
 }
