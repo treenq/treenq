@@ -42,16 +42,16 @@ func NewExtractor(builderDir string) (*Extractor, func(), error) {
 const tqRelativePath = "tq"
 const tqBuildLauncherFile = "builder.go"
 
-func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Resource, error) {
+func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.App, error) {
 	repoConfigDir := filepath.Join(repoDir, tqRelativePath)
 	targetDir := filepath.Join(e.builderDir, tqRelativePath)
 
 	if err := os.MkdirAll(targetDir, 0766); err != nil {
-		return tqsdk.Resource{}, fmt.Errorf("failed to create tq module dir: %w", err)
+		return tqsdk.App{}, fmt.Errorf("failed to create tq module dir: %w", err)
 	}
 
 	if err := copyDirectory(repoConfigDir, targetDir); err != nil {
-		return tqsdk.Resource{}, fmt.Errorf("failed to copy build config: %w", err)
+		return tqsdk.App{}, fmt.Errorf("failed to copy build config: %w", err)
 	}
 	defer func() {
 		os.RemoveAll(targetDir)
@@ -60,12 +60,12 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Resource, error) {
 	builderLauncherPath := filepath.Join(e.builderDir, tqBuildLauncherFile)
 	output, err := exec.Command("go", "run", builderLauncherPath).Output()
 	if err != nil {
-		return tqsdk.Resource{}, fmt.Errorf("failed to exctract build config: %w", err)
+		return tqsdk.App{}, fmt.Errorf("failed to exctract build config: %w", err)
 	}
 
-	var res tqsdk.Resource
+	var res tqsdk.App
 	if err := json.Unmarshal(output, &res); err != nil {
-		return tqsdk.Resource{}, fmt.Errorf("failed to unmarshal resource: %w", err)
+		return tqsdk.App{}, fmt.Errorf("failed to unmarshal resource: %w", err)
 	}
 
 	return res, nil

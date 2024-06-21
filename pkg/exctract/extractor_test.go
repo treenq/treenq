@@ -44,13 +44,9 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 
 	resource, err := extractor.ExtractConfig(srcDir)
 	assert.ErrorIs(t, err, nil)
-	assert.Equal(t, resource, tqsdk.Resource{
-		App: tqsdk.App{
-			Name:         "name",
-			Port:         ":8000",
-			BuildCommand: "go build some/thing.go",
-			RunCommand:   "./thing",
-		},
+	assert.Equal(t, resource, tqsdk.App{
+		Name:   "name",
+		Region: "nyc",
 	})
 
 	// check the close removes the builder directory

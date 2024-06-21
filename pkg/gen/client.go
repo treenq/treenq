@@ -3,9 +3,7 @@ package gen
 import (
 	_ "embed"
 	"html/template"
-	"log"
-	"os"
-	"path/filepath"
+	"io"
 	"strings"
 
 	"github.com/treenq/treenq/src/api"
@@ -32,17 +30,13 @@ func New(template string, handlersmeta []api.HandlerMeta) *ClientGen {
 	}
 }
 
-func (g *ClientGen) Generate(name string, endUrl string) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatalln(err)
+func (g *ClientGen) Generate(w io.Writer) error {
+	if len(g.handlersmeta) == 0 {
+		return io.EOF
 	}
-	fileName := filepath.Join(wd, "../../pkg/sdk/"+name+"client.go")
+	name := g.handlersmeta[0].OperationID
+	endUrl := "/" + name
 
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0660)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	tmpl, err := template.New("goTemplate").Parse(clientTemplate)
 	if err != nil {
 		return err
@@ -52,5 +46,5 @@ func (g *ClientGen) Generate(name string, endUrl string) error {
 	client.LowerName = name
 	client.Url = endUrl
 
-	return tmpl.Execute(file, client)
+	return tmpl.Execute(w, client)
 }
