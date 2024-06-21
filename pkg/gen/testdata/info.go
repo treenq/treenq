@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/treenq/treenq/pkg/gen"
 	"net/http"
+
+	"github.com/treenq/treenq/pkg/gen"
 )
 
 type InfoResponse struct {
@@ -18,10 +19,18 @@ type InfoClient struct {
 }
 
 func (i *InfoClient) Get(ctx context.Context) (InfoResponse, error) {
+	var info InfoResponse
 	r, err := http.NewRequest("GET", i.baseUrl+"/info", nil)
+	if err != nil {
+		return info, fmt.Errorf("failed to create request: %w", err)
+	}
+
 	r = r.WithContext(ctx)
 	resp, err := i.client.Do(r)
-	var info InfoResponse
+	if err != nil {
+		return info, fmt.Errorf("failed to get info: %w", err)
+	}
+
 	if err != nil {
 		return info, fmt.Errorf("failed to get info: %w", err)
 	}
@@ -35,9 +44,6 @@ func (i *InfoClient) Get(ctx context.Context) (InfoResponse, error) {
 	err = json.NewDecoder(resp.Body).Decode(&info)
 	if err != nil {
 		return info, fmt.Errorf("failed to decode info: %w", err)
-	}
-	if info.Version == "" {
-		return info, fmt.Errorf("response does not contain version: %w", err)
 	}
 	return info, nil
 }
