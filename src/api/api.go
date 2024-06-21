@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"unsafe"
 
+	"github.com/digitalocean/godo"
 	"github.com/treenq/treenq/src/handlers"
 	"github.com/treenq/treenq/src/repo"
 )
@@ -104,6 +105,12 @@ func New() (http.Handler, error) {
 		return nil, err
 	}
 
+	doToken := "fake-token"
+
+	doClient := godo.NewFromToken(doToken)
+	provider := repo.NewProvider(doClient)
+	_ = provider
+
 	router := NewRouter()
 	Register(router, "deploy", handlers.Deploy)
 	Register(router, "connect", handlers.NewConnect(store))
@@ -111,7 +118,7 @@ func New() (http.Handler, error) {
 	Register(router, "info", handlers.Info)
 
 	meta := router.Meta()
-	meta[0] = HandlerMeta{}
+	_ = meta
 
 	return router.Mux(), nil
 }

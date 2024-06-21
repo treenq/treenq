@@ -2,12 +2,13 @@ package gen
 
 import (
 	_ "embed"
-	"github.com/treenq/treenq/src/api"
 	"html/template"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/treenq/treenq/src/api"
 )
 
 type Client struct {

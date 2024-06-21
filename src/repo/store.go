@@ -3,12 +3,14 @@ package repo
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+
+	// "encoding/json"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/lib/pq"
-	tqsdk "github.com/treenq/treenq/pkg/sdk"
+
+	// tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/handlers"
 )
 
@@ -76,25 +78,4 @@ var appsCols = []string{
 	"buildCommand",
 	"runCommand",
 	"envs",
-}
-
-func (s *Store) SaveApp(app tqsdk.App) (handlers.App, error) {
-	envs, err := json.Marshal(app.Envs)
-	if err != nil {
-		return handlers.App{}, fmt.Errorf("failed to marshal envs to json: %w", err)
-	}
-	query, args, err := sq.Insert("apps").Columns(appsCols...).Values(app.Name, app.Git.Url, app.Git.Branch, app.Port, app.BuildCommand, app.RunCommand, string(envs)).Suffix("RETURNING 'id'").ToSql()
-	if err != nil {
-		return handlers.App{}, fmt.Errorf("failed to build repo insert query: %w", err)
-	}
-
-	var id string
-	if err := s.db.QueryRow(query, args...).Scan(&id); err != nil {
-		return handlers.App{}, fmt.Errorf("failed to insert app: %w", err)
-	}
-
-	return handlers.App{
-		ID:  id,
-		App: app,
-	}, nil
 }
