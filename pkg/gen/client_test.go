@@ -20,7 +20,10 @@ func TestGenClient(t *testing.T) {
 			OperationID: "info",
 		},
 	})
-	g.Generate(buf)
+	err := g.Generate(buf)
+	if err != nil {
+		assert.NoError(t, err)
+	}
 
 	assert.Equal(t, string(infoClientOutput), buf.String())
 }

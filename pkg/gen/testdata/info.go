@@ -33,9 +33,6 @@ func (c *InfoClient) Info(ctx context.Context, _ InfoRequest) (InfoResponse, err
 		return res, fmt.Errorf("failed to get info: %w", err)
 	}
 
-	if err != nil {
-		return res, fmt.Errorf("failed to get info: %w", err)
-	}
 	defer resp.Body.Close()
 
 	err = CheckResp(resp)
