@@ -1,8 +1,8 @@
 package gen
 
 import (
+	"bytes"
 	_ "embed"
-	"fmt"
 	"github.com/treenq/treenq/src/handlers"
 	"io"
 	"reflect"
@@ -24,10 +24,6 @@ type Client struct {
 type ClientGen struct {
 	template     string
 	handlersmeta []api.HandlerMeta
-}
-
-type InfoRequest struct {
-	Try string `json:"try"`
 }
 
 //go:embed templates/client.txt
@@ -69,9 +65,9 @@ func Capitalize(s string) string {
 }
 
 func GenerateFields(st any, depth int) string {
-	var s, start string
+	s := bytes.Buffer{}
+	var start string
 	var end = "\n"
-	fmt.Println(depth)
 	start = strings.Repeat("\t", depth)
 	v := reflect.ValueOf(st)
 	t := v.Type()
@@ -79,14 +75,24 @@ func GenerateFields(st any, depth int) string {
 		if i == v.NumField()-1 {
 			end = ""
 		}
-		TypeField := t.Field(i)
-		ValField := v.Field(i)
+		typeField := t.Field(i)
+		valField := v.Field(i)
+		s.WriteString(start)
+		s.WriteString(typeField.Name)
 		if v.Field(i).Kind() == reflect.Struct {
-			s += start + TypeField.Name + " struct {\n" + GenerateFields(ValField.Interface(), depth+1) + start + "} `json:\"" + TypeField.Tag.Get("json") + "\"`" + end
+			s.WriteString(" struct {\n")
+			s.WriteString(GenerateFields(valField.Interface(), depth+1))
+			s.WriteString(start)
+			s.WriteString("} `json:\"")
+			s.WriteString(typeField.Tag.Get("json"))
 		} else {
-			s += start + TypeField.Name + " " + ValField.Type().String() + " `json:\"" + TypeField.Tag.Get("json") + "\"`" + end
+			s.WriteString(" ")
+			s.WriteString(valField.Type().String())
+			s.WriteString(" `json:\"")
+			s.WriteString(typeField.Tag.Get("json"))
 		}
+		s.WriteString("\"`")
+		s.WriteString(end)
 	}
-	return s
-
+	return s.String()
 }

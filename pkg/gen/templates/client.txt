@@ -7,12 +7,10 @@ import (
 	"net/http"
 )
 
-type {{ .UpperName }}Request struct {
-{{ .ReqFields }}
+type {{ .UpperName }}Request struct {{ if eq .ReqFields "" }}{{ "{" }}{{ else }}{{ "{\n" }}{{ end }}{{ .ReqFields }}
 }
 
-type {{ .UpperName }}Response struct {
-{{ .RespFields }}
+type {{ .UpperName }}Response struct {{ if eq .RespFields "" }}{{ "{" }}{{ else }}{{ "{\n" }}{{ end }}{{ .RespFields }}
 }
 
 type {{ .UpperName }}Client struct {
