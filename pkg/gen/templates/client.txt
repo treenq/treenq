@@ -7,8 +7,12 @@ import (
 	"net/http"
 )
 
+type {{ .UpperName }}Request struct {
+{{ .ReqFields }}
+}
+
 type {{ .UpperName }}Response struct {
-	Version string `json:"version"`
+{{ .RespFields }}
 }
 
 type {{ .UpperName }}Client struct {
@@ -16,27 +20,32 @@ type {{ .UpperName }}Client struct {
 	baseUrl string
 }
 
-func (i *{{ .UpperName }}Client) Get(ctx context.Context) ({{ .UpperName }}Response, error) {
-	r, err := http.NewRequest("GET", i.baseUrl+"/{{ .Url }}", nil)
-	r = r.WithContext(ctx)
-	resp, err := i.client.Do(r)
-	var {{ .LowerName }} {{ .UpperName }}Response
+func (c *{{ .UpperName }}Client) {{ .UpperName }}(ctx context.Context, _ {{ .UpperName }}Request) ({{ .UpperName }}Response, error) {
+	var res {{ .UpperName }}Response
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/{{ .LowerName }}", nil)
 	if err != nil {
-		return info, fmt.Errorf("failed to get {{ .LowerName }}: %w", err)
+		return res, fmt.Errorf("failed to create request: %w", err)
 	}
+
+	r = r.WithContext(ctx)
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to get {{ .LowerName }}: %w", err)
+	}
+
 	defer resp.Body.Close()
 
-	err = gen.CheckResp(resp)
+	err = CheckResp(resp)
 	if err != nil {
-		return {{ .LowerName }}, err
+		return res, err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&{{ .LowerName }})
+	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return {{ .LowerName }}, fmt.Errorf("failed to decode {{ .LowerName }}: %w", err)
+		return res, fmt.Errorf("failed to decode {{ .LowerName }}: %w", err)
 	}
-
-	return {{ .LowerName }}, nil
+	return res, nil
 }
 
 func New{{ .UpperName }}Client(baseUrl string, client *http.Client) *{{ .UpperName }}Client {
@@ -44,4 +53,37 @@ func New{{ .UpperName }}Client(baseUrl string, client *http.Client) *{{ .UpperNa
 		client:  client,
 		baseUrl: baseUrl,
 	}
+}
+
+type Error struct {
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Meta    map[string]string `json:"meta"`
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("%s, %s", e.Code, e.Message)
+}
+
+func CheckResp(resp *http.Response) error {
+	if resp.StatusCode >= 500 {
+		return &Error{
+			Code:    "UNKNOWN",
+			Message: fmt.Sprintf("failed to get {{ .LowerName }} (code: %d)", resp.StatusCode),
+		}
+	}
+
+	if resp.StatusCode >= 400 {
+		var errResp Error
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		if err != nil {
+			return &Error{
+				Code:    "UNKNOWN",
+				Message: "failed to decode error response: " + err.Error(),
+			}
+		}
+		return &errResp
+	}
+
+	return nil
 }
