@@ -22,7 +22,7 @@ func TestGenClient(t *testing.T) {
 	})
 	err := g.Generate(buf)
 	if err != nil {
-		t.Error(err)
+		assert.NoError(t, err)
 	}
 
 	assert.Equal(t, string(infoClientOutput), buf.String())
