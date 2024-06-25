@@ -83,14 +83,13 @@ func GenerateFields(st any, depth int) string {
 			s.WriteString(" struct {\n")
 			s.WriteString(GenerateFields(valField.Interface(), depth+1))
 			s.WriteString(start)
-			s.WriteString("} `json:\"")
-			s.WriteString(typeField.Tag.Get("json"))
+			s.WriteString("}")
 		} else {
 			s.WriteString(" ")
 			s.WriteString(valField.Type().String())
-			s.WriteString(" `json:\"")
-			s.WriteString(typeField.Tag.Get("json"))
 		}
+		s.WriteString(" `json:\"")
+		s.WriteString(typeField.Tag.Get("json"))
 		s.WriteString("\"`")
 		s.WriteString(end)
 	}
