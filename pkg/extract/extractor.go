@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"text/template"
 
 	"github.com/google/uuid"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
@@ -18,10 +19,12 @@ var emptyTqTemplate []byte
 
 type Extractor struct {
 	builderDirPrefix string
+	tpl              *template.Template
 }
 
 func NewExtractor(builderDirPrefix string) *Extractor {
-	return &Extractor{builderDirPrefix: builderDirPrefix}
+	tpl := template.Must(template.New("builder").Parse(string(emptyTqTemplate)))
+	return &Extractor{builderDirPrefix: builderDirPrefix, tpl: tpl}
 }
 
 const tqRelativePath = "tq"
@@ -29,8 +32,7 @@ const tqBuildLauncherFile = "builder.go"
 
 func (e *Extractor) Open() (string, error) {
 	id := uuid.NewString()
-	builderDir := e.getBuilderPath(id)
-	if err := createBuilder(builderDir, tqBuildLauncherFile); err != nil {
+	if err := e.createBuilder(id); err != nil {
 		return "", fmt.Errorf("failed to open new builder: %w", err)
 	}
 	return id, nil
@@ -79,19 +81,21 @@ func (e *Extractor) getBuilderPath(id string) string {
 	return filepath.Join(e.builderDirPrefix, id)
 }
 
-func createBuilder(dst, filename string) error {
-	if err := os.MkdirAll(dst, 0766); err != nil {
+func (e *Extractor) createBuilder(id string) error {
+	builderDir := e.getBuilderPath(id)
+
+	if err := os.MkdirAll(builderDir, 0766); err != nil {
 		return fmt.Errorf("failed to create builder dir: %w", err)
 	}
 
-	f, err := os.Create(filepath.Join(dst, filename))
+	f, err := os.Create(filepath.Join(builderDir, tqBuildLauncherFile))
 	if err != nil {
 		return fmt.Errorf("failed to create builder file: %w", err)
 	}
 	defer f.Close()
 
-	if _, err := f.Write(emptyTqTemplate); err != nil {
-		return fmt.Errorf("failed to write builder file: %w", err)
+	if err := e.tpl.Execute(f, map[string]string{"ID": id}); err != nil {
+		return fmt.Errorf("failed to write builder template: %w", err)
 	}
 
 	return nil
