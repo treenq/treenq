@@ -35,11 +35,11 @@ type Extractor interface {
 }
 
 type DockerArtifactory interface {
-	Build(ctx context.Context, args artifacts.Args) (string, error)
+	Build(ctx context.Context, args artifacts.Args) (artifacts.Image, error)
 }
 
 type Provider interface {
-	CreateAppResource(ctx context.Context, image string, app tqsdk.App) error
+	CreateAppResource(ctx context.Context, image artifacts.Image, app tqsdk.App) error
 }
 
 func NewHandler(

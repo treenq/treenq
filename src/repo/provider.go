@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/digitalocean/godo"
+	"github.com/treenq/treenq/pkg/artifacts"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
@@ -19,7 +20,7 @@ func NewProvider(client *godo.Client) *Provider {
 	}
 }
 
-func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsdk.App) error {
+func (p *Provider) CreateAppResource(ctx context.Context, image artifacts.Image, app tqsdk.App) error {
 	envs := make([]*godo.AppVariableDefinition, 0, len(app.Service.RuntimeEnvs)+len(app.Service.BuildEnvs)+len(app.Service.RuntimeSecrets)+len(app.Service.BuildSecrets))
 	for k, v := range app.Service.RuntimeEnvs {
 		envs = append(envs, &godo.AppVariableDefinition{
@@ -54,25 +55,6 @@ func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsd
 		})
 	}
 
-	envs = append(envs, &godo.AppVariableDefinition{
-		Key:   "JWT_KEY",
-		Value: "123",
-		Scope: godo.AppVariableScope_RunTime,
-		Type:  godo.AppVariableType_Secret,
-	})
-	envs = append(envs, &godo.AppVariableDefinition{
-		Key:   "JWT_SECRET",
-		Value: "123",
-		Scope: godo.AppVariableScope_RunTime,
-		Type:  godo.AppVariableType_Secret,
-	})
-	envs = append(envs, &godo.AppVariableDefinition{
-		Key:   "DO_TOKEN",
-		Value: "QWE",
-		Scope: godo.AppVariableScope_RunTime,
-		Type:  godo.AppVariableType_Secret,
-	})
-
 	_, resp, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
 		ProjectID: app.ProjectID,
 		Spec: &godo.AppSpec{
@@ -83,7 +65,8 @@ func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsd
 					Name: app.Name,
 					Image: &godo.ImageSourceSpec{
 						RegistryType: godo.ImageSourceSpecRegistryType_DOCR,
-						Repository:   image,
+						Repository:   image.Repository,
+						Tag:          image.Tag,
 						DeployOnPush: &godo.ImageSourceSpecDeployOnPush{
 							Enabled: true,
 						},
