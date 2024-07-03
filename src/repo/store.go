@@ -22,7 +22,7 @@ type Store struct {
 func NewStore() (*Store, error) {
 	db, err := sql.Open("postgres", "postgresql://postgres@localhost:5432/tq?sslmode=disable")
 	if err != nil {
-		return nil, fmt.Errorf("failed to open sql connection: % w", err)
+		return nil, nil
 	}
 
 	initDbDdl := `CREATE TABLE IF NOT EXISTS repos (

@@ -7,12 +7,12 @@ import (
 func Build() (tqsdk.App, error) {
 	return tqsdk.App{
 		Name:     "treenq-poc",
-		Region:   "nyc",
+		Region:   "FRA",
 		SizeSlug: "basic-xxs",
 		Service: tqsdk.Service{
 			DockerfilePath: "Dockerfile",
 			Name:           "treenq-poc-service",
-			HttpPort:       8080,
+			HttpPort:       8000,
 			InstanceCount:  1,
 		},
 	}, nil

@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/digitalocean/godo"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
@@ -53,7 +54,26 @@ func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsd
 		})
 	}
 
-	_, _, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
+	envs = append(envs, &godo.AppVariableDefinition{
+		Key:   "JWT_KEY",
+		Value: "123",
+		Scope: godo.AppVariableScope_RunTime,
+		Type:  godo.AppVariableType_Secret,
+	})
+	envs = append(envs, &godo.AppVariableDefinition{
+		Key:   "JWT_SECRET",
+		Value: "123",
+		Scope: godo.AppVariableScope_RunTime,
+		Type:  godo.AppVariableType_Secret,
+	})
+	envs = append(envs, &godo.AppVariableDefinition{
+		Key:   "DO_TOKEN",
+		Value: "QWE",
+		Scope: godo.AppVariableScope_RunTime,
+		Type:  godo.AppVariableType_Secret,
+	})
+
+	_, resp, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
 		ProjectID: app.ProjectID,
 		Spec: &godo.AppSpec{
 			Name:   app.Name,
@@ -76,6 +96,10 @@ func (p *Provider) CreateAppResource(ctx context.Context, image string, app tqsd
 			},
 		},
 	})
+	if resp.StatusCode > 299 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to create app resource: %s", string(body))
+	}
 	if err != nil {
 		return fmt.Errorf("failed to create app resource: %w", err)
 	}
