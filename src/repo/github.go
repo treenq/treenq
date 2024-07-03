@@ -1,12 +1,11 @@
 package repo
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
-	"os"
-	"encoding/json"
-	"github.com/go-git/go-git/v5"
 )
 
 type TokenIssuer interface {
@@ -15,33 +14,34 @@ type TokenIssuer interface {
 
 type GithubClient struct {
 	tokenIssuer TokenIssuer
-	client *http.Client
+	client      *http.Client
 }
+
 func NewGithubClient(tokenIssuer TokenIssuer, client *http.Client) *GithubClient {
-	if(client == nil){
+	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
 	return &GithubClient{
-	  tokenIssuer: tokenIssuer,
-	  client: client,
+		tokenIssuer: tokenIssuer,
+		client:      client,
 	}
-  }
+}
 
-var responseBody struct{
+var responseBody struct {
 	Token string `json:"token"`
 }
 
-func (c *GithubClient)  IssueAccessToken(installationID string) (string,error) {
-	jwtToken,err := c.tokenIssuer.GeneratedJwtToken()
-	if(err != nil){
-		return "",err
+func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
+	jwtToken, err := c.tokenIssuer.GeneratedJwtToken()
+	if err != nil {
+		return "", err
 	}
-	url :=fmt.Sprintf("https://api.github.com/app/installations/%s/access_tokens",installationID)
+	url := fmt.Sprintf("https://api.github.com/app/installations/%d/access_tokens", installationID)
 	req, err := http.NewRequest("POST", url, nil)
-	if(err != nil){
-		return "",fmt.Errorf("failed to create new request %s",err)
+	if err != nil {
+		return "", fmt.Errorf("failed to create new request %s", err)
 	}
-	req.Header.Set("Authorization","Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
@@ -52,30 +52,13 @@ func (c *GithubClient)  IssueAccessToken(installationID string) (string,error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 299 {
-		return "", fmt.Errorf("An error occurred while processing request: %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to process request: %d, body=%s", resp.StatusCode, string(respBody))
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
-		return "", fmt.Errorf("Failed to decode response: %w", err)
+		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return responseBody.Token,nil
+	return responseBody.Token, nil
 }
-
-func  GitCloneTemp(repoID string,repo string,username string,accesstoken string)(string, error){
-
-	dirName := fmt.Sprintf("%s-%s-%s",repoID,username,repo)
-	dir,err := os.MkdirTemp("",dirName)
-	if(err != nil){
-		return "",fmt.Errorf("Error while creating Directory %s",err)
-	}
-	url := fmt.Sprintf("https://%s@github.com/%s/%s.git",accesstoken,username,repo)
-	_ , err = git.PlainClone(dir, false, &git.CloneOptions{
-		URL: url,
-		Progress: os.Stdout,
-	})
-	if(err != nil){
-		return "",fmt.Errorf("Error while cloning the repo %s",err)
-	}
-  return dir,err
-} 

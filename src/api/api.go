@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"unsafe"
 
 	"github.com/digitalocean/godo"
+	"github.com/treenq/treenq/pkg/artifacts"
+	"github.com/treenq/treenq/pkg/extract"
+	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/src/handlers"
 	"github.com/treenq/treenq/src/repo"
 )
@@ -23,10 +26,6 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var i I
-
-		body, _ := io.ReadAll(r.Body)
-		fmt.Println(string(body))
-		// useless comment
 
 		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
@@ -82,7 +81,9 @@ type HandlerMeta struct {
 
 func NewRouter() *Router {
 	mux := http.NewServeMux()
-	mux.Handle("GET /healthz", NewHandler(handlers.Health))
+	mux.Handle("GET /healthz", NewHandler(func(ctx context.Context, _ struct{}) (struct{}, *handlers.Error) {
+		return struct{}{}, nil
+	}))
 
 	return &Router{mux: mux}
 }
@@ -99,26 +100,32 @@ func Register[I, O comparable](r *Router, operationID string, handler Handler[I,
 	r.mux.Handle("POST /"+operationID, NewHandler(handler))
 }
 
-func New() (http.Handler, error) {
+func New(conf Config) (http.Handler, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
 	store, err := repo.NewStore()
 	if err != nil {
 		return nil, err
 	}
 
-	doToken := "fake-token"
-
-	doClient := godo.NewFromToken(doToken)
+	doClient := godo.NewFromToken(conf.DoToken)
 	provider := repo.NewProvider(doClient)
-	_ = provider
+	jwtIssuer := jwt.NewJwtIssuer(conf.JwtKey, conf.JwtSecret, conf.JwtTtl)
+
+	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
+	gitClient := repo.NewGit()
+	docker := artifacts.NewDockerArtifactory("tq-staging")
+	extractor := extract.NewExtractor(filepath.Join(wd, "builder"))
+
+	handlers := handlers.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
 
 	router := NewRouter()
 	Register(router, "deploy", handlers.Deploy)
-	Register(router, "connect", handlers.NewConnect(store))
+	Register(router, "connect", handlers.Connect)
 	Register(router, "githubWebhook", handlers.GithubWebhook)
 	Register(router, "info", handlers.Info)
-
-	meta := router.Meta()
-	_ = meta
 
 	return router.Mux(), nil
 }

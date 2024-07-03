@@ -13,20 +13,14 @@ type ConnectResponse struct {
 	Url string `json:"url"`
 }
 
-type RepoCreator interface {
-	CreateRepo(ctx context.Context, req ConnectRequest) (ConnectResponse, error)
-}
-
-func NewConnect(repo RepoCreator) func(ctx context.Context, req ConnectRequest) (ConnectResponse, *Error) {
-	return func(ctx context.Context, req ConnectRequest) (ConnectResponse, *Error) {
-		res, err := repo.CreateRepo(ctx, req)
-		if err != nil {
-			return res, &Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
-			}
+func (h *Handler) Connect(ctx context.Context, req ConnectRequest) (ConnectResponse, *Error) {
+	res, err := h.db.CreateRepo(ctx, req)
+	if err != nil {
+		return res, &Error{
+			Code:    "UNKNOWN",
+			Message: err.Error(),
 		}
-
-		return res, nil
 	}
+
+	return res, nil
 }

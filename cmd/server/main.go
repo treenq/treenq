@@ -8,14 +8,17 @@ import (
 )
 
 func main() {
-	m, err := api.New()
+	conf, err := api.NewConfig()
 	if err != nil {
-		log.Fatalln("failed to build api", err)
+		log.Fatalln("failed to load config:", err)
 	}
-	port := ":8000"
-	log.Println("service is running on", port)
+	m, err := api.New(conf)
+	if err != nil {
+		log.Fatalln("failed to build api:", err)
+	}
+	log.Println("service is running on:", conf.HttpPort)
 
-	if err := http.ListenAndServe(port, m); err != nil {
+	if err := http.ListenAndServe(":"+conf.HttpPort, m); err != nil {
 		log.Println(err)
 	}
 }

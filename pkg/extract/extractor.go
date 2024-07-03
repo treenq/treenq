@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 
+	"github.com/google/uuid"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
@@ -17,34 +17,38 @@ import (
 var emptyTqTemplate []byte
 
 type Extractor struct {
-	builderDir string
+	builderDirPrefix string
 }
 
-var createBuilderOnce sync.Once
-var removeBuilderOnce sync.Once
-
-func NewExtractor(builderDir string) (*Extractor, func(), error) {
-	var createErr error
-	createBuilderOnce.Do(func() {
-		createErr = createBuilder(builderDir, tqBuildLauncherFile)
-	})
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create builder: %w", createErr)
-	}
-	close := func() {
-		removeBuilderOnce.Do(func() {
-			removeBuilder(builderDir)
-		})
-	}
-	return &Extractor{builderDir: builderDir}, close, nil
+func NewExtractor(builderDirPrefix string) *Extractor {
+	return &Extractor{builderDirPrefix: builderDirPrefix}
 }
 
 const tqRelativePath = "tq"
 const tqBuildLauncherFile = "builder.go"
 
-func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.App, error) {
+func (e *Extractor) Open() (string, error) {
+	id := uuid.NewString()
+	builderDir := e.getBuilderPath(id)
+	if err := createBuilder(builderDir, tqBuildLauncherFile); err != nil {
+		return "", fmt.Errorf("failed to open new builder: %w", err)
+	}
+	return id, nil
+}
+
+func (e *Extractor) Close(id string) error {
+	builderDir := e.getBuilderPath(id)
+	if err := removeBuilder(builderDir); err != nil {
+		return fmt.Errorf("failed to close builder: %w", err)
+	}
+
+	return nil
+}
+
+func (e *Extractor) ExtractConfig(id string, repoDir string) (tqsdk.App, error) {
+	builderDir := e.getBuilderPath(id)
 	repoConfigDir := filepath.Join(repoDir, tqRelativePath)
-	targetDir := filepath.Join(e.builderDir, tqRelativePath)
+	targetDir := filepath.Join(builderDir, tqRelativePath)
 
 	if err := os.MkdirAll(targetDir, 0766); err != nil {
 		return tqsdk.App{}, fmt.Errorf("failed to create tq module dir: %w", err)
@@ -57,7 +61,7 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.App, error) {
 		os.RemoveAll(targetDir)
 	}()
 
-	builderLauncherPath := filepath.Join(e.builderDir, tqBuildLauncherFile)
+	builderLauncherPath := filepath.Join(builderDir, tqBuildLauncherFile)
 	output, err := exec.Command("go", "run", builderLauncherPath).Output()
 	if err != nil {
 		return tqsdk.App{}, fmt.Errorf("failed to exctract build config: %w", err)
@@ -69,6 +73,10 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.App, error) {
 	}
 
 	return res, nil
+}
+
+func (e *Extractor) getBuilderPath(id string) string {
+	return filepath.Join(e.builderDirPrefix, id)
 }
 
 func createBuilder(dst, filename string) error {
