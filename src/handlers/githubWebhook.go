@@ -60,10 +60,11 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 	}
 
-	dockerFilePath := filepath.Join(repoDir, "Dockerfile")
+	dockerFilePath := filepath.Join(repoDir, appDef.Service.DockerfilePath)
 	imageRepo, err := h.docker.Build(ctx, artifacts.Args{
-		Name: appDef.Name,
-		Path: dockerFilePath,
+		Name:       appDef.Name,
+		Path:       repoDir,
+		Dockerfile: dockerFilePath,
 	})
 	if err != nil {
 		return GithubWebhookResponse{}, &Error{

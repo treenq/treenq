@@ -8,7 +8,7 @@ func Build() (tqsdk.App, error) {
 	return tqsdk.App{
 		Name:     "treenq-poc",
 		Region:   "nyc",
-		SizeSlug: tqsdk.SizeSlugs1vcpu512mb10gb,
+		SizeSlug: "basic-xxs",
 		Service: tqsdk.Service{
 			DockerfilePath: "Dockerfile",
 			Name:           "treenq-poc-service",

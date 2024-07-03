@@ -11,8 +11,9 @@ type DockerArtifact struct {
 }
 
 type Args struct {
-	Name string
-	Path string
+	Name       string
+	Path       string
+	Dockerfile string
 }
 
 func NewDockerArtifactory(registry string) *DockerArtifact {
@@ -24,7 +25,10 @@ func NewDockerArtifactory(registry string) *DockerArtifact {
 func (a *DockerArtifact) Build(ctx context.Context, args Args) (string, error) {
 	// build
 	tag := fmt.Sprintf("%s:latest", args.Name)
-	if err := exec.Command("docker", "build", "-t", tag, args.Path).Run(); err != nil {
+	buildCmd := exec.Command("docker", "build", "-t", tag, args.Path)
+	buildOut, err := buildCmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(buildOut)
 		return "", fmt.Errorf("failed to build docker image: %w", err)
 	}
 
