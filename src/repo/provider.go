@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"github.com/digitalocean/godo"
-	"github.com/treenq/treenq/pkg/artifacts"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
+	"github.com/treenq/treenq/src/domain"
 )
 
 type Provider struct {
@@ -20,7 +20,7 @@ func NewProvider(client *godo.Client) *Provider {
 	}
 }
 
-func (p *Provider) CreateAppResource(ctx context.Context, image artifacts.Image, app tqsdk.App) error {
+func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, app tqsdk.App) error {
 	envs := make([]*godo.AppVariableDefinition, 0, len(app.Service.RuntimeEnvs)+len(app.Service.BuildEnvs)+len(app.Service.RuntimeSecrets)+len(app.Service.BuildSecrets))
 	for k, v := range app.Service.RuntimeEnvs {
 		envs = append(envs, &godo.AppVariableDefinition{

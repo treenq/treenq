@@ -1,9 +1,8 @@
-package handlers
+package domain
 
 import (
 	"context"
 
-	"github.com/treenq/treenq/pkg/artifacts"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
@@ -35,11 +34,11 @@ type Extractor interface {
 }
 
 type DockerArtifactory interface {
-	Build(ctx context.Context, args artifacts.Args) (artifacts.Image, error)
+	Build(ctx context.Context, args BuildArtifactRequest) (Image, error)
 }
 
 type Provider interface {
-	CreateAppResource(ctx context.Context, image artifacts.Image, app tqsdk.App) error
+	CreateAppResource(ctx context.Context, image Image, app tqsdk.App) error
 }
 
 func NewHandler(

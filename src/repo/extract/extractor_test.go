@@ -35,14 +35,17 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 	currentDir, err := os.Getwd()
 	require.NoError(t, err)
 	builderDir := filepath.Join(filepath.Dir(currentDir), "builder")
-	extractor, close, err := NewExtractor(builderDir)
+	extractor := NewExtractor(builderDir, "src/repo")
+	id, err := extractor.Open()
 	require.NoError(t, err)
 
+	buildIdDir := filepath.Join(builderDir, id)
+
 	// check the builder directory is created
-	_, err = os.Stat(builderDir)
+	_, err = os.Stat(buildIdDir)
 	assert.ErrorIs(t, err, nil)
 
-	resource, err := extractor.ExtractConfig(srcDir)
+	resource, err := extractor.ExtractConfig(id, srcDir)
 	assert.ErrorIs(t, err, nil)
 	assert.Equal(t, resource, tqsdk.App{
 		Name:   "name",
@@ -50,7 +53,8 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 	})
 
 	// check the close removes the builder directory
-	close()
-	_, err = os.Stat(builderDir)
+	err = extractor.Close(id)
+	require.NoError(t, err)
+	_, err = os.Stat(buildIdDir)
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }

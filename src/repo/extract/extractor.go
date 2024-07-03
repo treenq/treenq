@@ -19,12 +19,13 @@ var emptyTqTemplate []byte
 
 type Extractor struct {
 	builderDirPrefix string
+	builderPackage   string
 	tpl              *template.Template
 }
 
-func NewExtractor(builderDirPrefix string) *Extractor {
+func NewExtractor(builderDirPrefix string, builderPackage string) *Extractor {
 	tpl := template.Must(template.New("builder").Parse(string(emptyTqTemplate)))
-	return &Extractor{builderDirPrefix: builderDirPrefix, tpl: tpl}
+	return &Extractor{builderDirPrefix: builderDirPrefix, builderPackage: builderPackage, tpl: tpl}
 }
 
 const tqRelativePath = "tq"
@@ -94,7 +95,7 @@ func (e *Extractor) createBuilder(id string) error {
 	}
 	defer f.Close()
 
-	if err := e.tpl.Execute(f, map[string]string{"ID": id}); err != nil {
+	if err := e.tpl.Execute(f, map[string]string{"ID": id, "Package": e.builderPackage}); err != nil {
 		return fmt.Errorf("failed to write builder template: %w", err)
 	}
 

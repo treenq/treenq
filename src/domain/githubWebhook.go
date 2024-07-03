@@ -1,11 +1,10 @@
-package handlers
+package domain
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/treenq/treenq/pkg/artifacts"
 )
 
 type GithubWebhookRequest struct {
@@ -16,6 +15,29 @@ type GithubWebhookRequest struct {
 	Repository struct {
 		CloneUrl string `json:"clone_url"`
 	} `json:"repository"`
+}
+
+type BuildArtifactRequest struct {
+	Name       string
+	Path       string
+	Dockerfile string
+}
+
+type Image struct {
+	// Registry is a registry name in the cloud provider
+	Registry string
+	// Repository is a facto name of the image
+	Repository string
+	// Tag is a version of the image
+	Tag string
+}
+
+func (i Image) Image() string {
+	return fmt.Sprintf("%s:%s", i.Repository, i.Tag)
+}
+
+func (i Image) FullPath() string {
+	return fmt.Sprintf("%s/%s:%s", i.Registry, i.Repository, i.Tag)
 }
 
 type GithubWebhookResponse struct {
@@ -61,7 +83,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	}
 
 	dockerFilePath := filepath.Join(repoDir, appDef.Service.DockerfilePath)
-	imageRepo, err := h.docker.Build(ctx, artifacts.Args{
+	imageRepo, err := h.docker.Build(ctx, BuildArtifactRequest{
 		Name:       appDef.Name,
 		Path:       repoDir,
 		Dockerfile: dockerFilePath,

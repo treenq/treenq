@@ -1,4 +1,4 @@
-package handlers
+package domain
 
 import (
 	"context"

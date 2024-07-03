@@ -4,16 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+
+	"github.com/treenq/treenq/src/domain"
 )
 
 type DockerArtifact struct {
 	registry string
-}
-
-type Args struct {
-	Name       string
-	Path       string
-	Dockerfile string
 }
 
 func NewDockerArtifactory(registry string) *DockerArtifact {
@@ -22,25 +18,8 @@ func NewDockerArtifactory(registry string) *DockerArtifact {
 	}
 }
 
-type Image struct {
-	// Registry is a registry name in the cloud provider
-	Registry string
-	// Repository is a facto name of the image
-	Repository string
-	// Tag is a version of the image
-	Tag string
-}
-
-func (i Image) Image() string {
-	return fmt.Sprintf("%s:%s", i.Repository, i.Tag)
-}
-
-func (i Image) FullPath() string {
-	return fmt.Sprintf("%s/%s:%s", i.Registry, i.Repository, i.Tag)
-}
-
-func (a *DockerArtifact) Build(ctx context.Context, args Args) (Image, error) {
-	image := Image{
+func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest) (domain.Image, error) {
+	image := domain.Image{
 		Registry:   a.registry,
 		Repository: args.Name,
 		Tag:        "latest",

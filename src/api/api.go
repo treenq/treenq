@@ -9,14 +9,14 @@ import (
 	"unsafe"
 
 	"github.com/digitalocean/godo"
-	"github.com/treenq/treenq/pkg/artifacts"
-	"github.com/treenq/treenq/pkg/extract"
 	"github.com/treenq/treenq/pkg/jwt"
-	"github.com/treenq/treenq/src/handlers"
+	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
+	"github.com/treenq/treenq/src/repo/artifacts"
+	"github.com/treenq/treenq/src/repo/extract"
 )
 
-type Handler[I, O comparable] func(ctx context.Context, i I) (O, *handlers.Error)
+type Handler[I, O comparable] func(ctx context.Context, i I) (O, *domain.Error)
 
 func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 	var iType I
@@ -30,7 +30,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(handlers.Error{
+				json.NewEncoder(w).Encode(domain.Error{
 					Code:    "FAILED_DECODING",
 					Message: err.Error(),
 				})
@@ -48,7 +48,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 		if hasResBody {
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(handlers.Error{
+				json.NewEncoder(w).Encode(domain.Error{
 					Code:    "FAILED_ENCODING",
 					Message: err.Error(),
 				})
@@ -81,7 +81,7 @@ type HandlerMeta struct {
 
 func NewRouter() *Router {
 	mux := http.NewServeMux()
-	mux.Handle("GET /healthz", NewHandler(func(ctx context.Context, _ struct{}) (struct{}, *handlers.Error) {
+	mux.Handle("GET /healthz", NewHandler(func(ctx context.Context, _ struct{}) (struct{}, *domain.Error) {
 		return struct{}{}, nil
 	}))
 
@@ -117,9 +117,9 @@ func New(conf Config) (http.Handler, error) {
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
 	gitClient := repo.NewGit()
 	docker := artifacts.NewDockerArtifactory("tq-staging")
-	extractor := extract.NewExtractor(filepath.Join(wd, "builder"))
+	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), "cmd/server")
 
-	handlers := handlers.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
 
 	router := NewRouter()
 	Register(router, "deploy", handlers.Deploy)

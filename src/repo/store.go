@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 
-	// "encoding/json"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/lib/pq"
 
-	// tqsdk "github.com/treenq/treenq/pkg/sdk"
-	"github.com/treenq/treenq/src/handlers"
+	"github.com/treenq/treenq/src/domain"
 )
 
 type Store struct {
@@ -53,18 +51,18 @@ func NewStore() (*Store, error) {
 }
 
 // TODO: add (url, user) unique constraint
-func (s *Store) CreateRepo(ctx context.Context, req handlers.ConnectRequest) (handlers.ConnectResponse, error) {
+func (s *Store) CreateRepo(ctx context.Context, req domain.ConnectRequest) (domain.ConnectResponse, error) {
 	query, args, err := sq.Insert("repos").Columns("url").Values(req.Url).Suffix("RETURNING 'id'").ToSql()
 	if err != nil {
-		return handlers.ConnectResponse{}, fmt.Errorf("failed to build repo insert query: %w", err)
+		return domain.ConnectResponse{}, fmt.Errorf("failed to build repo insert query: %w", err)
 	}
 	var id string
 	err = s.db.QueryRow(query, args...).Scan(&id)
 	if err != nil {
-		return handlers.ConnectResponse{}, fmt.Errorf("failed to insert repo: %w", err)
+		return domain.ConnectResponse{}, fmt.Errorf("failed to insert repo: %w", err)
 	}
 
-	return handlers.ConnectResponse{
+	return domain.ConnectResponse{
 		ID:  id,
 		Url: req.Url,
 	}, nil
