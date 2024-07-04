@@ -133,7 +133,6 @@ func New(conf Config) (http.Handler, error) {
 
 	router := NewRouter()
 	Register(router, "deploy", handlers.Deploy)
-	Register(router, "connect", handlers.Connect)
 	Register(router, "githubWebhook", handlers.GithubWebhook)
 	Register(router, "info", handlers.Info)
 

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,6 +43,18 @@ func (i Image) FullPath() string {
 
 type GithubWebhookResponse struct {
 }
+
+type Resource struct {
+	Key     string
+	Kind    ResourceKind
+	Payload []byte
+}
+
+type ResourceKind string
+
+const (
+	ResourceKindService ResourceKind = "service"
+)
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *Error) {
 	if req.Ref != "refs/heads/master" && req.Ref != "refs/heads/main" {
@@ -97,6 +110,24 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	err = h.provider.CreateAppResource(ctx, imageRepo, appDef)
 	if err != nil {
+		return GithubWebhookResponse{}, &Error{
+			Code:    "UNKNOWN",
+			Message: err.Error(),
+		}
+	}
+
+	payload, err := json.Marshal(appDef)
+	if err != nil {
+		return GithubWebhookResponse{}, &Error{
+			Code:    "UNKNOWN",
+			Message: err.Error(),
+		}
+	}
+	if err := h.db.SaveResource(ctx, Resource{
+		Key:     appDef.Service.Key,
+		Kind:    ResourceKindService,
+		Payload: payload,
+	}); err != nil {
 		return GithubWebhookResponse{}, &Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),

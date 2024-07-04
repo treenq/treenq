@@ -20,7 +20,7 @@ func NewProvider(client *godo.Client) *Provider {
 	}
 }
 
-func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, app tqsdk.App) error {
+func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, app tqsdk.Space) error {
 	envs := make([]*godo.AppVariableDefinition, 0, len(app.Service.RuntimeEnvs)+len(app.Service.BuildEnvs)+len(app.Service.RuntimeSecrets)+len(app.Service.BuildSecrets))
 	for k, v := range app.Service.RuntimeEnvs {
 		envs = append(envs, &godo.AppVariableDefinition{
@@ -56,7 +56,6 @@ func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, ap
 	}
 
 	_, resp, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
-		ProjectID: app.ProjectID,
 		Spec: &godo.AppSpec{
 			Name:   app.Name,
 			Region: app.Region,
@@ -71,7 +70,7 @@ func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, ap
 							Enabled: true,
 						},
 					},
-					InstanceSizeSlug: string(app.SizeSlug),
+					InstanceSizeSlug: string(app.Service.SizeSlug),
 					InstanceCount:    int64(app.Service.InstanceCount),
 					HTTPPort:         int64(app.Service.HttpPort),
 					Envs:             envs,
