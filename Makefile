@@ -18,6 +18,7 @@ install:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.17.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 	go install golang.org/x/tools/cmd/goimports@v0.22.0
+    go install go.uber.org/nilaway/cmd/nilaway@e902884 # has no stable version
 
 lint:
-	goimports -l -w . && golangci-lint run
+	goimports -l -w . && golangci-lint run && nilaway ./...
