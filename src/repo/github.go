@@ -46,7 +46,7 @@ func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 	resp, err := c.client.Do(req)
-	if err != nil {
+	if err != nil || resp == nil {
 		return "", fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
