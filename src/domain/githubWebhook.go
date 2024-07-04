@@ -108,6 +108,13 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 	}
 
+	if err := h.db.SaveSpace(ctx, appDef.Name, appDef.Region); err != nil {
+		return GithubWebhookResponse{}, &Error{
+			Code:    "UNKNOWN",
+			Message: err.Error(),
+		}
+	}
+
 	err = h.provider.CreateAppResource(ctx, imageRepo, appDef)
 	if err != nil {
 		return GithubWebhookResponse{}, &Error{

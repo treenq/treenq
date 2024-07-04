@@ -16,6 +16,7 @@ type Handler struct {
 }
 
 type Database interface {
+	SaveSpace(ctx context.Context, name string, region string) error
 	SaveResource(ctx context.Context, resource Resource) error
 }
 
