@@ -79,7 +79,7 @@ func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, ap
 			},
 		},
 	})
-	if resp.StatusCode > 299 {
+	if resp != nil && resp.StatusCode > 299 {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to create app resource: %s", string(body))
 	}

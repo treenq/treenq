@@ -67,13 +67,3 @@ func (s *Store) CreateRepo(ctx context.Context, req domain.ConnectRequest) (doma
 		Url: req.Url,
 	}, nil
 }
-
-var appsCols = []string{
-	"name",
-	"gitUrl",
-	"gitBranch",
-	"port",
-	"buildCommand",
-	"runCommand",
-	"envs",
-}

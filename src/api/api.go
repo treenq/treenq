@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,10 +31,13 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 		if hasReqBody {
 			if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(domain.Error{
+				err = json.NewEncoder(w).Encode(domain.Error{
 					Code:    "FAILED_DECODING",
 					Message: err.Error(),
 				})
+				if err != nil {
+					slog.Default().ErrorContext(r.Context(), "failed to write request marshal error", "err", err)
+				}
 				return
 			}
 		}
@@ -41,17 +45,23 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 		res, callErr := call(r.Context(), i)
 		if callErr != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(callErr)
+			err := json.NewEncoder(w).Encode(callErr)
+			if err != nil {
+				slog.Default().ErrorContext(r.Context(), "failed to write api call error", "err", err)
+			}
 			return
 		}
 
 		if hasResBody {
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(domain.Error{
+				err = json.NewEncoder(w).Encode(domain.Error{
 					Code:    "FAILED_ENCODING",
 					Message: err.Error(),
 				})
+				if err != nil {
+					slog.Default().ErrorContext(r.Context(), "failed to write request marshal error", "err", err)
+				}
 			}
 		}
 	}

@@ -3,12 +3,13 @@ package gen
 import (
 	"bytes"
 	_ "embed"
-	"github.com/treenq/treenq/src/handlers"
 	"io"
 	"reflect"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/treenq/treenq/src/domain"
 
 	"github.com/treenq/treenq/src/api"
 )
@@ -51,7 +52,7 @@ func (g *ClientGen) Generate(w io.Writer) error {
 	client.UpperName = Capitalize(name)
 	client.LowerName = name
 	client.Url = endUrl
-	client.RespFields = GenerateFields(handlers.InfoResponse{}, 1)
+	client.RespFields = GenerateFields(domain.InfoResponse{}, 1)
 	client.ReqFields = GenerateFields(struct{}{}, 1)
 
 	return tmpl.Execute(w, client)
