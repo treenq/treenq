@@ -18,5 +18,5 @@ func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse
 
 type App struct {
 	ID string
-	tqsdk.App
+	tqsdk.Space
 }

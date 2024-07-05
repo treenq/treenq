@@ -4,8 +4,8 @@ import (
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
-func Build() (tqsdk.App, error) {
-	return tqsdk.App{
+func Build() (tqsdk.Space, error) {
+	return tqsdk.Space{
 		Name:   "name",
 		Region: "nyc",
 	}, nil

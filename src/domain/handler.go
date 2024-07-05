@@ -16,7 +16,8 @@ type Handler struct {
 }
 
 type Database interface {
-	CreateRepo(ctx context.Context, req ConnectRequest) (ConnectResponse, error)
+	SaveSpace(ctx context.Context, name string, region string) error
+	SaveResource(ctx context.Context, resource Resource) error
 }
 
 type GithubCleint interface {
@@ -29,7 +30,7 @@ type Git interface {
 
 type Extractor interface {
 	Open() (string, error)
-	ExtractConfig(id, repoDir string) (tqsdk.App, error)
+	ExtractConfig(id, repoDir string) (tqsdk.Space, error)
 	Close(string) error
 }
 
@@ -38,7 +39,7 @@ type DockerArtifactory interface {
 }
 
 type Provider interface {
-	CreateAppResource(ctx context.Context, image Image, app tqsdk.App) error
+	CreateAppResource(ctx context.Context, image Image, app tqsdk.Space) error
 }
 
 func NewHandler(

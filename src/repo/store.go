@@ -38,6 +38,20 @@ func NewStore() (*Store, error) {
 		runCommand VARCHAR(1023) NOT NULL,
 		envs TEXT NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS spaces (
+		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+		name VARCHAR(255) NOT NULL,
+		region VARCHAR(15) NOT NULL,
+	);
+
+	CREATE TABLE IF NOT EXISTS resources (
+		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+		spaceId VARCHAR(255) NOT NULL,
+		key VARCHAR(255) NOT NULL,
+		kind VARCHAR(55) NOT NULL,
+		payload TEXT NOT NULL
+	);
 	`
 
 	_, err = db.Exec(initDbDdl)
@@ -50,20 +64,28 @@ func NewStore() (*Store, error) {
 	return &Store{db: db, sq: sq}, nil
 }
 
-// TODO: add (url, user) unique constraint
-func (s *Store) CreateRepo(ctx context.Context, req domain.ConnectRequest) (domain.ConnectResponse, error) {
-	query, args, err := sq.Insert("repos").Columns("url").Values(req.Url).Suffix("RETURNING 'id'").ToSql()
+func (s *Store) SaveSpace(ctx context.Context, name string, region string) error {
+	query, args, err := s.sq.Insert("spaces").Columns("name", "region").Values(name, region).ToSql()
 	if err != nil {
-		return domain.ConnectResponse{}, fmt.Errorf("failed to build repo insert query: %w", err)
+		return fmt.Errorf("Store.SaveSpace: failed to build query: %w", err)
 	}
-	var id string
-	err = s.db.QueryRow(query, args...).Scan(&id)
+	_, err = s.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return domain.ConnectResponse{}, fmt.Errorf("failed to insert repo: %w", err)
+		return fmt.Errorf("Store.SaveSpace: failed to insert: %w", err)
 	}
 
-	return domain.ConnectResponse{
-		ID:  id,
-		Url: req.Url,
-	}, nil
+	return nil
+}
+
+func (s *Store) SaveResource(ctx context.Context, resource domain.Resource) error {
+	query, args, err := s.sq.Insert("resources").Columns("key", "kind", "payload").Values(resource.Key, resource.Kind, resource.Payload).ToSql()
+	if err != nil {
+		return fmt.Errorf("Store.SaveResource: failed to build query: %w", err)
+	}
+	_, err = s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("Store.SaveResource: failed to insert: %w", err)
+	}
+
+	return nil
 }
