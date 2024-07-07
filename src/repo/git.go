@@ -30,10 +30,8 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 		URL:      u.String(),
 		Progress: os.Stdout,
 	})
-	if err != nil {
-		if err != git.ErrRepositoryAlreadyExists {
-			return "", fmt.Errorf("error while cloning the repo %s", err)
-		}
+	if err != nil && err != git.ErrRepositoryAlreadyExists {
+		return "", fmt.Errorf("error while cloning the repo %s", err)
 
 	}
 	return dir, err
