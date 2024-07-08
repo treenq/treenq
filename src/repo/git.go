@@ -26,13 +26,24 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 	}
 	u.User = url.UserPassword("x-access-token", accesstoken)
 
-	_, err = git.PlainClone(dir, false, &git.CloneOptions{
+	r, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL:      u.String(),
 		Progress: os.Stdout,
 	})
-	if err != nil && err != git.ErrRepositoryAlreadyExists {
-		return "", fmt.Errorf("error while cloning the repo %s", err)
+	if err != nil {
+		if err != git.ErrRepositoryAlreadyExists {
+			return "", fmt.Errorf("error while cloning the repo %s", err)
+		} else {
+			w, err := r.Worktree()
+			if err != nil {
+				return "", fmt.Errorf("error while getting worktree %s", err)
+			}
+			err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+			if err !- nil {
+				return "", fmt.Errorf("error while pulling latest %s", err)
+			}
 
+		}
 	}
 	return dir, err
 }
