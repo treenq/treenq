@@ -39,7 +39,7 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 				return "", fmt.Errorf("error while getting worktree %s", err)
 			}
 			err = w.Pull(&git.PullOptions{RemoteName: "origin"})
-			if err !- nil {
+			if err != nil {
 				return "", fmt.Errorf("error while pulling latest %s", err)
 			}
 
