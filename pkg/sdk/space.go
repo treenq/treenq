@@ -1,5 +1,5 @@
 package tqsdk
-
+import ("reflect")
 type Space struct {
 	Key    string
 	Region string
@@ -35,4 +35,26 @@ type Service struct {
 	// The name of the component.
 	Name     string
 	SizeSlug SizeSlug
+}
+type Diff struct{
+	old string
+	new string
+} 
+func iterateStruct(old,new interface{}) map[string]Diff{
+	diffMap := make(map[string]Diff)
+	valOld := reflect.ValueOf(old)
+	valNew := reflect.ValueOf(new)
+
+	for i := 0; i < valOld.NumField(); i++ {
+		fieldKey := valOld.Type().Field(i).Name
+		fieldValOld := valOld.Field(i).Interface()
+		fieldValNew := valNew.Field(i).Interface()
+		if !reflect.DeepEqual(fieldValOld, fieldValNew){
+			diffMap[fieldKey] = Diff{string(fieldValOld),string(fieldValNew)}
+		}
+	}
+	return diffMap
+}
+func DiffService(new Space, prev Space) (map[string]Diff) {
+	return iterateStruct(prev.Service,new.Service)
 }
