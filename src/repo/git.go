@@ -16,8 +16,6 @@ func NewGit() *Git {
 }
 
 func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
-	// dir, err := os.MkdirTemp("repos/", "")
-	// dir := os.Mkdir("/", fs.ModePerm)
 	cloneDir := "allrepos/"
 	if _, err := os.Stat(cloneDir); os.IsNotExist(err) {
 		err = os.MkdirAll(cloneDir, os.ModePerm)
