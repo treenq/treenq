@@ -97,7 +97,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	dockerFilePath := filepath.Join(repoDir, appDef.Service.DockerfilePath)
 	imageRepo, err := h.docker.Build(ctx, BuildArtifactRequest{
-		Name:       appDef.Name,
+		Name:       appDef.Service.Name,
 		Path:       repoDir,
 		Dockerfile: dockerFilePath,
 	})
@@ -108,7 +108,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 	}
 
-	if err := h.db.SaveSpace(ctx, appDef.Name, appDef.Region); err != nil {
+	if err := h.db.SaveSpace(ctx, appDef.Service.Name, appDef.Region); err != nil {
 		return GithubWebhookResponse{}, &Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),

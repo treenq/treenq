@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -9,16 +10,16 @@ import (
 )
 
 type Git struct {
+	dir string
 }
 
-func NewGit() *Git {
-	return &Git{}
+func NewGit(dir string) *Git {
+	return &Git{dir: dir}
 }
 
 func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
-	cloneDir := "allrepos/"
-	if _, err := os.Stat(cloneDir); os.IsNotExist(err) {
-		err = os.MkdirAll(cloneDir, os.ModePerm)
+	if _, err := os.Stat(g.dir); os.IsNotExist(err) {
+		err = os.MkdirAll(g.dir, os.ModePerm)
 		if err != nil {
 			return "", fmt.Errorf("failed to create clone directory: %s", err)
 		}
@@ -30,27 +31,27 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 	}
 	u.User = url.UserPassword("x-access-token", accesstoken)
 
-	_, err = git.PlainClone(cloneDir, false, &git.CloneOptions{
+	_, err = git.PlainClone(g.dir, false, &git.CloneOptions{
 		URL:      u.String(),
 		Progress: os.Stdout,
 	})
 	if err != nil {
-		if err != git.ErrRepositoryAlreadyExists {
+		if !errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			return "", fmt.Errorf("error while cloning the repo: %s", err)
-		} else {
-			r, err := git.PlainOpen(cloneDir)
-			if err != nil {
-				return "", fmt.Errorf("error while opening the repo: %s", err)
-			}
-			w, err := r.Worktree()
-			if err != nil {
-				return "", fmt.Errorf("error while getting worktree: %s", err)
-			}
-			err = w.Pull(&git.PullOptions{RemoteName: "origin"})
-			if err != nil && err != git.NoErrAlreadyUpToDate {
-				return "", fmt.Errorf("error while pulling latest: %s", err)
-			}
+		}
+
+		r, err := git.PlainOpen(g.dir)
+		if err != nil {
+			return "", fmt.Errorf("error while opening the repo: %s", err)
+		}
+		w, err := r.Worktree()
+		if err != nil {
+			return "", fmt.Errorf("error while getting worktree: %s", err)
+		}
+		err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+		if err != nil && err != git.NoErrAlreadyUpToDate {
+			return "", fmt.Errorf("error while pulling latest: %s", err)
 		}
 	}
-	return cloneDir, nil
+	return g.dir, nil
 }
