@@ -6,7 +6,7 @@ import (
 
 func Build() (tqsdk.Space, error) {
 	return tqsdk.Space{
-		Name:   "treenq-poc",
+		Key:    "treenq-poc",
 		Region: "fra1",
 		Service: tqsdk.Service{
 			DockerfilePath: "Dockerfile",

@@ -57,11 +57,11 @@ func (p *Provider) CreateAppResource(ctx context.Context, image domain.Image, ap
 
 	_, resp, err := p.client.Apps.Create(ctx, &godo.AppCreateRequest{
 		Spec: &godo.AppSpec{
-			Name:   app.Name,
+			Name:   app.Service.Name,
 			Region: app.Region,
 			Services: []*godo.AppServiceSpec{
 				{
-					Name: app.Name,
+					Name: app.Service.Name,
 					Image: &godo.ImageSourceSpec{
 						RegistryType: godo.ImageSourceSpecRegistryType_DOCR,
 						Repository:   image.Repository,
