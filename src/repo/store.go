@@ -42,7 +42,7 @@ func NewStore() (*Store, error) {
 	CREATE TABLE IF NOT EXISTS spaces (
 		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 		name VARCHAR(255) NOT NULL,
-		region VARCHAR(15) NOT NULL,
+		region VARCHAR(15) NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS resources (
