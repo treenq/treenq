@@ -2,6 +2,7 @@ package secret
 
 import (
 	"sync"
+	"time"
 
 	infisical "github.com/infisical/go-sdk"
 )
@@ -9,24 +10,61 @@ import (
 type Secret struct {
 	client infisical.InfisicalClientInterface
 	mu     sync.Mutex
+	ttl    time.Time
+	token  string
 }
 
-func NewSecret(secret *Secret) (*Secret, error) {
-	secret.mu.Lock()
+func NewSecret(authClientId string, authClientSecret string) (*Secret, error) {
 	client := infisical.NewInfisicalClient(infisical.Config{
 		SiteUrl: "https://app.infisical.com",
 	})
-	// use INFISICAL_UNIVERSAL_AUTH_CLIENT_ID, INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET env
-	_, err := client.Auth().UniversalAuthLogin("", "")
-	if err != nil {
+
+	secret := &Secret{
+		client: client,
+		mu:     sync.Mutex{},
+	}
+
+	// Issue the initial token
+	if err := secret.issueToken(authClientId, authClientSecret); err != nil {
 		return nil, err
 	}
-	secret.client = client
-	defer secret.mu.Unlock()
+
 	return secret, nil
 }
 
-func (se *Secret) GetSecret(secretKey string, env string, projectId string) (infisical.Secret, error) {
+func (se *Secret) issueToken(authClientId string, authClientSecret string) error {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+
+	res, err := se.client.Auth().UniversalAuthLogin(authClientId, authClientSecret)
+	if err != nil {
+		return err
+	}
+
+	if res.ExpiresIn > int64(5*time.Second) {
+		se.token = res.AccessToken
+		se.ttl = time.Now().Add(time.Duration(res.ExpiresIn) * time.Second)
+	}
+
+	return nil
+}
+
+func (se *Secret) ensureToken(authClientId string, authClientSecret string) error {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+
+	if se.ttl.Before(time.Now()) {
+		return se.issueToken(authClientId, authClientSecret)
+	}
+
+	return nil
+}
+
+func (se *Secret) GetSecret(secretKey, env, projectId, authClientId, authClientSecret string) (infisical.Secret, error) {
+	if err := se.ensureToken(authClientId, authClientSecret); err != nil {
+		return infisical.Secret{}, err
+	}
+
 	return se.client.Secrets().Retrieve(
 		infisical.RetrieveSecretOptions{
 			SecretKey:   secretKey,
