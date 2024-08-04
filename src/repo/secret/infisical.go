@@ -12,6 +12,7 @@ type Secret struct {
 	mu     sync.Mutex
 	ttl    time.Time
 	token  string
+	secret infisical.Secret
 }
 
 func NewSecret(authClientId string, authClientSecret string) (*Secret, error) {
@@ -49,23 +50,14 @@ func (se *Secret) issueToken(authClientId string, authClientSecret string) error
 	return nil
 }
 
-func (se *Secret) ensureToken(authClientId string, authClientSecret string) error {
-	se.mu.Lock()
-	defer se.mu.Unlock()
+func (se *Secret) GetSecret(secretKey, env, projectId, authClientId, authClientSecret string) error {
+	se, err := NewSecret(authClientId, authClientSecret)
 
-	if se.ttl.Before(time.Now()) {
-		return se.issueToken(authClientId, authClientSecret)
+	if err != nil {
+		return err
 	}
 
-	return nil
-}
-
-func (se *Secret) GetSecret(secretKey, env, projectId, authClientId, authClientSecret string) (infisical.Secret, error) {
-	if err := se.ensureToken(authClientId, authClientSecret); err != nil {
-		return infisical.Secret{}, err
-	}
-
-	return se.client.Secrets().Retrieve(
+	envSecret, err := se.client.Secrets().Retrieve(
 		infisical.RetrieveSecretOptions{
 			SecretKey:   secretKey,
 			Environment: env,
@@ -73,4 +65,9 @@ func (se *Secret) GetSecret(secretKey, env, projectId, authClientId, authClientS
 			SecretPath:  "/",
 		},
 	)
+	if err != nil {
+		return err
+	}
+	se.secret = envSecret
+	return nil
 }
