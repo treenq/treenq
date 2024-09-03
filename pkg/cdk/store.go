@@ -39,6 +39,14 @@ func (s *PgStore) OpenResourceRecord(ctx context.Context, res tqsdk.Resource) (s
 	return id, nil
 }
 
+type SavedResource struct {
+	ID       string
+	SpaceKey string
+	Key      string
+	Kind     string
+	Payload  []byte
+}
+
 func (s *PgStore) GetOpenResources(ctx context.Context, spaceID string, key string) ([]SavedResource, error) {
 	query, args, err := s.sq.Select("id", "space_id", "key", "kind", "payload").
 		From("resources").

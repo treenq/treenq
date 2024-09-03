@@ -3,13 +3,22 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"unsafe"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jackc/pgx/stdlib"
+	"github.com/jmoiron/sqlx"
+
 	"github.com/digitalocean/godo"
+	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
@@ -115,7 +124,22 @@ func New(conf Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, err := repo.NewStore()
+	db, err := sqlx.Connect("pgx", conf.DbDsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
+	}
+	migrationsDir := filepath.Join(filepath.Join("file:///", wd), conf.MigrationsDir)
+	m, err := migrate.New(
+		migrationsDir,
+		conf.DbDsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create migration instance: %w", err)
+	}
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	store, err := repo.NewStore(db)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +149,7 @@ func New(conf Config) (http.Handler, error) {
 	jwtIssuer := jwt.NewJwtIssuer(conf.JwtKey, conf.JwtSecret, conf.JwtTtl)
 
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
-	gitClient := repo.NewGit()
+	gitClient := repo.NewGit(wd)
 	docker := artifacts.NewDockerArtifactory("tq-staging")
 	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), "cmd/server")
 

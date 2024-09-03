@@ -13,6 +13,9 @@ type Config struct {
 
 	DoToken string `envconfig:"DO_TOKEN" required:"true"`
 
+	DbDsn         string `envconfig:"DB_DSN" required:"true"`
+	MigrationsDir string `envconfig:"MIGRATIONS_DIR" required:"true"`
+
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
 }
 

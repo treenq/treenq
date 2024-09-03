@@ -48,7 +48,7 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 	resource, err := extractor.ExtractConfig(id, srcDir)
 	assert.ErrorIs(t, err, nil)
 	assert.Equal(t, resource, tqsdk.Space{
-		Name:   "name",
+		Key:    "key",
 		Region: "nyc",
 	})
 
