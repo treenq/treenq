@@ -20,6 +20,7 @@ import (
 	"github.com/digitalocean/godo"
 	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/jwt"
+	"github.com/treenq/treenq/pkg/log"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
@@ -77,13 +78,18 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 }
 
 type Router struct {
-	mux *http.ServeMux
+	mux         *http.ServeMux
+	middlewares []func(http.Handler) http.Handler
 
 	handlersMeta []HandlerMeta
 }
 
 func (r *Router) Mux() *http.ServeMux {
 	return r.mux
+}
+
+func (r *Router) Use(m func(http.Handler) http.Handler) {
+	r.middlewares = append(r.middlewares, m)
 }
 
 func (r *Router) Meta() []HandlerMeta {
@@ -116,7 +122,11 @@ func Register[I, O comparable](r *Router, operationID string, handler Handler[I,
 		OperationID: operationID,
 	})
 
-	r.mux.Handle("POST /"+operationID, NewHandler(handler))
+	var h http.Handler = NewHandler(handler)
+	for i := range r.middlewares {
+		h = r.middlewares[i](h)
+	}
+	r.mux.Handle("POST /"+operationID, h)
 }
 
 func New(conf Config) (http.Handler, error) {
@@ -124,6 +134,7 @@ func New(conf Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	l := log.NewLogger(os.Stdout, slog.LevelDebug)
 	db, err := sqlx.Connect("pgx", conf.DbDsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
@@ -156,6 +167,7 @@ func New(conf Config) (http.Handler, error) {
 	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
 
 	router := NewRouter()
+	router.Use(log.NewLoggingMiddleware(l))
 	Register(router, "deploy", handlers.Deploy)
 	Register(router, "githubWebhook", handlers.GithubWebhook)
 	Register(router, "info", handlers.Info)

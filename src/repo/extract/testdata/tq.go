@@ -6,7 +6,7 @@ import (
 
 func Build() (tqsdk.Space, error) {
 	return tqsdk.Space{
-		Name:   "name",
+		Key:    "key",
 		Region: "nyc",
 	}, nil
 }
