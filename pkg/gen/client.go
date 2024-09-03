@@ -9,9 +9,8 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/src/domain"
-
-	"github.com/treenq/treenq/src/api"
 )
 
 type Client struct {
@@ -24,13 +23,13 @@ type Client struct {
 
 type ClientGen struct {
 	template     string
-	handlersmeta []api.HandlerMeta
+	handlersmeta []vel.HandlerMeta
 }
 
 //go:embed templates/client.txt
 var clientTemplate string
 
-func New(template string, handlersmeta []api.HandlerMeta) *ClientGen {
+func New(template string, handlersmeta []vel.HandlerMeta) *ClientGen {
 	return &ClientGen{
 		template:     template,
 		handlersmeta: handlersmeta,
