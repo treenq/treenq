@@ -13,11 +13,13 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
+	"github.com/quasoft/memstore"
 
 	"github.com/digitalocean/godo"
 	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/pkg/vel"
+	"github.com/treenq/treenq/pkg/vel/auth"
 	"github.com/treenq/treenq/pkg/vel/log"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
@@ -62,11 +64,36 @@ func New(conf Config) (http.Handler, error) {
 
 	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
 
+	sessionStore := memstore.NewMemStore(
+		[]byte(conf.SessionSecret),
+	)
+
+	authConf := auth.AuthConfig{
+		ID:                 conf.AuthID,
+		Secret:             conf.AuthSecret,
+		Endpoint:           conf.AuthEndpoint,
+		Resource:           conf.AuthResource,
+		SignInRedirectUri:  conf.SignInRedirectUri,
+		SignOutRedirectUri: conf.SignOutRedirectUri,
+	}
+	authHandler := auth.NewAuthHandler(authConf, sessionStore, l)
+
 	router := vel.NewRouter()
 	router.Use(log.NewLoggingMiddleware(l))
+	router.Use(auth.NewSessionMiddleware(sessionStore, l))
+
 	vel.Register(router, "deploy", handlers.Deploy)
 	vel.Register(router, "githubWebhook", handlers.GithubWebhook)
 	vel.Register(router, "info", handlers.Info)
+
+	vel.RegisterHandler(router, "GET /signIn", authHandler.SignIn)
+	vel.RegisterHandler(router, "GET /signInCallback", authHandler.SignInCallback)
+	vel.RegisterHandler(router, "GET /signOut", authHandler.SignOut)
+	vel.RegisterHandler(router, "GET /signOutCallback", authHandler.SignOutCallback)
+
+	vel.RegisterHandler(router, "GET /test", auth.NewRequiresAuthMiddleware(authConf, l)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
 
 	return router.Mux(), nil
 }

@@ -118,8 +118,20 @@ func Register[I, O comparable](r *Router, operationID string, handler Handler[I,
 	})
 
 	var h http.Handler = NewHandler(handler)
+	RegisterHandler(r, "POST /"+operationID, h)
+}
+
+func RegisterHandler(r *Router, pattern string, handler http.Handler) {
+	for i := range r.middlewares {
+		handler = r.middlewares[i](handler)
+	}
+	r.mux.Handle(pattern, handler)
+}
+
+func RegisterHandlerFunc(r *Router, pattern string, handler http.HandlerFunc) {
+	var h http.Handler = handler
 	for i := range r.middlewares {
 		h = r.middlewares[i](h)
 	}
-	r.mux.Handle("POST /"+operationID, h)
+	r.mux.Handle(pattern, h)
 }
