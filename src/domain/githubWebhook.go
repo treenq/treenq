@@ -6,16 +6,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/treenq/treenq/pkg/vel"
 )
 
 type GithubWebhookRequest struct {
-	Ref          string `json:"ref"`
-	Installation struct {
-		ID int `json:"id"`
-	} `json:"installation"`
-	Repository struct {
-		CloneUrl string `json:"clone_url"`
-	} `json:"repository"`
+	Ref          string       `json:"ref"`
+	Installation Installation `json:"installation"`
+	Repository   Repository   `json:"repository"`
+}
+
+type Installation struct {
+	ID int `json:"id"`
+}
+
+type Repository struct {
+	CloneUrl string `json:"clone_url"`
 }
 
 type BuildArtifactRequest struct {
@@ -56,14 +62,14 @@ const (
 	ResourceKindService ResourceKind = "service"
 )
 
-func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *Error) {
+func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
 	if req.Ref != "refs/heads/master" && req.Ref != "refs/heads/main" {
 		return GithubWebhookResponse{}, nil
 	}
 
 	token, err := h.githubClient.IssueAccessToken(req.Installation.ID)
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -71,7 +77,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	repoDir, err := h.git.Clone(req.Repository.CloneUrl, token)
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -80,7 +86,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	extractorID, err := h.extractor.Open()
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -89,7 +95,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	appDef, err := h.extractor.ExtractConfig(extractorID, repoDir)
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -102,14 +108,14 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		Dockerfile: dockerFilePath,
 	})
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
 	}
 
 	if err := h.db.SaveSpace(ctx, appDef.Service.Name, appDef.Region); err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -117,7 +123,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	err = h.provider.CreateAppResource(ctx, imageRepo, appDef)
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -125,7 +131,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	payload, err := json.Marshal(appDef)
 	if err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}
@@ -135,7 +141,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		Kind:    ResourceKindService,
 		Payload: payload,
 	}); err != nil {
-		return GithubWebhookResponse{}, &Error{
+		return GithubWebhookResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: err.Error(),
 		}

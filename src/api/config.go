@@ -17,6 +17,11 @@ type Config struct {
 	MigrationsDir string `envconfig:"MIGRATIONS_DIR" required:"true"`
 
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
+
+	AuthID       string `envconfig:"AUTH_ID" required:"true"`
+	AuthSecret   string `envconfig:"AUTH_SECRET" required:"true"`
+	AuthKeyID    string `envconfig:"AUTH_KEY_ID" required:"true"`
+	AuthEndpoint string `envconfig:"AUTH_ENDPOINT" required:"true"`
 }
 
 func NewConfig() (Config, error) {
