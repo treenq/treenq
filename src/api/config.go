@@ -18,13 +18,10 @@ type Config struct {
 
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
 
-	AuthID             string `envconfig:"AUTH_ID" required:"true"`
-	AuthSecret         string `envconfig:"AUTH_SECRET" required:"true"`
-	AuthEndpoint       string `envconfig:"AUTH_ENDPOINT" required:"true"`
-	AuthResource       string `envconfig:"AUTH_RESOURCE"`
-	SignInRedirectUri  string `envconfig:"SIGN_IN_REDIRECT_URI" required:"true"`
-	SignOutRedirectUri string `envconfig:"SIGN_OUT_REDIRECT_URI" required:"true"`
-	SessionSecret      string `envconfig:"SESSION_SECRET" required:"true"`
+	AuthID       string `envconfig:"AUTH_ID" required:"true"`
+	AuthSecret   string `envconfig:"AUTH_SECRET" required:"true"`
+	AuthKeyID    string `envconfig:"AUTH_KEY_ID" required:"true"`
+	AuthEndpoint string `envconfig:"AUTH_ENDPOINT" required:"true"`
 }
 
 func NewConfig() (Config, error) {

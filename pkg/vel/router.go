@@ -61,7 +61,7 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 
 type Router struct {
 	mux         *http.ServeMux
-	middlewares []func(http.Handler) http.Handler
+	middlewares []Middleware
 
 	handlersMeta []HandlerMeta
 }
@@ -108,7 +108,9 @@ func NewRouter() *Router {
 	return &Router{mux: mux}
 }
 
-func Register[I, O comparable](r *Router, operationID string, handler Handler[I, O]) {
+type Middleware func(http.Handler) http.Handler
+
+func Register[I, O comparable](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
 	var i I
 	var o O
 	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
@@ -118,20 +120,26 @@ func Register[I, O comparable](r *Router, operationID string, handler Handler[I,
 	})
 
 	var h http.Handler = NewHandler(handler)
-	RegisterHandler(r, "POST /"+operationID, h)
+	RegisterHandler(r, "POST /"+operationID, h, middlewares...)
 }
 
-func RegisterHandler(r *Router, pattern string, handler http.Handler) {
+func RegisterHandler(r *Router, pattern string, handler http.Handler, middlewares ...Middleware) {
 	for i := range r.middlewares {
 		handler = r.middlewares[i](handler)
+	}
+	for i := range middlewares {
+		handler = middlewares[i](handler)
 	}
 	r.mux.Handle(pattern, handler)
 }
 
-func RegisterHandlerFunc(r *Router, pattern string, handler http.HandlerFunc) {
-	var h http.Handler = handler
+func RegisterHandlerFunc(r *Router, pattern string, h http.HandlerFunc, middlewares ...Middleware) {
+	var handler http.Handler = h
 	for i := range r.middlewares {
-		h = r.middlewares[i](h)
+		handler = r.middlewares[i](handler)
 	}
-	r.mux.Handle(pattern, h)
+	for i := range middlewares {
+		handler = middlewares[i](handler)
+	}
+	r.mux.Handle(pattern, handler)
 }

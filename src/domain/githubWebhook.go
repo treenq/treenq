@@ -11,13 +11,17 @@ import (
 )
 
 type GithubWebhookRequest struct {
-	Ref          string `json:"ref"`
-	Installation struct {
-		ID int `json:"id"`
-	} `json:"installation"`
-	Repository struct {
-		CloneUrl string `json:"clone_url"`
-	} `json:"repository"`
+	Ref          string       `json:"ref"`
+	Installation Installation `json:"installation"`
+	Repository   Repository   `json:"repository"`
+}
+
+type Installation struct {
+	ID int `json:"id"`
+}
+
+type Repository struct {
+	CloneUrl string `json:"clone_url"`
 }
 
 type BuildArtifactRequest struct {

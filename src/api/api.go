@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,14 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/digitalocean/godo"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
-	"github.com/quasoft/memstore"
-
-	"github.com/digitalocean/godo"
 	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/pkg/vel"
@@ -62,38 +61,34 @@ func New(conf Config) (http.Handler, error) {
 	docker := artifacts.NewDockerArtifactory("tq-staging")
 	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), "cmd/server")
 
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider)
+	ctx := context.Background()
 
-	sessionStore := memstore.NewMemStore(
-		[]byte(conf.SessionSecret),
-	)
-
-	authConf := auth.AuthConfig{
-		ID:                 conf.AuthID,
-		Secret:             conf.AuthSecret,
-		Endpoint:           conf.AuthEndpoint,
-		Resource:           conf.AuthResource,
-		SignInRedirectUri:  conf.SignInRedirectUri,
-		SignOutRedirectUri: conf.SignOutRedirectUri,
+	authConf := auth.Config{
+		ID:       conf.AuthID,
+		Secret:   conf.AuthSecret,
+		KeyID:    conf.AuthKeyID,
+		Endpoint: conf.AuthEndpoint,
 	}
-	authHandler := auth.NewAuthHandler(authConf, sessionStore, l)
+	authMiddleware, authProfiler, err := auth.NewAuthMiddleware(ctx, authConf)
+	if err != nil {
+		return nil, err
+	}
 
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider, authProfiler)
+
+	return NewRouter(handlers, log.NewLoggingMiddleware(l), authMiddleware).Mux(), nil
+}
+
+func NewRouter(handlers *domain.Handler, middlewares ...vel.Middleware) *vel.Router {
 	router := vel.NewRouter()
-	router.Use(log.NewLoggingMiddleware(l))
-	router.Use(auth.NewSessionMiddleware(sessionStore, l))
+	for i := range middlewares {
+		router.Use(middlewares[i])
+	}
 
 	vel.Register(router, "deploy", handlers.Deploy)
 	vel.Register(router, "githubWebhook", handlers.GithubWebhook)
 	vel.Register(router, "info", handlers.Info)
+	vel.Register(router, "getProfile", handlers.GetProfile)
 
-	vel.RegisterHandler(router, "GET /signIn", authHandler.SignIn)
-	vel.RegisterHandler(router, "GET /signInCallback", authHandler.SignInCallback)
-	vel.RegisterHandler(router, "GET /signOut", authHandler.SignOut)
-	vel.RegisterHandler(router, "GET /signOutCallback", authHandler.SignOutCallback)
-
-	vel.RegisterHandler(router, "GET /test", auth.NewRequiresAuthMiddleware(authConf, l)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})))
-
-	return router.Mux(), nil
+	return router
 }

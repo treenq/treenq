@@ -2,72 +2,55 @@ package auth
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"net/http"
 
-	"github.com/gorilla/sessions"
-	logto "github.com/logto-io/go/client"
-	"github.com/logto-io/go/core"
+	"github.com/zitadel/oidc/v3/pkg/client"
+	"github.com/zitadel/zitadel-go/v3/pkg/authorization"
+	"github.com/zitadel/zitadel-go/v3/pkg/authorization/oauth"
+	"github.com/zitadel/zitadel-go/v3/pkg/http/middleware"
+	"github.com/zitadel/zitadel-go/v3/pkg/zitadel"
 )
 
-type sessionKey struct{}
-
-func SessionToContext(ctx context.Context, session *Session) context.Context {
-	return context.WithValue(ctx, sessionKey{}, session)
+type Config struct {
+	ID       string
+	Secret   string
+	KeyID    string
+	Endpoint string
 }
 
-func SessionFromContext(ctx context.Context) *Session {
-	v := ctx.Value(sessionKey{})
-	if v == nil {
-		return nil
-	}
-
-	return v.(*Session)
+type Profile struct {
+	Name     string
+	Username string
+	Email    string
 }
 
-type claimsKey struct{}
-
-func ClaimsToContext(ctx context.Context, claims core.IdTokenClaims) context.Context {
-	return context.WithValue(ctx, claimsKey{}, claims)
+type Context struct {
+	mw *middleware.Interceptor[*oauth.IntrospectionContext]
 }
 
-func ClaimsFromContext(ctx context.Context) core.IdTokenClaims {
-	v := ctx.Value(claimsKey{})
-	if v == nil {
-		return core.IdTokenClaims{}
-	}
-
-	return v.(core.IdTokenClaims)
-}
-
-func NewSessionMiddleware(store sessions.Store, l *slog.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			session := NewSession(store, r, w, l)
-			ctx := SessionToContext(r.Context(), session)
-			*r = *r.WithContext(ctx)
-
-			next.ServeHTTP(w, r)
-		})
+func (c Context) GetProfile(ctx context.Context) Profile {
+	introspectionResponse := c.mw.Context(ctx)
+	return Profile{
+		Name:     introspectionResponse.Name,
+		Username: introspectionResponse.Username,
+		Email:    introspectionResponse.Email,
 	}
 }
 
-func NewRequiresAuthMiddleware(conf AuthConfig, l *slog.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			session := SessionFromContext(r.Context())
-			client := logto.NewLogtoClient(conf.newLogtoConfig(), &SessionStore{session})
-
-			claims, err := client.GetIdTokenClaims()
-			if err != nil {
-				writeErr(r, w, ErrUnauthorized, l)
-				return
-			}
-
-			ctx := ClaimsToContext(r.Context(), claims)
-			*r = *r.WithContext(ctx)
-
-			next.ServeHTTP(w, r)
-		})
+func NewAuthMiddleware(ctx context.Context, conf Config) (func(http.Handler) http.Handler, *Context, error) {
+	keyFile := &client.KeyFile{
+		Type:     "application",
+		KeyID:    conf.KeyID,
+		ClientID: conf.ID,
+		Key:      conf.Secret,
 	}
+	verifier := oauth.WithIntrospection[*oauth.IntrospectionContext](oauth.JWTProfileIntrospectionAuthentication(keyFile))
+	auth, err := authorization.New(ctx, zitadel.New(conf.Endpoint), verifier)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build auth middleware: %w", err)
+	}
+
+	mw := middleware.New(auth)
+	return mw.RequireAuthorization(), &Context{mw}, nil
 }

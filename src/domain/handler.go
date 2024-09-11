@@ -4,6 +4,7 @@ import (
 	"context"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
+	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 type Handler struct {
@@ -13,6 +14,7 @@ type Handler struct {
 	extractor    Extractor
 	docker       DockerArtifactory
 	provider     Provider
+	authProfiler *auth.Context
 }
 
 type Database interface {
@@ -49,6 +51,7 @@ func NewHandler(
 	extractor Extractor,
 	docker DockerArtifactory,
 	provider Provider,
+	authProfiler *auth.Context,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -57,5 +60,6 @@ func NewHandler(
 		extractor:    extractor,
 		docker:       docker,
 		provider:     provider,
+		authProfiler: authProfiler,
 	}
 }

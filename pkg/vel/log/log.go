@@ -52,7 +52,7 @@ func LoggerToContext(ctx context.Context, l *slog.Logger) context.Context {
 	return context.WithValue(ctx, logContextKey{}, l)
 }
 
-func LogFormatter(groups []string, a slog.Attr) slog.Attr {
+func Formatter(groups []string, a slog.Attr) slog.Attr {
 	if a.Key != slog.TimeKey {
 		return a
 	}
@@ -65,7 +65,7 @@ func LogFormatter(groups []string, a slog.Attr) slog.Attr {
 }
 
 func NewLogger(w io.Writer, level slog.Level) *slog.Logger {
-	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level, ReplaceAttr: LogFormatter})
+	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level, ReplaceAttr: Formatter})
 	return slog.New(logHandler)
 }
 
