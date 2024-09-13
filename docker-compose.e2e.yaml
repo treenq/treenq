@@ -36,3 +36,8 @@ services:
       postgrese2e:
         condition: service_healthy
     restart: always
+
+  registry:
+    image: registry:2.8.3
+    ports:
+      - "5000:5000"

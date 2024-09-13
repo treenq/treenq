@@ -11,6 +11,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  registry:
+    image: registry:2.8.3
+    ports:
+      - "5000:5000"
+
 volumes:
   pgdata:
     driver: local

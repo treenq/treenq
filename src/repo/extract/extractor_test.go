@@ -35,7 +35,7 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 	currentDir, err := os.Getwd()
 	require.NoError(t, err)
 	builderDir := filepath.Join(filepath.Dir(currentDir), "builder")
-	extractor := NewExtractor(builderDir, "src/repo")
+	extractor := NewExtractor(builderDir, "/src/repo")
 	id, err := extractor.Open()
 	require.NoError(t, err)
 

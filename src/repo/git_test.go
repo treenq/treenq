@@ -29,7 +29,7 @@ func TestClone(t *testing.T) {
 
 	repoURL := "file://" + mockRepoPath
 
-	cloneDir, err := gitUtil.Clone(repoURL, "dummy-access-token")
+	cloneDir, err := gitUtil.Clone(repoURL, 1, 1, "dummy-access-token")
 	require.NoError(t, err)
 	defer os.RemoveAll(cloneDir)
 
@@ -38,7 +38,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	secondCloneDir, err := gitUtil.Clone(repoURL, "dummy-access-token")
+	secondCloneDir, err := gitUtil.Clone(repoURL, 1, 1, "dummy-access-token")
 	require.NoError(t, err)
 	defer os.RemoveAll(secondCloneDir) // Clean up
 

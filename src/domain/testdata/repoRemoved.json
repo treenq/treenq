@@ -1,0 +1,81 @@
+{
+  "action": "removed",
+  "installation": {
+    "id": 54819704,
+    "client_id": "Iv23liIcdZc9iw5WTylS",
+    "account": {
+      "login": "treenq",
+      "id": 155895275,
+      "node_id": "O_kgDOCUrF6w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155895275?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/treenq",
+      "html_url": "https://github.com/treenq",
+      "followers_url": "https://api.github.com/users/treenq/followers",
+      "following_url": "https://api.github.com/users/treenq/following{/other_user}",
+      "gists_url": "https://api.github.com/users/treenq/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/treenq/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/treenq/subscriptions",
+      "organizations_url": "https://api.github.com/users/treenq/orgs",
+      "repos_url": "https://api.github.com/users/treenq/repos",
+      "events_url": "https://api.github.com/users/treenq/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/treenq/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/54819704/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/organizations/treenq/settings/installations/54819704",
+    "app_id": 914944,
+    "app_slug": "treenq-staging",
+    "target_id": 155895275,
+    "target_type": "Organization",
+    "permissions": {
+      "contents": "read",
+      "metadata": "read"
+    },
+    "events": [
+      "push"
+    ],
+    "created_at": "2024-09-13T10:13:42.000+02:00",
+    "updated_at": "2024-09-13T15:11:16.000+02:00",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [],
+    "suspended_by": null,
+    "suspended_at": null
+  },
+  "repository_selection": "selected",
+  "repositories_added": [],
+  "repositories_removed": [
+    {
+      "id": 805584540,
+      "node_id": "R_kgDOMAQ-nA",
+      "name": "treenq-cli",
+      "full_name": "treenq/treenq-cli",
+      "private": false
+    }
+  ],
+  "requester": null,
+  "sender": {
+    "login": "dennypenta",
+    "id": 18236918,
+    "node_id": "MDQ6VXNlcjE4MjM2OTE4",
+    "avatar_url": "https://avatars.githubusercontent.com/u/18236918?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/dennypenta",
+    "html_url": "https://github.com/dennypenta",
+    "followers_url": "https://api.github.com/users/dennypenta/followers",
+    "following_url": "https://api.github.com/users/dennypenta/following{/other_user}",
+    "gists_url": "https://api.github.com/users/dennypenta/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/dennypenta/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/dennypenta/subscriptions",
+    "organizations_url": "https://api.github.com/users/dennypenta/orgs",
+    "repos_url": "https://api.github.com/users/dennypenta/repos",
+    "events_url": "https://api.github.com/users/dennypenta/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/dennypenta/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}

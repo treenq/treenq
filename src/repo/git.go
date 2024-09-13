@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 
 	"github.com/go-git/go-git/v5"
 )
@@ -17,9 +19,10 @@ func NewGit(dir string) *Git {
 	return &Git{dir: dir}
 }
 
-func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
-	if _, err := os.Stat(g.dir); os.IsNotExist(err) {
-		err = os.MkdirAll(g.dir, os.ModePerm)
+func (g *Git) Clone(urlStr string, installationID, repoID int, accessToken string) (string, error) {
+	dir := filepath.Join(g.dir, strconv.Itoa(installationID), strconv.Itoa(repoID))
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
 			return "", fmt.Errorf("failed to create clone directory: %s", err)
 		}
@@ -29,9 +32,11 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	u.User = url.UserPassword("x-access-token", accesstoken)
+	if accessToken != "" {
+		u.User = url.UserPassword("x-access-token", accessToken)
+	}
 
-	_, err = git.PlainClone(g.dir, false, &git.CloneOptions{
+	_, err = git.PlainClone(dir, false, &git.CloneOptions{
 		URL:      u.String(),
 		Progress: os.Stdout,
 	})
@@ -40,7 +45,7 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 			return "", fmt.Errorf("error while cloning the repo: %s", err)
 		}
 
-		r, err := git.PlainOpen(g.dir)
+		r, err := git.PlainOpen(dir)
 		if err != nil {
 			return "", fmt.Errorf("error while opening the repo: %s", err)
 		}
@@ -49,9 +54,9 @@ func (g *Git) Clone(urlStr string, accesstoken string) (string, error) {
 			return "", fmt.Errorf("error while getting worktree: %s", err)
 		}
 		err = w.Pull(&git.PullOptions{RemoteName: "origin"})
-		if err != nil && err != git.NoErrAlreadyUpToDate {
+		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 			return "", fmt.Errorf("error while pulling latest: %s", err)
 		}
 	}
-	return g.dir, nil
+	return dir, nil
 }

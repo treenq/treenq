@@ -9,10 +9,11 @@ import (
 
 type Config struct {
 	JwtKey    string        `envconfig:"JWT_KEY" required:"true"`
-	JwtSecret string        `envconfig:"JWT_SECRET" required:"true"`
+	JwtSecret StringBase64  `envconfig:"JWT_SECRET" required:"true"`
 	JwtTtl    time.Duration `envconfig:"JWT_TTL" default:"5m"`
 
-	DoToken string `envconfig:"DO_TOKEN" required:"true"`
+	DoToken        string `envconfig:"DO_TOKEN" required:"true"`
+	DockerRegistry string `envconfig:"DOCKER_REGISTRY" required:"true"`
 
 	DbDsn         string `envconfig:"DB_DSN" required:"true"`
 	MigrationsDir string `envconfig:"MIGRATIONS_DIR" required:"true"`
@@ -23,6 +24,11 @@ type Config struct {
 	AuthSecret   StringBase64 `envconfig:"AUTH_SECRET" required:"true"`
 	AuthKeyID    string       `envconfig:"AUTH_KEY_ID" required:"true"`
 	AuthEndpoint string       `envconfig:"AUTH_ENDPOINT" required:"true"`
+
+	GithubWebhookSecret       string `envconfig:"GITHUB_WEBHOOK_SECRET" required:"true"`
+	GithubWebhookSecretEnable bool   `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
+
+	BuilderPackage string `envconfig:"BUILDER_PACKAGE" required:"false"`
 }
 
 type StringBase64 string

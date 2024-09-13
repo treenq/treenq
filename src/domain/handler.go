@@ -8,6 +8,8 @@ import (
 )
 
 type Handler struct {
+	reposConnector ReposConnector
+
 	db           Database
 	githubClient GithubCleint
 	git          Git
@@ -27,7 +29,7 @@ type GithubCleint interface {
 }
 
 type Git interface {
-	Clone(url string, accesstoken string) (string, error)
+	Clone(url string, installationID, repoID int, accesstoken string) (string, error)
 }
 
 type Extractor interface {

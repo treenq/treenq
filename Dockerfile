@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Add a debugger, the flag must be used only in e2e tests
 ARG DEBUG=false
-RUN if [ $DEBUG = true ]; then go install github.com/go-delve/delve/cmd/dlv@latest; fi
+RUN if [ $DEBUG = true ]; then go install github.com/go-delve/delve/cmd/dlv@v1.23.0; fi
 
 # adding modules files before building in order to avoid cache invalidation
 COPY go.mod go.mod
@@ -24,7 +24,7 @@ FROM alpine:3.13
 WORKDIR /app
 
 COPY --from=builder /app/server server
-COPY --from=builder /go/bin/dlv* /
+COPY --from=builder /go/bin/ /
 COPY ./migrations /app/migrations
 
 RUN chmod +x /app/server

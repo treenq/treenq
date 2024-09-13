@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/treenq/treenq/{{ .Package }}/builder/{{ .ID }}/tq"
+	"github.com/treenq/treenq{{ .Package }}/builder/{{ .ID }}/tq"
 )
 
 func main() {
