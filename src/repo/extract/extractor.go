@@ -89,7 +89,8 @@ func (e *Extractor) createBuilder(id string) error {
 		return fmt.Errorf("failed to create builder dir: %w", err)
 	}
 
-	f, err := os.Create(filepath.Join(builderDir, tqBuildLauncherFile))
+	builderFilePath := filepath.Join(builderDir, tqBuildLauncherFile)
+	f, err := os.Create(builderFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to create builder file: %w", err)
 	}

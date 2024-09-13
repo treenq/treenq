@@ -25,23 +25,18 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		Tag:        "latest",
 	}
 
-	// build
-	buildCmd := exec.Command("docker", "build", "-t", image.Image(), args.Path)
+	buildCmd := exec.Command("docker", "build", "-t", image.Image(), "-f", args.Dockerfile, args.Path)
 	buildOut, err := buildCmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(buildOut)
-		return image, fmt.Errorf("failed to build docker image: %w", err)
+		return image, fmt.Errorf("failed to build docker image: %s: %w", string(buildOut), err)
 	}
 
-	registry := fmt.Sprintf("registry.digitalocean.com/%s", image.FullPath())
-	// tag
-	if err := exec.Command("docker", "tag", image.Image(), registry).Run(); err != nil {
-		return image, fmt.Errorf("failed to tag docker image: %w", err)
+	if buildOut, err := exec.Command("docker", "tag", image.Image(), image.FullPath()).CombinedOutput(); err != nil {
+		return image, fmt.Errorf("failed to tag docker image: %s: %w", string(buildOut), err)
 	}
 
-	// push
-	if err := exec.Command("docker", "push", registry).Run(); err != nil {
-		return image, fmt.Errorf("failed to push docker image: %w", err)
+	if buildOut, err := exec.Command("docker", "push", image.FullPath()).CombinedOutput(); err != nil {
+		return image, fmt.Errorf("failed to push docker image: %s: %w", string(buildOut), err)
 	}
 
 	return image, nil

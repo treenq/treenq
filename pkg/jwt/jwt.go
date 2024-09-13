@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -9,25 +8,21 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JwtIssuer struct {
+type Issuer struct {
 	issuer string
-	secret string
+	secret []byte
 	ttl    time.Duration
 }
 
-func NewJwtIssuer(issuerId string, secretKey string, ttl time.Duration) *JwtIssuer {
-	return &JwtIssuer{
+func NewIssuer(issuerId string, secretKey []byte, ttl time.Duration) *Issuer {
+	return &Issuer{
 		issuer: issuerId,
 		secret: secretKey,
 		ttl:    ttl,
 	}
 }
-func (j *JwtIssuer) GeneratedJwtToken() (string, error) {
-	pemData, err := base64.RawStdEncoding.DecodeString(j.secret)
-	if len(pemData) == 0 {
-		return "", fmt.Errorf("failed to decode pem: %w", err)
-	}
-	block, _ := pem.Decode(pemData)
+func (j *Issuer) GeneratedJwtToken() (string, error) {
+	block, _ := pem.Decode(j.secret)
 	if block == nil {
 		return "", fmt.Errorf("failed to decode pem")
 	}
@@ -38,7 +33,7 @@ func (j *JwtIssuer) GeneratedJwtToken() (string, error) {
 		ExpiresAt: jwt.NewNumericDate(now.Add(j.ttl)),
 		Issuer:    j.issuer,
 	})
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemData)
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(j.secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse pem: %w", err)
 	}

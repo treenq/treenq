@@ -9,9 +9,9 @@ import (
 	"unsafe"
 )
 
-type Handler[I, O comparable] func(ctx context.Context, i I) (O, *Error)
+type Handler[I, O any] func(ctx context.Context, i I) (O, *Error)
 
-func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
+func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 	var iType I
 	var oType O
 	hasReqBody := unsafe.Sizeof(iType) != 0
@@ -36,7 +36,11 @@ func NewHandler[I, O comparable](call Handler[I, O]) http.HandlerFunc {
 
 		res, callErr := call(r.Context(), i)
 		if callErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			status := http.StatusBadRequest
+			if callErr.Code == "UNKNOWN" || callErr.Code == "" {
+				status = http.StatusInternalServerError
+			}
+			w.WriteHeader(status)
 			err := json.NewEncoder(w).Encode(callErr)
 			if err != nil {
 				slog.Default().ErrorContext(r.Context(), "failed to write api call error", "err", err)
@@ -110,7 +114,11 @@ func NewRouter() *Router {
 
 type Middleware func(http.Handler) http.Handler
 
-func Register[I, O comparable](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
+func NoopMiddleware(h http.Handler) http.Handler {
+	return h
+}
+
+func Register[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
 	var i I
 	var o O
 	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
@@ -124,22 +132,22 @@ func Register[I, O comparable](r *Router, operationID string, handler Handler[I,
 }
 
 func RegisterHandler(r *Router, pattern string, handler http.Handler, middlewares ...Middleware) {
-	for i := range r.middlewares {
-		handler = r.middlewares[i](handler)
-	}
 	for i := range middlewares {
 		handler = middlewares[i](handler)
+	}
+	for i := range r.middlewares {
+		handler = r.middlewares[i](handler)
 	}
 	r.mux.Handle(pattern, handler)
 }
 
 func RegisterHandlerFunc(r *Router, pattern string, h http.HandlerFunc, middlewares ...Middleware) {
 	var handler http.Handler = h
-	for i := range r.middlewares {
-		handler = r.middlewares[i](handler)
-	}
 	for i := range middlewares {
 		handler = middlewares[i](handler)
+	}
+	for i := range r.middlewares {
+		handler = r.middlewares[i](handler)
 	}
 	r.mux.Handle(pattern, handler)
 }

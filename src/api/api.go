@@ -16,6 +16,7 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/treenq/treenq/pkg/crypto"
 	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/auth"
@@ -54,12 +55,13 @@ func New(conf Config) (http.Handler, error) {
 
 	doClient := godo.NewFromToken(conf.DoToken)
 	provider := repo.NewProvider(doClient)
-	jwtIssuer := jwt.NewJwtIssuer(conf.JwtKey, conf.JwtSecret, conf.JwtTtl)
+	jwtIssuer := jwt.NewIssuer(conf.JwtKey, []byte(conf.JwtSecret), conf.JwtTtl)
 
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
-	gitClient := repo.NewGit(wd)
-	docker := artifacts.NewDockerArtifactory("tq-staging")
-	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), "cmd/server")
+	gitDir := filepath.Join(wd, "gits")
+	gitClient := repo.NewGit(gitDir)
+	docker := artifacts.NewDockerArtifactory(conf.DockerRegistry)
+	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)
 
 	ctx := context.Background()
 
@@ -69,26 +71,34 @@ func New(conf Config) (http.Handler, error) {
 		KeyID:    conf.AuthKeyID,
 		Endpoint: conf.AuthEndpoint,
 	}
+	var authProfiler *auth.Context
 	authMiddleware, authProfiler, err := auth.NewAuthMiddleware(ctx, authConf, l)
 	if err != nil {
 		return nil, err
 	}
 
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider, authProfiler)
+	githubAuthMiddleware := vel.NoopMiddleware
+	if conf.GithubWebhookSecretEnable {
+		sha256Verifier := crypto.NewSha256SignatureVerifier(conf.GithubWebhookSecret, "sha256=")
+		githubAuthMiddleware = crypto.NewSha256SignatureVerifierMiddleware(sha256Verifier, l)
+	}
 
-	return NewRouter(handlers, log.NewLoggingMiddleware(l), authMiddleware).Mux(), nil
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider, authProfiler)
+	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 
-func NewRouter(handlers *domain.Handler, middlewares ...vel.Middleware) *vel.Router {
+func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middlewares ...vel.Middleware) *vel.Router {
 	router := vel.NewRouter()
 	for i := range middlewares {
 		router.Use(middlewares[i])
 	}
 
-	vel.Register(router, "deploy", handlers.Deploy)
-	vel.Register(router, "githubWebhook", handlers.GithubWebhook)
-	vel.Register(router, "info", handlers.Info)
-	vel.Register(router, "getProfile", handlers.GetProfile)
+	// insecure handlers, mus be covered with specific github secret middleware
+	vel.Register(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
+
+	// regular authentication handlers
+	vel.Register(router, "info", handlers.Info, auth)
+	vel.Register(router, "getProfile", handlers.GetProfile, auth)
 
 	return router
 }
