@@ -1,0 +1,38 @@
+services:
+
+  postgrese2e:
+    image: postgres:16.3
+    restart: always
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: 'trust'
+      POSTGRES_DB: tq
+    ports:
+      - "5432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tq"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEBUG=true
+    ports:
+      - '8000:8000'
+      - '40000:40000'
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    command: /dlv --listen=:40000 --continue --headless=true --api-version=2 --accept-multiclient exec /app/server
+    env_file:
+      e2e.env
+    depends_on:
+      postgrese2e:
+        condition: service_healthy
+    restart: always

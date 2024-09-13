@@ -65,11 +65,11 @@ func New(conf Config) (http.Handler, error) {
 
 	authConf := auth.Config{
 		ID:       conf.AuthID,
-		Secret:   conf.AuthSecret,
+		Secret:   string(conf.AuthSecret),
 		KeyID:    conf.AuthKeyID,
 		Endpoint: conf.AuthEndpoint,
 	}
-	authMiddleware, authProfiler, err := auth.NewAuthMiddleware(ctx, authConf)
+	authMiddleware, authProfiler, err := auth.NewAuthMiddleware(ctx, authConf, l)
 	if err != nil {
 		return nil, err
 	}

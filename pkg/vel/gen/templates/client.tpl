@@ -12,12 +12,18 @@ type {{ .Client.TypeName }} struct {
 	client *http.Client
 
 	baseUrl string
+	headers http.Header
 }
 
-func New{{ .Client.TypeName }}(baseUrl string, client *http.Client) *{{ .Client.TypeName }} {
+func New{{ .Client.TypeName }}(baseUrl string, client *http.Client, headers map[string]string) *{{ .Client.TypeName }} {
+	h := make(http.Header)
+	for k, v := range headers {
+		h.Set(k, v)
+	}
 	return &{{ .Client.TypeName }}{
 		client:  client,
 		baseUrl: baseUrl,
+		headers: h,
 	}
 }
 

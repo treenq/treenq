@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -18,10 +19,21 @@ type Config struct {
 
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
 
-	AuthID       string `envconfig:"AUTH_ID" required:"true"`
-	AuthSecret   string `envconfig:"AUTH_SECRET" required:"true"`
-	AuthKeyID    string `envconfig:"AUTH_KEY_ID" required:"true"`
-	AuthEndpoint string `envconfig:"AUTH_ENDPOINT" required:"true"`
+	AuthID       string       `envconfig:"AUTH_ID" required:"true"`
+	AuthSecret   StringBase64 `envconfig:"AUTH_SECRET" required:"true"`
+	AuthKeyID    string       `envconfig:"AUTH_KEY_ID" required:"true"`
+	AuthEndpoint string       `envconfig:"AUTH_ENDPOINT" required:"true"`
+}
+
+type StringBase64 string
+
+func (s *StringBase64) Decode(value string) error {
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return err
+	}
+	*s = StringBase64(decoded)
+	return nil
 }
 
 func NewConfig() (Config, error) {

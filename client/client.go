@@ -12,12 +12,18 @@ type Client struct {
 	client *http.Client
 
 	baseUrl string
+	headers http.Header
 }
 
-func NewClient(baseUrl string, client *http.Client) *Client {
+func NewClient(baseUrl string, client *http.Client, headers map[string]string) *Client {
+	h := make(http.Header)
+	for k, v := range headers {
+		h.Set(k, v)
+	}
 	return &Client{
 		client:  client,
 		baseUrl: baseUrl,
+		headers: h,
 	}
 }
 
@@ -59,29 +65,29 @@ func HandleErr(resp *http.Response) error {
 	return nil
 }
 
-func (c *Client) Deploy(ctx context.Context, req struct{}) (struct{}, error) {
-	var res struct{}
+func (c *Client) Deploy(ctx context.Context) error {
 
 	body := bytes.NewBuffer(nil)
 
 	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call deploy: %w", err)
+		return fmt.Errorf("failed to call deploy: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	return res, nil
+	return nil
 }
 
 type GithubWebhookRequest struct {
@@ -96,40 +102,40 @@ type Repository struct {
 	CloneUrl string `json:"clone_url"`
 }
 
-func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (struct{}, error) {
-	var res struct{}
+func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) error {
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return res, fmt.Errorf("failed to marshal request: %w", err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 	body := bytes.NewBuffer(bodyBytes)
 
 	r, err := http.NewRequest("POST", c.baseUrl+"/githubWebhook", body)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call githubWebhook: %w", err)
+		return fmt.Errorf("failed to call githubWebhook: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	return res, nil
+	return nil
 }
 
 type InfoResponse struct {
 	Version string `json:"version"`
 }
 
-func (c *Client) Info(ctx context.Context, req struct{}) (InfoResponse, error) {
+func (c *Client) Info(ctx context.Context) (InfoResponse, error) {
 	var res InfoResponse
 
 	body := bytes.NewBuffer(nil)
@@ -139,6 +145,7 @@ func (c *Client) Info(ctx context.Context, req struct{}) (InfoResponse, error) {
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
@@ -165,7 +172,7 @@ type GetProfileResponse struct {
 	Name     string `json:"name"`
 }
 
-func (c *Client) GetProfile(ctx context.Context, req struct{}) (GetProfileResponse, error) {
+func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 	var res GetProfileResponse
 
 	body := bytes.NewBuffer(nil)
@@ -175,6 +182,7 @@ func (c *Client) GetProfile(ctx context.Context, req struct{}) (GetProfileRespon
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {

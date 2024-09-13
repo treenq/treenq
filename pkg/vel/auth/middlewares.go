@@ -3,12 +3,12 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/zitadel/oidc/v3/pkg/client"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization/oauth"
-	"github.com/zitadel/zitadel-go/v3/pkg/http/middleware"
 	"github.com/zitadel/zitadel-go/v3/pkg/zitadel"
 )
 
@@ -26,7 +26,7 @@ type Profile struct {
 }
 
 type Context struct {
-	mw *middleware.Interceptor[*oauth.IntrospectionContext]
+	mw *Interceptor[*oauth.IntrospectionContext]
 }
 
 func (c Context) GetProfile(ctx context.Context) Profile {
@@ -38,7 +38,7 @@ func (c Context) GetProfile(ctx context.Context) Profile {
 	}
 }
 
-func NewAuthMiddleware(ctx context.Context, conf Config) (func(http.Handler) http.Handler, *Context, error) {
+func NewAuthMiddleware(ctx context.Context, conf Config, l *slog.Logger) (func(http.Handler) http.Handler, *Context, error) {
 	keyFile := &client.KeyFile{
 		Type:     "application",
 		KeyID:    conf.KeyID,
@@ -48,9 +48,9 @@ func NewAuthMiddleware(ctx context.Context, conf Config) (func(http.Handler) htt
 	verifier := oauth.WithIntrospection[*oauth.IntrospectionContext](oauth.JWTProfileIntrospectionAuthentication(keyFile))
 	auth, err := authorization.New(ctx, zitadel.New(conf.Endpoint), verifier)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to build auth middleware: %w", err)
+		return nil, nil, fmt.Errorf("failed to build auth middleware: %s: %w", conf.Secret, err)
 	}
 
-	mw := middleware.New(auth)
+	mw := NewInterceptor(auth, l)
 	return mw.RequireAuthorization(), &Context{mw}, nil
 }

@@ -1,6 +1,6 @@
 module github.com/treenq/treenq
 
-go 1.23
+go 1.23.1
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

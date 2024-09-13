@@ -1,0 +1,22 @@
+.git/
+*vendor
+*.DS_Store
+Makefile
+LICENSE
+.gitignore
+
+# Environment variables
+e2e.env
+staging.env
+
+# Docs and readmes
+*.md
+docs/
+
+# tests
+*_test.go
+e2e
+
+# Probably secrets
+*.json
+*.yaml

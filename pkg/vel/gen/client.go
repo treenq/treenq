@@ -135,11 +135,8 @@ func extractDataType(t reflect.Type) (DataType, error) {
 	}
 
 	name := t.Name()
-	if name == "" {
-		name = "struct{}"
-	}
 	if len(fields) == 0 {
-		name = "struct{}"
+		name = ""
 	}
 	return DataType{
 		Name:   name,
@@ -193,10 +190,8 @@ func (g *ClientGen) Generate(w io.Writer) error {
 		return err
 	}
 
-	for i := range g.meta.Apis {
-		if err := callTpl.Execute(pipe, g.meta.Apis[i]); err != nil {
-			return err
-		}
+	if err := callTpl.Execute(pipe, g.meta); err != nil {
+		return err
 	}
 	nonFormatted := pipe.Bytes()
 	f, err := os.CreateTemp("", "")

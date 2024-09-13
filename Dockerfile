@@ -1,5 +1,5 @@
 # Build binary stage
-FROM golang:1.22.3-alpine AS builder
+FROM golang:1.23.1-alpine AS builder
 
 WORKDIR /app
 
@@ -25,6 +25,7 @@ WORKDIR /app
 
 COPY --from=builder /app/server server
 COPY --from=builder /go/bin/dlv* /
+COPY ./migrations /app/migrations
 
 RUN chmod +x /app/server
 

@@ -1,3 +1,4 @@
+{{- range .Apis }}
 {{- range .DataTypes }}
 type {{ .Name }} struct {
 	{{- range .Fields }}
@@ -5,12 +6,12 @@ type {{ .Name }} struct {
 	{{- end }}
 }
 {{- end }}
-func (c *Client) {{ .FuncName }}(ctx context.Context, req {{ .Input.Name }}) ({{ .Output.Name }}, error) {
-	var res {{ .Output.Name }}
-	{{ if gt (len .Input.Fields) 0 }}
+func (c *{{ $.Client.TypeName }}) {{ .FuncName }}(ctx context.Context{{ if ne .Input.Name "" }}, req {{ .Input.Name }}{{ end }}) ({{if ne .Output.Name "" }}{{ .Output.Name }}, {{ end }}error) {
+    {{ if gt (len .Output.Fields) 0 }}var res {{ .Output.Name }}{{ end }}
+    {{ if ne .Input.Name "" }}
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return res, fmt.Errorf("failed to marshal request: %w", err)
+		return {{if ne .Output.Name "" }}res, {{ end }}fmt.Errorf("failed to marshal request: %w", err)
 	}
     body := bytes.NewBuffer(bodyBytes)
     {{ else }}
@@ -18,25 +19,27 @@ func (c *Client) {{ .FuncName }}(ctx context.Context, req {{ .Input.Name }}) ({{
     {{ end }}
 	r, err := http.NewRequest("POST", c.baseUrl+"/{{ .OperationID }}", body)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return {{if ne .Output.Name "" }}res, {{ end }}fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call {{ .OperationID }}: %w", err)
+		return {{if ne .Output.Name "" }}res, {{ end }}fmt.Errorf("failed to call {{ .OperationID }}: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return {{if ne .Output.Name "" }}res, {{ end }}err
 	}
 	{{ if gt (len .Output.Fields) 0 }}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return res, fmt.Errorf("failed to decode {{ .OperationID }} response: %w", err)
+		return {{if ne .Output.Name "" }}res, {{ end }}fmt.Errorf("failed to decode {{ .OperationID }} response: %w", err)
 	}
 	{{ end }}
-	return res, nil
+	return {{if ne .Output.Name "" }}res, {{ end }}nil
 }
+{{- end }}

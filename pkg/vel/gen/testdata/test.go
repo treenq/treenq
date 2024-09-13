@@ -12,12 +12,18 @@ type Client struct {
 	client *http.Client
 
 	baseUrl string
+	headers http.Header
 }
 
-func NewClient(baseUrl string, client *http.Client) *Client {
+func NewClient(baseUrl string, client *http.Client, headers map[string]string) *Client {
+	h := make(http.Header)
+	for k, v := range headers {
+		h.Set(k, v)
+	}
 	return &Client{
 		client:  client,
 		baseUrl: baseUrl,
+		headers: h,
 	}
 }
 
@@ -77,6 +83,7 @@ func (c *Client) Test1(ctx context.Context, req TestTypeNoJsonTags) (TestTypeNoJ
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
@@ -120,6 +127,7 @@ func (c *Client) Test2(ctx context.Context, req TestTypeNestedTypes) (TestTypeNe
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
@@ -139,28 +147,27 @@ func (c *Client) Test2(ctx context.Context, req TestTypeNestedTypes) (TestTypeNe
 
 	return res, nil
 }
-
-func (c *Client) TestEmpty(ctx context.Context, req struct{}) (struct{}, error) {
-	var res struct{}
+func (c *Client) TestEmpty(ctx context.Context) error {
 
 	body := bytes.NewBuffer(nil)
 
 	r, err := http.NewRequest("POST", c.baseUrl+"/testEmpty", body)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
+	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call testEmpty: %w", err)
+		return fmt.Errorf("failed to call testEmpty: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	return res, nil
+	return nil
 }
