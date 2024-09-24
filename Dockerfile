@@ -1,32 +1,41 @@
-# Build binary stage
 FROM golang:1.23.1-alpine AS builder
 
 WORKDIR /app
 
-# Add a debugger, the flag must be used only in e2e tests
-ARG DEBUG=false
-RUN if [ $DEBUG = true ]; then go install github.com/go-delve/delve/cmd/dlv@v1.23.0; fi
+# Disable CGO to ensure fully static binaries
+ENV CGO_ENABLED=0 
+ENV GOOS=linux
 
-# adding modules files before building in order to avoid cache invalidation
 COPY go.mod go.mod
 COPY go.sum go.sum
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod/ go mod download -x
 
 COPY . .
 
-# Build binary
-# remove optimization for better debugging experience if DEBUG is true
-RUN CGO_ENABLED=0 GOOS=linux go build -gcflags="$(if [ \"$DEBUG\" = \"true\" ]; then echo 'all=-N -l'; else echo ''; fi)" -o server ./cmd/server
+FROM builder AS dev
 
-# Run binary stage
+# Install Delve (debugger)
+RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go install github.com/go-delve/delve/cmd/dlv@v1.23.0
+
+RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -gcflags=all="-N -l" -o server ./cmd/server
+
+# Set the default command to run the app with dlv for debugging
+CMD ["dlv", "--listen=:40000", "--continue", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "server"]
+
+FROM builder AS prod
+
+# Create a non-root user and group for better security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# lsflags to strip debug info
+RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -ldflags "-s -w" -o server ./cmd/server
+
 FROM alpine:3.13
 
 WORKDIR /app
 
-COPY --from=builder /app/server server
-COPY --from=builder /go/bin/ /
+COPY --from=prod /app/server server
 COPY ./migrations /app/migrations
-
-RUN chmod +x /app/server
 
 CMD ["/app/server"]

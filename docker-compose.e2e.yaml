@@ -20,8 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - DEBUG=true
+      target: dev
     ports:
       - '8000:8000'
       - '40000:40000'
@@ -29,7 +28,6 @@ services:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
-    command: /dlv --listen=:40000 --continue --headless=true --api-version=2 --accept-multiclient exec /app/server
     env_file:
       e2e.env
     depends_on:
