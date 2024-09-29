@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: id-1234-space
+  namespace: ""
+spec: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: id-1234-deployment-c8c724bc
+  namespace: id-1234-space
+spec:
+  minReadySeconds: 0
+  progressDeadlineSeconds: 600
+  replicas: 1
+  selector:
+    matchLabels:
+      cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: PORT
+              value: "1234"
+          image: registry:5000/treenq:1.0.0
+          imagePullPolicy: Always
+          name: simple-app
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 2Gi
+              memory: 1024Mi
+            requests:
+              cpu: 500m
+              ephemeral-storage: 2Gi
+              memory: 1024Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+      dnsPolicy: ClusterFirst
+      hostNetwork: false
+      restartPolicy: Always
+      securityContext:
+        fsGroupChangePolicy: Always
+        runAsNonRoot: true
+      setHostnameAsFQDN: false
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: id-1234-service-c818aa45
+  namespace: id-1234-space
+spec:
+  externalIPs: []
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+  selector:
+    cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: id-1234-ingress-c8096596
+  namespace: id-1234-space
+spec:
+  rules:
+    - http:
+        paths:
+          - backend:
+              resource:
+                apiGroup: core
+                kind: Service
+                name: id-1234-service-c818aa45
+            path: /
+            pathType: Prefix

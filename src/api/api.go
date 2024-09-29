@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/digitalocean/godo"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -25,6 +24,7 @@ import (
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
 	"github.com/treenq/treenq/src/repo/extract"
+	"github.com/treenq/treenq/src/services/cdk"
 )
 
 func New(conf Config) (http.Handler, error) {
@@ -53,8 +53,6 @@ func New(conf Config) (http.Handler, error) {
 		return nil, err
 	}
 
-	doClient := godo.NewFromToken(conf.DoToken)
-	provider := repo.NewProvider(doClient)
 	jwtIssuer := jwt.NewIssuer(conf.JwtKey, []byte(conf.JwtSecret), conf.JwtTtl)
 
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
@@ -83,7 +81,9 @@ func New(conf Config) (http.Handler, error) {
 		githubAuthMiddleware = crypto.NewSha256SignatureVerifierMiddleware(sha256Verifier, l)
 	}
 
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, provider, authProfiler)
+	kube := cdk.NewKube()
+
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 

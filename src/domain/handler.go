@@ -15,8 +15,8 @@ type Handler struct {
 	git          Git
 	extractor    Extractor
 	docker       DockerArtifactory
-	provider     Provider
 	authProfiler *auth.Context
+	kube         Kube
 }
 
 type Database interface {
@@ -42,8 +42,8 @@ type DockerArtifactory interface {
 	Build(ctx context.Context, args BuildArtifactRequest) (Image, error)
 }
 
-type Provider interface {
-	CreateAppResource(ctx context.Context, image Image, app tqsdk.Space) error
+type Kube interface {
+	DefineApp(ctx context.Context, id string, app tqsdk.Space, image Image) string
 }
 
 func NewHandler(
@@ -52,8 +52,8 @@ func NewHandler(
 	git Git,
 	extractor Extractor,
 	docker DockerArtifactory,
-	provider Provider,
 	authProfiler *auth.Context,
+	kube Kube,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -61,7 +61,7 @@ func NewHandler(
 		git:          git,
 		extractor:    extractor,
 		docker:       docker,
-		provider:     provider,
 		authProfiler: authProfiler,
+		kube:         kube,
 	}
 }

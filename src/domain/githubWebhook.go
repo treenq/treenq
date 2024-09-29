@@ -178,8 +178,10 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 				Message: err.Error(),
 			}
 		}
-		_ = image
 
+		id := "1234"
+		appKubeDef := h.kube.DefineApp(ctx, id, appDef, image)
+		_ = appKubeDef
 		//if err := h.db.SaveSpace(ctx, appDef.Service.Name, appDef.Region); err != nil {
 		//	return GithubWebhookResponse{}, &vel.Error{
 		//		Code:    "UNKNOWN",
