@@ -24,16 +24,18 @@ CMD ["dlv", "--listen=:40000", "--continue", "--headless=true", "--api-version=2
 
 FROM builder AS prod
 
-# Create a non-root user and group for better security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
 # lsflags to strip debug info
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -ldflags "-s -w" -o server ./cmd/server
 
 FROM alpine:3.13
 
+# Create a non-root user and group for better security
+# RUN addgroup -S appgroup && adduser -S 1001 -G appgroup
+RUN addgroup -g 1001 appgroup && adduser -D -G appgroup -u 1001 appuser
+
 WORKDIR /app
+
+USER 1001
 
 COPY --from=prod /app/server server
 COPY ./migrations /app/migrations

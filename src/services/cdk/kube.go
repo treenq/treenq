@@ -41,7 +41,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 		Namespace: ns,
 	})
 
-	cdk8splus.NewNamespace(chart, jsii.String(id), &cdk8splus.NamespaceProps{
+	cdk8splus.NewNamespace(chart, jsii.String(id+"-ns"), &cdk8splus.NamespaceProps{
 		Metadata: &cdk8s.ApiObjectMetadata{
 			Name:      ns,
 			Namespace: jsii.String(""),
@@ -53,7 +53,10 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 		envs[k] = cdk8splus.EnvValue_FromValue(jsii.String(v))
 	}
 	computeRes := app.Service.SizeSlug.ToComputationResource()
-	deployment := cdk8splus.NewDeployment(chart, jsii.String("deployment"), &cdk8splus.DeploymentProps{
+
+	tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
+
+	deployment := cdk8splus.NewDeployment(chart, jsii.String(app.Service.Name+"-deployment"), &cdk8splus.DeploymentProps{
 		Replicas: jsii.Number(app.Service.Repicas),
 		Containers: &[]*cdk8splus.ContainerProps{{
 			Name:  jsii.String(app.Service.Name),
@@ -63,6 +66,12 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 				Name:   jsii.String("http"),
 			}},
 			EnvVariables: &envs,
+			VolumeMounts: &[]*cdk8splus.VolumeMount{
+				{
+					Path:   jsii.String("/tmp"),
+					Volume: tmpVolume,
+				},
+			},
 			Resources: &cdk8splus.ContainerResources{
 				Cpu: &cdk8splus.CpuResources{
 					Limit:   cdk8splus.Cpu_Millis(jsii.Number(computeRes.CpuUnits)),
@@ -78,9 +87,10 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 				},
 			},
 		}},
+		Volumes: &[]cdk8splus.Volume{tmpVolume},
 	})
 
-	service := cdk8splus.NewService(chart, jsii.String("service"), &cdk8splus.ServiceProps{
+	service := cdk8splus.NewService(chart, jsii.String(app.Service.Name+"-service"), &cdk8splus.ServiceProps{
 		Ports: &[]*cdk8splus.ServicePort{{
 			Name:       jsii.String("http"),
 			Port:       jsii.Number(80),
@@ -89,13 +99,14 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 		Selector: deployment,
 	})
 
-	cdk8splus.NewIngress(chart, jsii.String("ingress"), &cdk8splus.IngressProps{
+	cdk8splus.NewIngress(chart, jsii.String(app.Service.Name+"-ingress"), &cdk8splus.IngressProps{
 		// Metadata: &cdk8s.ApiObjectMetadata{
 		// 	Annotations: &map[string]*string{
 		// 		"nginx.ingress.kubernetes.io/rewrite-target": jsii.String("/"),
 		// 	},
 		// },
 		Rules: &[]*cdk8splus.IngressRule{{
+			Host:     jsii.String(app.Service.Host),
 			Path:     jsii.String("/"),
 			PathType: cdk8splus.HttpIngressPathType_PREFIX,
 			Backend:  cdk8splus.IngressBackend_FromResource(service),

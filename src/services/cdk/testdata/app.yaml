@@ -8,7 +8,7 @@ spec: {}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: id-1234-deployment-c8c724bc
+  name: id-1234-simple-app-deployment-c8fa6f9b
   namespace: id-1234-space
 spec:
   minReadySeconds: 0
@@ -16,7 +16,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+      cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -25,14 +25,18 @@ spec:
   template:
     metadata:
       labels:
-        cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+        cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
     spec:
       automountServiceAccountToken: false
       containers:
         - env:
-            - name: PORT
-              value: "1234"
-          image: registry:5000/treenq:1.0.0
+            - name: DOCKER_REGISTRY
+              value: registry:5000
+            - name: DO_TOKEN
+              value: "111"
+            - name: GITHUB_WEBHOOK_SECRET_ENABLE
+              value: "false"
+          image: registry:5000/treenq:0.0.1
           imagePullPolicy: Always
           name: simple-app
           ports:
@@ -52,6 +56,9 @@ spec:
             privileged: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
       dnsPolicy: ClusterFirst
       hostNetwork: false
       restartPolicy: Always
@@ -60,11 +67,14 @@ spec:
         runAsNonRoot: true
       setHostnameAsFQDN: false
       terminationGracePeriodSeconds: 30
+      volumes:
+        - emptyDir: {}
+          name: tmp
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: id-1234-service-c818aa45
+  name: id-1234-simple-app-service-c8ec7b56
   namespace: id-1234-space
 spec:
   externalIPs: []
@@ -73,22 +83,23 @@ spec:
       port: 80
       targetPort: 8000
   selector:
-    cdk8s.io/metadata.addr: id-1234-deployment-c8d9fb20
+    cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: id-1234-ingress-c8096596
+  name: id-1234-simple-app-ingress-c85c9ca4
   namespace: id-1234-space
 spec:
   rules:
-    - http:
+    - host: treenq.local
+      http:
         paths:
           - backend:
               resource:
                 apiGroup: core
                 kind: Service
-                name: id-1234-service-c818aa45
+                name: id-1234-simple-app-service-c8ec7b56
             path: /
             pathType: Prefix

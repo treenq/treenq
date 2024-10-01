@@ -4,7 +4,6 @@ cmd/server/tq.json
 # test build output
 cmd/server/main
 
-
 # IDE specific
 .vscode
 __debug*
@@ -15,3 +14,6 @@ sqlite
 
 # useless staff
 .DS_Store
+
+# k3s links
+k3s_data/k3s/k3s.yaml

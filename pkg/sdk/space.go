@@ -22,6 +22,7 @@ type Service struct {
 	// Image AppSpecServiceImage
 	// Replicas defines the amount of instances that this component should be scaled to
 	Repicas int
+	Host    string
 	// The name of the component.
 	Name     string
 	SizeSlug SizeSlug
