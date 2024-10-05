@@ -1,20 +1,9 @@
 services:
 
-  postgrese2e:
-    image: postgres:16.3
-    restart: always
-    environment:
-      POSTGRES_HOST_AUTH_METHOD: 'trust'
-      POSTGRES_DB: tq
-    ports:
-      - "5432:5432"
+  postgres:
+    volumes: !reset []
     tmpfs:
       - /var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tq"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
 
   server:
     build:
@@ -31,11 +20,6 @@ services:
     env_file:
       e2e.env
     depends_on:
-      postgrese2e:
+      postgres:
         condition: service_healthy
     restart: always
-
-  registry:
-    image: registry:2.8.3
-    ports:
-      - "5000:5000"

@@ -10,6 +10,9 @@ VERSION := $(shell \
 version:
 	@echo $(VERSION)
 
+link:
+	ln k3s_data/kubeconfig/kubeconfig.yaml src/services/cdk/testdata/kubeconfig.yaml
+
 build:
 	go build -ldflags="-X 'github.com/treenq/treenq/src/handlers.version=$(VERSION)'" ./cmd/server/main.go
 
@@ -42,13 +45,13 @@ migrate_v:
 	migrate -path migrations -database ${DB_DSN} version
 
 start-e2e-test-env:
-	docker-compose -f docker-compose.e2e.yaml up -d --build
+	docker-compose -f docker-compose.yaml -f docker-compose.e2e.yaml up -d --build
 	@echo "Checking e2e test environment is running..."
 	until $$(curl --output /dev/null --silent --fail http://localhost:8000/healthz); do printf '.'; sleep 1; done && echo "Service Ready!"
 	echo 'Service has been started'
 
 stop-e2e-test-env:
-	docker-compose -f docker-compose.e2e.yaml down
+	docker-compose -f docker-compose.yaml -f docker-compose.e2e.yaml down
 
 run-e2e-tests: start-e2e-test-env
 	go test -v -count=1 -race ./e2e/...
