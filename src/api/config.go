@@ -8,9 +8,11 @@ import (
 )
 
 type Config struct {
-	JwtKey    string        `envconfig:"JWT_KEY" required:"true"`
-	JwtSecret StringBase64  `envconfig:"JWT_SECRET" required:"true"`
-	JwtTtl    time.Duration `envconfig:"JWT_TTL" default:"5m"`
+	GithubAppClientID   string       `envconfig:"GITHUB_APP_CLIENT_ID" required:"true"`
+	GithubAppPrivateKey StringBase64 `envconfig:"GITHUB_APP_PRIVATE_KEY" required:"true"`
+	GithubAppSecret     string       `envconfig:"GITHUB_APP_SECRET" required:"true"`
+
+	JwtTtl time.Duration `envconfig:"JWT_TTL" default:"5m"`
 
 	DoToken        string `envconfig:"DO_TOKEN" required:"true"`
 	DockerRegistry string `envconfig:"DOCKER_REGISTRY" required:"true"`
@@ -29,6 +31,8 @@ type Config struct {
 	GithubWebhookSecretEnable bool   `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
 
 	BuilderPackage string `envconfig:"BUILDER_PACKAGE" required:"false"`
+
+	KubeConfig string `envconfig:"KUBE_CONFIG" required:"true"`
 }
 
 type StringBase64 string

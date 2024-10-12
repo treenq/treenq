@@ -18,12 +18,16 @@ func NewDockerArtifactory(registry string) *DockerArtifact {
 	}
 }
 
-func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest) (domain.Image, error) {
-	image := domain.Image{
+func (a *DockerArtifact) Image(args domain.BuildArtifactRequest) domain.Image {
+	return domain.Image{
 		Registry:   a.registry,
 		Repository: args.Name,
-		Tag:        "latest",
+		Tag:        args.Tag,
 	}
+}
+
+func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest) (domain.Image, error) {
+	image := a.Image(args)
 
 	buildCmd := exec.Command("docker", "build", "-t", image.Image(), "-f", args.Dockerfile, args.Path)
 	buildOut, err := buildCmd.CombinedOutput()

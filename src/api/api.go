@@ -53,7 +53,7 @@ func New(conf Config) (http.Handler, error) {
 		return nil, err
 	}
 
-	jwtIssuer := jwt.NewIssuer(conf.JwtKey, []byte(conf.JwtSecret), conf.JwtTtl)
+	jwtIssuer := jwt.NewIssuer(conf.GithubAppClientID, []byte(conf.GithubAppPrivateKey), conf.JwtTtl)
 
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
@@ -83,7 +83,7 @@ func New(conf Config) (http.Handler, error) {
 
 	kube := cdk.NewKube()
 
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube)
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 

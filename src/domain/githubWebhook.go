@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/pkg/vel"
 )
 
 type GithubWebhookRequest struct {
+	// After holds a latest commit SHA
+	After        string       `json:"after"`
 	Installation Installation `json:"installation"`
 	Sender       Sender       `json:"sender"`
 
@@ -79,6 +83,7 @@ type BuildArtifactRequest struct {
 	Name       string
 	Path       string
 	Dockerfile string
+	Tag        string
 }
 
 type Image struct {
@@ -119,14 +124,17 @@ type RepoConnection struct {
 	Disconnect []InstalledRepository
 }
 
-type ReposConnector interface {
-	ConnectRepos(ctx context.Context, repo RepoConnection) error
+type AppDefinition struct {
+	ID        string
+	AppID     string
+	App       tqsdk.Space
+	Tag       string
+	Sha       string
+	User      string
+	CreatedAt time.Time
 }
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
-	// clone, extract config
-	// build and push
-	// define and apply
 	for _, repo := range req.ReposToProcess() {
 		token := ""
 		if repo.Private {
@@ -171,6 +179,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			Name:       appDef.Service.Name,
 			Path:       repoDir,
 			Dockerfile: dockerFilePath,
+			Tag:        "latest",
 		})
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
@@ -181,39 +190,25 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 		id := "1234"
 		appKubeDef := h.kube.DefineApp(ctx, id, appDef, image)
-		_ = appKubeDef
-		//if err := h.db.SaveSpace(ctx, appDef.Service.Name, appDef.Region); err != nil {
-		//	return GithubWebhookResponse{}, &vel.Error{
-		//		Code:    "UNKNOWN",
-		//		Message: err.Error(),
-		//	}
-		//}
-		//
-		//err = h.provider.CreateAppResource(ctx, image, appDef)
-		//if err != nil {
-		//	return GithubWebhookResponse{}, &vel.Error{
-		//		Code:    "UNKNOWN",
-		//		Message: err.Error(),
-		//	}
-		//}
-		//
-		//payload, err := json.Marshal(appDef)
-		//if err != nil {
-		//	return GithubWebhookResponse{}, &vel.Error{
-		//		Code:    "UNKNOWN",
-		//		Message: err.Error(),
-		//	}
-		//}
-		//if err := h.db.SaveResource(ctx, Resource{
-		//	Key:     appDef.Service.Key,
-		//	Kind:    ResourceKindService,
-		//	Payload: payload,
-		//}); err != nil {
-		//	return GithubWebhookResponse{}, &vel.Error{
-		//		Code:    "UNKNOWN",
-		//		Message: err.Error(),
-		//	}
-		//}
+		if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
+
+		if err := h.db.SaveDeployment(ctx, AppDefinition{
+			AppID: id,
+			App:   appDef,
+			Tag:   image.Tag,
+			User:  req.Sender.Login,
+			Sha:   req.After,
+		}); err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
 	}
 
 	return GithubWebhookResponse{}, nil

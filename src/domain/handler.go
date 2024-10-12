@@ -17,11 +17,17 @@ type Handler struct {
 	docker       DockerArtifactory
 	authProfiler *auth.Context
 	kube         Kube
+
+	kubeConfig string
+}
+
+type ReposConnector interface {
+	ConnectRepos(ctx context.Context, repo RepoConnection) error
 }
 
 type Database interface {
-	SaveSpace(ctx context.Context, name string, region string) error
-	SaveResource(ctx context.Context, resource Resource) error
+	SaveDeployment(ctx context.Context, def AppDefinition) error
+	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDefinition, error)
 }
 
 type GithubCleint interface {
@@ -39,11 +45,13 @@ type Extractor interface {
 }
 
 type DockerArtifactory interface {
+	Image(args BuildArtifactRequest) Image
 	Build(ctx context.Context, args BuildArtifactRequest) (Image, error)
 }
 
 type Kube interface {
 	DefineApp(ctx context.Context, id string, app tqsdk.Space, image Image) string
+	Apply(ctx context.Context, rawConig, data string) error
 }
 
 func NewHandler(
@@ -54,6 +62,7 @@ func NewHandler(
 	docker DockerArtifactory,
 	authProfiler *auth.Context,
 	kube Kube,
+	kubeConfig string,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -63,5 +72,7 @@ func NewHandler(
 		docker:       docker,
 		authProfiler: authProfiler,
 		kube:         kube,
+
+		kubeConfig: kubeConfig,
 	}
 }
