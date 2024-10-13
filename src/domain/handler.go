@@ -19,6 +19,10 @@ type Handler struct {
 	kube         Kube
 
 	kubeConfig string
+
+	githubClientID    string
+	githubSecret      string
+	githubRedirectURI string
 }
 
 type ReposConnector interface {
@@ -28,6 +32,10 @@ type ReposConnector interface {
 type Database interface {
 	SaveDeployment(ctx context.Context, def AppDefinition) error
 	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDefinition, error)
+
+	GetConnectedRepositories(ctx context.Context, email string) ([]GithubRepository, error)
+	SaveConnectedRepository(ctx context.Context, email string, repo GithubRepository) error
+	RemoveConnectedRepository(ctx context.Context, email string, repoID int) error
 }
 
 type GithubCleint interface {

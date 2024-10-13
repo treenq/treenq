@@ -90,3 +90,65 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domai
 
 	return defs, nil
 }
+
+func (s *Store) GetConnectedRepositories(ctx context.Context, email string) ([]domain.GithubRepository, error) {
+	query, args, err := s.sq.Select("id", "full_name").
+		From("repos").
+		Where(sq.Eq{"email": email}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GetConnectedRepositories query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query GetConnectedRepositories: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []domain.GithubRepository
+	for rows.Next() {
+		var repo domain.GithubRepository
+		if err := rows.Scan(&repo.ID, &repo.FullName); err != nil {
+			return nil, fmt.Errorf("failed to scan GetConnectedRepositories row: %w", err)
+		}
+		repos = append(repos, repo)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("an error occured in iterating GetConnectedRepositories rows: %w", err)
+	}
+
+	return repos, nil
+}
+
+func (s *Store) SaveConnectedRepository(ctx context.Context, email string, repo domain.GithubRepository) error {
+	query, args, err := s.sq.Insert("repos").
+		Columns("id", "full_name", "email").
+		Values(repo.ID, repo.FullName, email).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build SaveConnectedRepository query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec SaveConnectedRepository: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) RemoveConnectedRepository(ctx context.Context, email string, repoID int) error {
+	query, args, err := s.sq.Delete("repos").
+		Where(sq.Eq{"id": repoID, "email": email}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build DisconnectRepository query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec DisconnectRepository: %w", err)
+	}
+
+	return nil
+}
