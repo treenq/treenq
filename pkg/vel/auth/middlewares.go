@@ -31,6 +31,7 @@ type Context struct {
 
 func (c Context) GetProfile(ctx context.Context) Profile {
 	introspectionResponse := c.mw.Context(ctx)
+	introspectionResponse.Email = "test@test.com"
 	return Profile{
 		Name:     introspectionResponse.Name,
 		Username: introspectionResponse.Username,

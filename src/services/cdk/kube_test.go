@@ -29,7 +29,7 @@ func TestAppDefinition(t *testing.T) {
 				"GITHUB_WEBHOOK_SECRET_ENABLE": "false",
 			},
 			HttpPort: 8000,
-			Repicas:  1,
+			Replicas:  1,
 			Host:     "treenq.local",
 			SizeSlug: tqsdk.SizeSlugS,
 		},

@@ -1,12 +1,10 @@
 package domain
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"slices"
-	"time"
 
 	"github.com/treenq/treenq/pkg/vel"
 )
@@ -32,73 +30,28 @@ type GithubRepository struct {
 	DefaultBranch string `json:"default_branch"`
 
 	Connected bool `json:"connected"`
+	WebhookID int  `json:"webhook_id"`
 }
 
 // GetGithubRepositories returns a list of repositories for the authenticated user using the saved access token
 func (h *Handler) GetGithubRepositories(ctx context.Context, req GetGithubRepositoriesRequest) (GetGithubRepositoriesResponse, *vel.Error) {
 	email := h.authProfiler.GetProfile(ctx).Email
-	tokenPair, ok := tokens[email]
-	if !ok {
+	tokenPair, err := h.db.GetTokenPair(ctx, email)
+	if err != nil {
 		return GetGithubRepositoriesResponse{}, &vel.Error{
 			Code:    "NO_GITHUB_TOKEN",
 			Message: "No access token found for user",
 		}
 	}
 
-	if time.Now().Add(time.Second * 3).After(tokenPair.ExpiresIn) {
-		// refresh token
-		body := map[string]string{
-			"client_id":     h.githubClientID,
-			"client_secret": h.githubSecret,
-			"grant_type":    "refresh_token",
-			"refresh_token": tokenPair.RefreshToken,
-		}
-		jsonBody, err := json.Marshal(body)
-		if err != nil {
-			return GetGithubRepositoriesResponse{}, &vel.Error{
-				Code:    "INVALID_GITHUB_TOKEN_BODY",
-				Message: "Invalid refresh token body",
-			}
-		}
-		r, err := http.NewRequest("POST", "https://github.com/login/oauth/access_token", bytes.NewReader(jsonBody))
-		if err != nil {
-			return GetGithubRepositoriesResponse{}, &vel.Error{
-				Code:    "INVALID_GITHUB_TOKEN_REQUEST",
-				Message: "Invalid refresh token request",
-			}
-		}
-
-		resp, err := http.DefaultClient.Do(r)
-		if err != nil {
-			return GetGithubRepositoriesResponse{}, &vel.Error{
-				Code:    "FAILED_TO_REFRESH_GITHUB_TOKEN",
-				Message: "Failed to refresh github token",
-			}
-		}
-		defer resp.Body.Close()
-
-		var result map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			return GetGithubRepositoriesResponse{}, &vel.Error{
-				Code:    "INVALID_GITHUB_TOKEN_RESPONSE",
-				Message: "Invalid github token response",
-			}
-		}
-
-		tokenPair.AccessToken = result["access_token"].(string)
-		tokenPair.RefreshToken = result["refresh_token"].(string)
-		tokenPair.ExpiresIn = time.Now().Add(time.Duration(result["expires_in"].(int)) * time.Second)
-		tokens[email] = tokenPair
-	}
-
-	r, err := http.NewRequest("GET", "https://api.github.com/repositories", nil)
+	r, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/repositories", nil)
 	if err != nil {
 		return GetGithubRepositoriesResponse{}, &vel.Error{
 			Code:    "INVALID_GITHUB_REPOSITORIES_REQUEST",
 			Message: "Invalid github repositories request",
 		}
 	}
-	r.Header.Set("Authorization", "Bearer "+tokenPair.AccessToken)
+	r.Header.Set("Authorization", "Bearer "+tokenPair)
 	r.Header.Set("Accept", "application/vnd.github+json")
 	r.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
@@ -110,6 +63,12 @@ func (h *Handler) GetGithubRepositories(ctx context.Context, req GetGithubReposi
 		}
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusForbidden {
+		return GetGithubRepositoriesResponse{}, &vel.Error{
+			Code:    "GITHUB_TOKEN_EXPIRED",
+			Message: "GitHub token has expired. Please sign in again.",
+		}
+	}
 
 	var result []GithubRepository
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -144,6 +103,11 @@ func (h *Handler) GetGithubRepositories(ctx context.Context, req GetGithubReposi
 		})
 	}
 
-	repos[email] = filtered
+	if err := h.db.SaveGithubRepos(r.Context(), email, filtered); err != nil {
+		return GetGithubRepositoriesResponse{}, &vel.Error{
+			Code:    "FAILED_TO_SAVE_GITHUB_REPOSITORIES",
+			Message: "Failed to save github repositories",
+		}
+	}
 	return GetGithubRepositoriesResponse{Repositories: filtered}, nil
 }

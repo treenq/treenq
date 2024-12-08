@@ -20,9 +20,13 @@ type Handler struct {
 
 	kubeConfig string
 
-	githubClientID    string
-	githubSecret      string
-	githubRedirectURI string
+	githubClientID      string
+	githubSecret        string
+	githubRedirectURI   string
+	githubWebhookSecret string
+	githubWebhookURL    string
+
+	authService AuthService
 }
 
 type ReposConnector interface {
@@ -36,6 +40,13 @@ type Database interface {
 	GetConnectedRepositories(ctx context.Context, email string) ([]GithubRepository, error)
 	SaveConnectedRepository(ctx context.Context, email string, repo GithubRepository) error
 	RemoveConnectedRepository(ctx context.Context, email string, repoID int) error
+
+	SaveAuthState(ctx context.Context, email, state string) error
+	AuthStateExists(ctx context.Context, state string) (string, error)
+	SaveTokenPair(ctx context.Context, email string, tokenPair string) error
+	GetTokenPair(ctx context.Context, email string) (string, error)
+	SaveGithubRepos(ctx context.Context, email string, repos []GithubRepository) error
+	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, error)
 }
 
 type GithubCleint interface {
@@ -62,6 +73,10 @@ type Kube interface {
 	Apply(ctx context.Context, rawConig, data string) error
 }
 
+type AuthService interface {
+	Start(ctx context.Context, provider string) (authUrl string, err error)
+}
+
 func NewHandler(
 	db Database,
 	githubClient GithubCleint,
@@ -71,6 +86,13 @@ func NewHandler(
 	authProfiler *auth.Context,
 	kube Kube,
 	kubeConfig string,
+
+	githubClientID string,
+	githubSecret string,
+	githubRedirectURI string,
+	githubWebhookSecret string,
+	githubWebhookURL string,
+	authService AuthService,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -82,5 +104,12 @@ func NewHandler(
 		kube:         kube,
 
 		kubeConfig: kubeConfig,
+
+		githubClientID:      githubClientID,
+		githubSecret:        githubSecret,
+		githubRedirectURI:   githubRedirectURI,
+		githubWebhookSecret: githubWebhookSecret,
+		githubWebhookURL:    githubWebhookURL,
+		authService:         authService,
 	}
 }

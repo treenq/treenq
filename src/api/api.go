@@ -24,6 +24,8 @@ import (
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
 	"github.com/treenq/treenq/src/repo/extract"
+
+	authService "github.com/treenq/treenq/src/services/auth"
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
@@ -53,8 +55,7 @@ func New(conf Config) (http.Handler, error) {
 		return nil, err
 	}
 
-	jwtIssuer := jwt.NewIssuer(conf.GithubAppClientID, []byte(conf.GithubAppPrivateKey), conf.JwtTtl)
-
+	jwtIssuer := jwt.NewIssuer(conf.GithubClientID, []byte(conf.GithubPrivateKey), conf.JwtTtl)
 	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
@@ -82,8 +83,8 @@ func New(conf Config) (http.Handler, error) {
 	}
 
 	kube := cdk.NewKube()
-
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig)
+	authS := authService.NewZitadel(conf.AuthDomain, conf.AuthServiceToken, conf.AuthIdps, conf.AuthSuccessUrl, conf.AuthFailUrl)
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig, conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL, conf.GithubWebhookSecret, conf.GithubWebhookURL, authS)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 
@@ -93,6 +94,9 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 		router.Use(middlewares[i])
 	}
 
+	vel.RegisterHandlerFunc(router, "/githubAuth", handlers.GithubAuthHandler, auth)
+	vel.RegisterHandlerFunc(router, "/githubAuthCallback", handlers.GithubCallbackHandler)
+
 	// insecure handlers, mus be covered with specific github secret middleware
 	vel.Register(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
@@ -100,5 +104,7 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.Register(router, "info", handlers.Info, auth)
 	vel.Register(router, "getProfile", handlers.GetProfile, auth)
 
+	vel.Register(router, "login", handlers.Login)
+	vel.RegisterHandlerFunc(router, "/loginSuccess", handlers.HandleSuccessLogin)
 	return router
 }

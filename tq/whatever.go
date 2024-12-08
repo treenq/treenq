@@ -13,7 +13,7 @@ func Build() (tqsdk.Space, error) {
 			SizeSlug:       "basic-xxs",
 			Name:           "treenq-poc-service",
 			HttpPort:       8000,
-			InstanceCount:  1,
+			Replicas:       1,
 		},
 	}, nil
 }

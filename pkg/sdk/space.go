@@ -21,8 +21,8 @@ type Service struct {
 	// An image to use as the component's source. Only one of `git`, `github`, `gitlab`, or `image` may be set.
 	// Image AppSpecServiceImage
 	// Replicas defines the amount of instances that this component should be scaled to
-	Repicas int
-	Host    string
+	Replicas int
+	Host     string
 	// The name of the component.
 	Name     string
 	SizeSlug SizeSlug

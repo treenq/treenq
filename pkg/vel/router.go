@@ -18,6 +18,9 @@ func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 	hasResBody := unsafe.Sizeof(oType) != 0
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// TODO: must be validated against memory leak, write a unit test to bench mark against 100k calls
+		*r = *r.WithContext(RequestWithContext(r.Context(), r))
+		*r = *r.WithContext(WriterWithContext(r.Context(), w))
 		var i I
 
 		if hasReqBody {

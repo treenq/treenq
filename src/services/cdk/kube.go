@@ -57,7 +57,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 	tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
 
 	deployment := cdk8splus.NewDeployment(chart, jsii.String(app.Service.Name+"-deployment"), &cdk8splus.DeploymentProps{
-		Replicas: jsii.Number(app.Service.Repicas),
+		Replicas: jsii.Number(app.Service.Replicas),
 		Containers: &[]*cdk8splus.ContainerProps{{
 			Name:  jsii.String(app.Service.Name),
 			Image: jsii.String(image.FullPath()),
