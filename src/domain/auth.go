@@ -121,7 +121,29 @@ func (h *Handler) Login(ctx context.Context, req LoginRequest) (struct{}, *vel.E
 	return struct{}{}, nil
 }
 
-func (h *Handler) HandleSuccessLogin(w http.ResponseWriter, r *http.Request) {
-	// http://localhost:3000/authSuccess?id=297291436091508099&token=fD0aXha_zIo3wU7vEr9zREdzDaH2wPQOC0tuyewz_BpVpA&user=283666387590288148
-	println()
+type UserInfo struct {
+	Email       string
+	DisplayName string
+}
+
+func (h *Handler) HandleLoginSuccess(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	intent := q.Get("id")
+	token := q.Get("token")
+	user, err := h.authService.GetUser(r.Context(), intent, token)
+	if err != nil {
+		h.l.ErrorContext(r.Context(), "failed to get user", "err", err.Error(), "intent", intent)
+		w.WriteHeader(400)
+		return
+	}
+	// get user by email
+
+	h.authService.CreateUser(r.Context(), user)
+
+	h.authService.Login()
+}
+
+func (h *Handler) HandleLoginFail(w http.ResponseWriter, r *http.Request) {
+	h.l.ErrorContext(r.Context(), "failed to auth", "uri", r.URL.RawQuery)
+	w.WriteHeader(http.StatusBadRequest)
 }

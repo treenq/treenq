@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"log/slog"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/pkg/vel/auth"
@@ -27,6 +28,7 @@ type Handler struct {
 	githubWebhookURL    string
 
 	authService AuthService
+	l           *slog.Logger
 }
 
 type ReposConnector interface {
@@ -75,6 +77,9 @@ type Kube interface {
 
 type AuthService interface {
 	Start(ctx context.Context, provider string) (authUrl string, err error)
+	GetUser(ctx context.Context, intent, token string) (UserInfo, error)
+	CreateUser(ctx context.Context, user UserInfo) error
+	Login()
 }
 
 func NewHandler(
@@ -93,6 +98,7 @@ func NewHandler(
 	githubWebhookSecret string,
 	githubWebhookURL string,
 	authService AuthService,
+	l *slog.Logger,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -111,5 +117,6 @@ func NewHandler(
 		githubWebhookSecret: githubWebhookSecret,
 		githubWebhookURL:    githubWebhookURL,
 		authService:         authService,
+		l:                   l,
 	}
 }

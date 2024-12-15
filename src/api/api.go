@@ -84,7 +84,7 @@ func New(conf Config) (http.Handler, error) {
 
 	kube := cdk.NewKube()
 	authS := authService.NewZitadel(conf.AuthDomain, conf.AuthServiceToken, conf.AuthIdps, conf.AuthSuccessUrl, conf.AuthFailUrl)
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig, conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL, conf.GithubWebhookSecret, conf.GithubWebhookURL, authS)
+	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig, conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL, conf.GithubWebhookSecret, conf.GithubWebhookURL, authS, l)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 
@@ -105,6 +105,8 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.Register(router, "getProfile", handlers.GetProfile, auth)
 
 	vel.Register(router, "login", handlers.Login)
-	vel.RegisterHandlerFunc(router, "/loginSuccess", handlers.HandleSuccessLogin)
+	vel.RegisterHandlerFunc(router, "/loginSuccess", handlers.HandleLoginSuccess)
+	vel.RegisterHandlerFunc(router, "/loginFail", handlers.HandleLoginFail)
+
 	return router
 }
