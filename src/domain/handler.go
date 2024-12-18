@@ -77,9 +77,10 @@ type Kube interface {
 
 type AuthService interface {
 	Start(ctx context.Context, provider string) (authUrl string, err error)
-	GetUser(ctx context.Context, intent, token string) (UserInfo, error)
-	CreateUser(ctx context.Context, user UserInfo) error
-	Login()
+	GetIdpUser(ctx context.Context, intent, token string) (UserInfo, error)
+	GetUserByEmail(ctx context.Context, email string) (UserInfo, error)
+	CreateUser(ctx context.Context, user UserInfo) (UserInfo, error)
+	Login(userID, intent, token string) (Session, error)
 }
 
 func NewHandler(

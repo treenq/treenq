@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -122,25 +123,46 @@ func (h *Handler) Login(ctx context.Context, req LoginRequest) (struct{}, *vel.E
 }
 
 type UserInfo struct {
+	ID          string
 	Email       string
 	DisplayName string
 }
+
+type Session struct {
+
+}
+
+var ErrUserNotFound = errors.New("user not found")
 
 func (h *Handler) HandleLoginSuccess(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	intent := q.Get("id")
 	token := q.Get("token")
-	user, err := h.authService.GetUser(r.Context(), intent, token)
+	user, err := h.authService.GetIdpUser(r.Context(), intent, token)
 	if err != nil {
 		h.l.ErrorContext(r.Context(), "failed to get user", "err", err.Error(), "intent", intent)
 		w.WriteHeader(400)
 		return
 	}
 	// get user by email
+	user, err = h.authService.GetUserByEmail(r.Context(), user.Email)
+	if err != nil {
+		if !errors.Is(err, ErrUserNotFound) {
+			h.l.ErrorContext(r.Context(), "failed to get user", "err", err.Error(), "intent", intent)
+			w.WriteHeader(400)
+			return
+		}
+	}
+	if errors.Is(err, ErrUserNotFound) {
+		user, err = h.authService.CreateUser(r.Context(), user)
+		if err != nil {
+			h.l.ErrorContext(r.Context(), "failed to create user", "err", err.Error(), "intent", intent)
+			w.WriteHeader(400)
+			return
+		}
+	}
 
-	h.authService.CreateUser(r.Context(), user)
-
-	h.authService.Login()
+	h.authService.Login(user.ID, intent, token)
 }
 
 func (h *Handler) HandleLoginFail(w http.ResponseWriter, r *http.Request) {

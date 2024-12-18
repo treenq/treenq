@@ -182,7 +182,7 @@ type Plan struct {
 	Space         int64  `json:"space"`
 }
 
-func (z *Zitadel) GetUser(ctx context.Context, intent, token string) (domain.UserInfo, error) {
+func (z *Zitadel) GetIdpUser(ctx context.Context, intent, token string) (domain.UserInfo, error) {
 	// Prepare the request payload
 	reqPayload := idpIntentRequest{
 		IdpIntentToken: token,
@@ -225,7 +225,7 @@ func (z *Zitadel) GetUser(ctx context.Context, intent, token string) (domain.Use
 	}, nil
 }
 
-type CreateUserRequest struct {
+type UserHuman struct {
 	Username string      `json:"username"`
 	Profile  UserProfile `json:"profile"`
 	Email    UserEmail   `json:"email"`
@@ -256,8 +256,8 @@ type CreateUserResponse struct {
 	UserId string `json:"userId"`
 }
 
-func (z *Zitadel) CreateUser(ctx context.Context, r domain.UserInfo) error {
-	reqPayload := CreateUserRequest{
+func (z *Zitadel) CreateUser(ctx context.Context, r domain.UserInfo) (domain.UserInfo, error) {
+	reqPayload := UserHuman{
 		Username: r.Email,
 		Profile: UserProfile{
 			GivenName:   "-",
@@ -272,13 +272,13 @@ func (z *Zitadel) CreateUser(ctx context.Context, r domain.UserInfo) error {
 
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal request payload: %w", err)
+		return domain.UserInfo{}, fmt.Errorf("failed to marshal request payload: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/v2/users/human", z.domain)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return domain.UserInfo{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -287,19 +287,109 @@ func (z *Zitadel) CreateUser(ctx context.Context, r domain.UserInfo) error {
 
 	resp, err := z.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to perform request: %w", err)
+		return domain.UserInfo{}, fmt.Errorf("failed to perform request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected response: %s", string(body))
+		return domain.UserInfo{}, fmt.Errorf("unexpected response: %s", string(body))
 	}
 
 	var res CreateUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return fmt.Errorf("faeild to decode: %w", err)
+		return domain.UserInfo{}, fmt.Errorf("faeild to decode: %w", err)
 	}
 
-	return nil
+	return domain.UserInfo{ID: res.UserId, Email: r.Email, DisplayName: r.DisplayName}, nil
+}
+
+type ListUsersRequest struct {
+	Query         ListUserPageQuery `json:"query"`
+	SortingColumn string            `json:"sortingColumn"`
+	Queries       []ListUserQuery   `json:"queries"`
+}
+
+type ListUserPageQuery struct {
+	Offset int  `json:"offset"`
+	Limit  int  `json:"limit"`
+	Asc    bool `json:"asc"`
+}
+
+type ListUserQuery struct {
+	EmailQuery ListUserEmailQuery `json:"emailQuery,omitempty"`
+}
+
+type ListUserEmailQuery struct {
+	EmailAddress string `json:"emailAddress"`
+	Method       string `json:"method"`
+}
+
+type ListUsersResponse struct {
+	Result []ListUserResult `json:"result"`
+}
+
+type ListUserResult struct {
+	UserID string    `json:"userId"`
+	Human  UserHuman `json:"human"`
+}
+
+func (z *Zitadel) GetUserByEmail(ctx context.Context, email string) (domain.UserInfo, error) {
+	reqPayload := ListUsersRequest{
+		Query: ListUserPageQuery{
+			Offset: 0,
+			Limit:  1,
+			Asc:    true,
+		},
+		SortingColumn: "USER_FIELD_NAME_UNSPECIFIED",
+		Queries: []ListUserQuery{
+			{
+				EmailQuery: ListUserEmailQuery{
+					EmailAddress: email,
+					Method:       "TEXT_QUERY_METHOD_EQUALS",
+				},
+			},
+		},
+	}
+
+	reqBody, err := json.Marshal(reqPayload)
+	if err != nil {
+		return domain.UserInfo{}, fmt.Errorf("failed to marshal request payload: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/v2/users", z.domain)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return domain.UserInfo{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+z.token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := z.client.Do(req)
+	if err != nil {
+		return domain.UserInfo{}, fmt.Errorf("failed to perform request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return domain.UserInfo{}, fmt.Errorf("unexpected response: %s", string(body))
+	}
+
+	var res ListUsersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return domain.UserInfo{}, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(res.Result) == 0 {
+		return domain.UserInfo{}, domain.ErrUserNotFound
+	}
+
+	user := res.Result[0]
+	return domain.UserInfo{
+		Email:       user.Human.Email.Email,
+		DisplayName: user.Human.Profile.DisplayName,
+	}, nil
 }
