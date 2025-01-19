@@ -37,6 +37,7 @@ type Config struct {
 
 	AuthDomain       string            `envconfig:"AUTH_DOMAIN" required:"true"`
 	AuthServiceToken string            `envconfig:"AUTH_SERVICE_TOKEN" required:"true"`
+	AuthUserID       string            `envconfig:"AUTH_USER_ID" required:"true"`
 	AuthIdps         map[string]string `envconfig:"AUTH_IDPS" required:"true"`
 	AuthSuccessUrl   string            `envconfig:"AUTH_SUCCESS_URL" required:"true"`
 	AuthFailUrl      string            `envconfig:"AUTH_FAIL_URL" required:"true"`

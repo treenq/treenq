@@ -21,14 +21,11 @@ type Handler struct {
 
 	kubeConfig string
 
-	githubClientID      string
-	githubSecret        string
-	githubRedirectURI   string
+	oauthProvider       OauthProvider
 	githubWebhookSecret string
 	githubWebhookURL    string
 
-	authService AuthService
-	l           *slog.Logger
+	l *slog.Logger
 }
 
 type ReposConnector interface {
@@ -75,12 +72,10 @@ type Kube interface {
 	Apply(ctx context.Context, rawConig, data string) error
 }
 
-type AuthService interface {
-	Start(ctx context.Context, provider string) (authUrl string, err error)
-	GetIdpUser(ctx context.Context, intent, token string) (UserInfo, error)
-	GetUserByEmail(ctx context.Context, email string) (UserInfo, error)
-	CreateUser(ctx context.Context, user UserInfo) (UserInfo, error)
-	Login(userID, intent, token string) (Session, error)
+type OauthProvider interface {
+	AuthUrl(string) string
+	ExchangeCode(ctx context.Context, code string) (string, error)
+	FetchUser(ctx context.Context, token string) (UserInfo, error)
 }
 
 func NewHandler(
@@ -93,12 +88,9 @@ func NewHandler(
 	kube Kube,
 	kubeConfig string,
 
-	githubClientID string,
-	githubSecret string,
-	githubRedirectURI string,
+	oauthProvider OauthProvider,
 	githubWebhookSecret string,
 	githubWebhookURL string,
-	authService AuthService,
 	l *slog.Logger,
 ) *Handler {
 	return &Handler{
@@ -112,12 +104,9 @@ func NewHandler(
 
 		kubeConfig: kubeConfig,
 
-		githubClientID:      githubClientID,
-		githubSecret:        githubSecret,
-		githubRedirectURI:   githubRedirectURI,
+		oauthProvider:       oauthProvider,
 		githubWebhookSecret: githubWebhookSecret,
 		githubWebhookURL:    githubWebhookURL,
-		authService:         authService,
 		l:                   l,
 	}
 }

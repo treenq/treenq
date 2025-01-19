@@ -19,6 +19,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/zitadel/oidc/v3 v3.26.0
 	github.com/zitadel/zitadel-go/v3 v3.0.3
+	golang.org/x/oauth2 v0.22.0
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
 )
@@ -81,7 +82,6 @@ require (
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/term v0.23.0 // indirect

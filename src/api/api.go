@@ -60,7 +60,7 @@ func New(conf Config) (http.Handler, error) {
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
 	docker := artifacts.NewDockerArtifactory(conf.DockerRegistry)
-	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)
+	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)Sfi
 
 	ctx := context.Background()
 
@@ -83,8 +83,24 @@ func New(conf Config) (http.Handler, error) {
 	}
 
 	kube := cdk.NewKube()
-	authS := authService.NewZitadel(conf.AuthDomain, conf.AuthServiceToken, conf.AuthIdps, conf.AuthSuccessUrl, conf.AuthFailUrl)
-	handlers := domain.NewHandler(store, githubClient, gitClient, extractor, docker, authProfiler, kube, conf.KubeConfig, conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL, conf.GithubWebhookSecret, conf.GithubWebhookURL, authS, l)
+	authS := authService.NewZitadel(conf.AuthDomain, conf.AuthServiceToken, conf.AuthUserID, conf.AuthIdps, conf.AuthSuccessUrl, conf.AuthFailUrl)
+	handlers := domain.NewHandler(
+		store,
+		githubClient,
+		gitClient,
+		extractor,
+		docker,
+		authProfiler,
+		kube,
+		conf.KubeConfig,
+		conf.GithubClientID,
+		conf.GithubSecret,
+		conf.GithubRedirectURL,
+		conf.GithubWebhookSecret,
+		conf.GithubWebhookURL,
+		authS,
+		l,
+	)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
 }
 
@@ -105,8 +121,8 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.Register(router, "getProfile", handlers.GetProfile, auth)
 
 	vel.Register(router, "login", handlers.Login)
-	vel.RegisterHandlerFunc(router, "/loginSuccess", handlers.HandleLoginSuccess)
-	vel.RegisterHandlerFunc(router, "/loginFail", handlers.HandleLoginFail)
+	vel.RegisterHandlerFunc(router, "GET /loginSuccess/{authID}", handlers.HandleLoginSuccess)
+	vel.RegisterHandlerFunc(router, "GET /loginFail", handlers.HandleLoginFail)
 
 	return router
 }
