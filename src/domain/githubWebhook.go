@@ -103,8 +103,7 @@ func (i Image) FullPath() string {
 	return fmt.Sprintf("%s/%s:%s", i.Registry, i.Repository, i.Tag)
 }
 
-type GithubWebhookResponse struct {
-}
+type GithubWebhookResponse struct{}
 
 type Resource struct {
 	Key     string
@@ -135,10 +134,12 @@ type AppDefinition struct {
 }
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
+	// TODO: Save installation id link to a profile
 	for _, repo := range req.ReposToProcess() {
 		token := ""
 		if repo.Private {
 			var err error
+			// TODO: cache an issued token
 			token, err = h.githubClient.IssueAccessToken(req.Installation.ID)
 			if err != nil {
 				return GithubWebhookResponse{}, &vel.Error{

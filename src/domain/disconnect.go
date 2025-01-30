@@ -17,7 +17,11 @@ type DisconnectResponse struct {
 }
 
 func (h *Handler) DisconnectRepository(ctx context.Context, req DisconnectRequest) (DisconnectResponse, *vel.Error) {
-	email := h.authProfiler.GetProfile(ctx).Email
+	profile, profileErr := h.GetProfile(ctx, struct{}{})
+	if profileErr != nil {
+		return DisconnectResponse{}, profileErr
+	}
+	email := profile.UserInfo.Email
 	userRepos, err := h.db.GetConnectedRepositories(ctx, email)
 	if err != nil {
 		return DisconnectResponse{}, &vel.Error{

@@ -2,7 +2,9 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -29,9 +31,41 @@ var now = func() time.Time {
 	return time.Now().UTC().Round(time.Millisecond)
 }
 
-var (
-	ErrNoAuthState = fmt.Errorf("no auth state found")
-)
+var ErrNoAuthState = fmt.Errorf("no auth state found")
+
+func (s *Store) GetOrCreateUser(ctx context.Context, user domain.UserInfo) (domain.UserInfo, error) {
+	query, args, err := s.sq.Select("id").From("users").Where(sq.Eq{"email": user.Email}).ToSql()
+	if err != nil {
+		return user, fmt.Errorf("failed to build select query GetOrCreateUser: %w", err)
+	}
+	row := s.db.QueryRow(query, args...)
+	if err := row.Scan(&user.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return s.createUser(ctx, user)
+		}
+
+		return user, fmt.Errorf("failed to scan select GetOrCreateUser: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.UserInfo, error) {
+	id := uuid.NewString()
+	query, args, err := s.sq.Insert("users").
+		Columns("id", "email", "displayName").
+		Values(id, user.Email, user.DisplayName).
+		ToSql()
+	if err != nil {
+		return user, fmt.Errorf("failed to build query createUser: %w", err)
+	}
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return user, fmt.Errorf("failed to exec createUser: %w", err)
+	}
+
+	user.ID = id
+	return user, nil
+}
 
 func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) error {
 	id := uuid.NewString()

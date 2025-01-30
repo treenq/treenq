@@ -26,21 +26,13 @@ type Config struct {
 
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
 
-	AuthID       string       `envconfig:"AUTH_ID" required:"true"`
-	AuthSecret   StringBase64 `envconfig:"AUTH_SECRET" required:"true"`
-	AuthKeyID    string       `envconfig:"AUTH_KEY_ID" required:"true"`
-	AuthEndpoint string       `envconfig:"AUTH_ENDPOINT" required:"true"`
-
 	BuilderPackage string `envconfig:"BUILDER_PACKAGE" required:"false"`
 
 	KubeConfig string `envconfig:"KUBE_CONFIG" required:"true"`
 
-	AuthDomain       string            `envconfig:"AUTH_DOMAIN" required:"true"`
-	AuthServiceToken string            `envconfig:"AUTH_SERVICE_TOKEN" required:"true"`
-	AuthUserID       string            `envconfig:"AUTH_USER_ID" required:"true"`
-	AuthIdps         map[string]string `envconfig:"AUTH_IDPS" required:"true"`
-	AuthSuccessUrl   string            `envconfig:"AUTH_SUCCESS_URL" required:"true"`
-	AuthFailUrl      string            `envconfig:"AUTH_FAIL_URL" required:"true"`
+	AuthPrivateKey StringBase64  `envconfig:"AUTH_PRIVATE_KEY" required:"true"`
+	AuthPublicKey  StringBase64  `envconfig:"AUTH_PUBLIC_KEY" required:"true"`
+	AuthTtl        time.Duration `envconfig:"AUTH_TTL" default:"24h"`
 }
 
 type StringBase64 string

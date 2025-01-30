@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,7 +15,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/crypto"
-	"github.com/treenq/treenq/pkg/jwt"
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/auth"
 	"github.com/treenq/treenq/pkg/vel/log"
@@ -55,50 +53,35 @@ func New(conf Config) (http.Handler, error) {
 		return nil, err
 	}
 
-	jwtIssuer := jwt.NewIssuer(conf.GithubClientID, []byte(conf.GithubPrivateKey), conf.JwtTtl)
-	githubClient := repo.NewGithubClient(jwtIssuer, http.DefaultClient)
+	githubJwtIssuer := auth.NewJwtIssuer(conf.GithubClientID, []byte(conf.GithubPrivateKey), nil, conf.JwtTtl)
+	authJwtIssuer := auth.NewJwtIssuer("treenq-api", []byte(conf.AuthPrivateKey), []byte(conf.AuthPublicKey), conf.AuthTtl)
+	githubClient := repo.NewGithubClient(githubJwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
 	docker := artifacts.NewDockerArtifactory(conf.DockerRegistry)
-	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)Sfi
+	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)
 
-	ctx := context.Background()
-
-	authConf := auth.Config{
-		ID:       conf.AuthID,
-		Secret:   string(conf.AuthSecret),
-		KeyID:    conf.AuthKeyID,
-		Endpoint: conf.AuthEndpoint,
-	}
-	var authProfiler *auth.Context
-	authMiddleware, authProfiler, err := auth.NewAuthMiddleware(ctx, authConf, l)
-	if err != nil {
-		return nil, err
-	}
-
+	authMiddleware := auth.NewJwtMiddleware(authJwtIssuer, l)
 	githubAuthMiddleware := vel.NoopMiddleware
 	if conf.GithubWebhookSecretEnable {
 		sha256Verifier := crypto.NewSha256SignatureVerifier(conf.GithubWebhookSecret, "sha256=")
 		githubAuthMiddleware = crypto.NewSha256SignatureVerifierMiddleware(sha256Verifier, l)
 	}
 
+	oauthProvider := authService.New(conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL)
 	kube := cdk.NewKube()
-	authS := authService.NewZitadel(conf.AuthDomain, conf.AuthServiceToken, conf.AuthUserID, conf.AuthIdps, conf.AuthSuccessUrl, conf.AuthFailUrl)
 	handlers := domain.NewHandler(
 		store,
 		githubClient,
 		gitClient,
 		extractor,
 		docker,
-		authProfiler,
 		kube,
 		conf.KubeConfig,
-		conf.GithubClientID,
-		conf.GithubSecret,
-		conf.GithubRedirectURL,
+		oauthProvider,
+		authJwtIssuer,
 		conf.GithubWebhookSecret,
 		conf.GithubWebhookURL,
-		authS,
 		l,
 	)
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
@@ -110,19 +93,13 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 		router.Use(middlewares[i])
 	}
 
-	vel.RegisterHandlerFunc(router, "/githubAuth", handlers.GithubAuthHandler, auth)
-	vel.RegisterHandlerFunc(router, "/githubAuthCallback", handlers.GithubCallbackHandler)
+	vel.RegisterHandlerFunc(router, "/auth", handlers.GithubAuthHandler)
+	vel.RegisterHandlerFunc(router, "/authCallback", handlers.GithubCallbackHandler)
 
-	// insecure handlers, mus be covered with specific github secret middleware
 	vel.Register(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
-	// regular authentication handlers
 	vel.Register(router, "info", handlers.Info, auth)
+	// regular authentication handlers
 	vel.Register(router, "getProfile", handlers.GetProfile, auth)
-
-	vel.Register(router, "login", handlers.Login)
-	vel.RegisterHandlerFunc(router, "GET /loginSuccess/{authID}", handlers.HandleLoginSuccess)
-	vel.RegisterHandlerFunc(router, "GET /loginFail", handlers.HandleLoginFail)
-
 	return router
 }

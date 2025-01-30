@@ -9,7 +9,7 @@ import (
 )
 
 type TokenIssuer interface {
-	GeneratedJwtToken() (string, error)
+	GenerateJwtToken(claims map[string]interface{}) (string, error)
 }
 
 type GithubClient struct {
@@ -32,7 +32,7 @@ var responseBody struct {
 }
 
 func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
-	jwtToken, err := c.tokenIssuer.GeneratedJwtToken()
+	jwtToken, err := c.tokenIssuer.GenerateJwtToken(nil)
 	if err != nil {
 		return "", err
 	}

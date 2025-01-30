@@ -84,14 +84,19 @@ func (p *GithubOauthProvider) FetchUser(ctx context.Context, token string) (doma
 		return user, fmt.Errorf("GitHub API responded with a %d trying to fetch user information", response.StatusCode)
 	}
 
-	err = json.NewDecoder(response.Body).Decode(&user)
+	var resp githubUser
+	err = json.NewDecoder(response.Body).Decode(&resp)
 	if err != nil {
 		return user, err
+	}
+	user = domain.UserInfo{
+		Email:       resp.Email,
+		DisplayName: resp.Login,
 	}
 
 	if user.Email == "" {
 		for _, scope := range p.config.Scopes {
-			if strings.TrimSpace(scope) == "user" || strings.TrimSpace(scope) == "user:email" {
+			if strings.TrimSpace(scope) == "email" || strings.TrimSpace(scope) == "user" || strings.TrimSpace(scope) == "user:email" {
 				user.Email, err = p.getPrivateMail(ctx, token)
 				if err != nil {
 					return user, err

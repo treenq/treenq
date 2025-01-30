@@ -35,7 +35,11 @@ type GithubRepository struct {
 
 // GetGithubRepositories returns a list of repositories for the authenticated user using the saved access token
 func (h *Handler) GetGithubRepositories(ctx context.Context, req GetGithubRepositoriesRequest) (GetGithubRepositoriesResponse, *vel.Error) {
-	email := h.authProfiler.GetProfile(ctx).Email
+	profile, profileErr := h.GetProfile(ctx, struct{}{})
+	if profileErr != nil {
+		return GetGithubRepositoriesResponse{}, profileErr
+	}
+	email := profile.UserInfo.Email
 	tokenPair, err := h.db.GetTokenPair(ctx, email)
 	if err != nil {
 		return GetGithubRepositoriesResponse{}, &vel.Error{

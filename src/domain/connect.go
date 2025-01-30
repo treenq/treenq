@@ -15,15 +15,18 @@ type ConnectRequest struct {
 	ID int `json:"id"`
 }
 
-type ConnectResponse struct {
-}
+type ConnectResponse struct{}
 
 type WebhookResponse struct {
 	ID int `json:"id"`
 }
 
 func (h *Handler) ConnectRepository(ctx context.Context, req ConnectRequest) (ConnectResponse, *vel.Error) {
-	email := h.authProfiler.GetProfile(ctx).Email
+	profile, profileErr := h.GetProfile(ctx, struct{}{})
+	if profileErr != nil {
+		return ConnectResponse{}, profileErr
+	}
+	email := profile.UserInfo.Email
 	userRepos, err := h.db.GetConnectedRepositories(ctx, email)
 	if err != nil {
 		return ConnectResponse{}, &vel.Error{

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
-	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 type Handler struct {
@@ -16,16 +15,49 @@ type Handler struct {
 	git          Git
 	extractor    Extractor
 	docker       DockerArtifactory
-	authProfiler *auth.Context
 	kube         Kube
 
 	kubeConfig string
 
 	oauthProvider       OauthProvider
+	jwtIssuer           JwtIssuer
 	githubWebhookSecret string
 	githubWebhookURL    string
 
 	l *slog.Logger
+}
+
+func NewHandler(
+	db Database,
+	githubClient GithubCleint,
+	git Git,
+	extractor Extractor,
+	docker DockerArtifactory,
+	kube Kube,
+	kubeConfig string,
+
+	oauthProvider OauthProvider,
+	jwtIssuer JwtIssuer,
+	githubWebhookSecret string,
+	githubWebhookURL string,
+	l *slog.Logger,
+) *Handler {
+	return &Handler{
+		db:           db,
+		githubClient: githubClient,
+		git:          git,
+		extractor:    extractor,
+		docker:       docker,
+		kube:         kube,
+
+		kubeConfig: kubeConfig,
+
+		oauthProvider:       oauthProvider,
+		jwtIssuer:           jwtIssuer,
+		githubWebhookSecret: githubWebhookSecret,
+		githubWebhookURL:    githubWebhookURL,
+		l:                   l,
+	}
 }
 
 type ReposConnector interface {
@@ -33,6 +65,7 @@ type ReposConnector interface {
 }
 
 type Database interface {
+	GetOrCreateUser(ctx context.Context, user UserInfo) (UserInfo, error)
 	SaveDeployment(ctx context.Context, def AppDefinition) error
 	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDefinition, error)
 
@@ -78,35 +111,6 @@ type OauthProvider interface {
 	FetchUser(ctx context.Context, token string) (UserInfo, error)
 }
 
-func NewHandler(
-	db Database,
-	githubClient GithubCleint,
-	git Git,
-	extractor Extractor,
-	docker DockerArtifactory,
-	authProfiler *auth.Context,
-	kube Kube,
-	kubeConfig string,
-
-	oauthProvider OauthProvider,
-	githubWebhookSecret string,
-	githubWebhookURL string,
-	l *slog.Logger,
-) *Handler {
-	return &Handler{
-		db:           db,
-		githubClient: githubClient,
-		git:          git,
-		extractor:    extractor,
-		docker:       docker,
-		authProfiler: authProfiler,
-		kube:         kube,
-
-		kubeConfig: kubeConfig,
-
-		oauthProvider:       oauthProvider,
-		githubWebhookSecret: githubWebhookSecret,
-		githubWebhookURL:    githubWebhookURL,
-		l:                   l,
-	}
+type JwtIssuer interface {
+	GenerateJwtToken(claims map[string]interface{}) (string, error)
 }

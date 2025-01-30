@@ -4,19 +4,20 @@ import (
 	"context"
 
 	"github.com/treenq/treenq/pkg/vel"
+	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 type GetProfileResponse struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
+	UserInfo UserInfo `json:"userInfo"`
 }
 
 func (h *Handler) GetProfile(ctx context.Context, _ struct{}) (GetProfileResponse, *vel.Error) {
-	profile := h.authProfiler.GetProfile(ctx)
+	claims := auth.ClaimsFromCtx(ctx)
 	return GetProfileResponse{
-		Email:    profile.Email,
-		Username: profile.Username,
-		Name:     profile.Name,
+		UserInfo: UserInfo{
+			ID:          claims["id"].(string),
+			Email:       claims["email"].(string),
+			DisplayName: claims["DisplayName"].(string),
+		},
 	}, nil
 }

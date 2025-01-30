@@ -6,15 +6,18 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-type GetConnectedReposRequest struct {
-}
+type GetConnectedReposRequest struct{}
 
 type GetConnectedReposResponse struct {
 	Repos []GithubRepository `json:"repos"`
 }
 
 func (h *Handler) GetConnectedRepos(ctx context.Context, req GetConnectedReposRequest) (GetConnectedReposResponse, *vel.Error) {
-	email := h.authProfiler.GetProfile(ctx).Email
+	profile, profileErr := h.GetProfile(ctx, struct{}{})
+	if profileErr != nil {
+		return GetConnectedReposResponse{}, profileErr
+	}
+	email := profile.UserInfo.Email
 	userRepos, err := h.db.GetConnectedRepositories(ctx, email)
 	if err != nil {
 		return GetConnectedReposResponse{}, &vel.Error{
