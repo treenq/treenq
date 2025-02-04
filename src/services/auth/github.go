@@ -61,6 +61,7 @@ func (p *GithubOauthProvider) ExchangeCode(ctx context.Context, code string) (st
 }
 
 type githubUser struct {
+	ID int `json:"id"`
 	Email string `json:"email"`
 	Login string `json:"login"`
 }

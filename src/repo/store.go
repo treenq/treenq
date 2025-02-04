@@ -67,11 +67,12 @@ func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.Us
 	return user, nil
 }
 
-func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) error {
+func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) (domain.AppDefinition, error) {
 	id := uuid.NewString()
+	def.ID = id
 	appPayload, err := json.Marshal(def.App)
 	if err != nil {
-		return fmt.Errorf("failed to marshal app definition to json: %w", err)
+		return def, fmt.Errorf("failed to marshal app definition to json: %w", err)
 	}
 
 	query, args, err := s.sq.Insert("deployments").
@@ -79,14 +80,14 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) er
 		Values(id, def.AppID, string(appPayload), def.Tag, def.Sha, def.User, now()).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build SaveDeployment query: %w", err)
+		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
 	}
 
 	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
-		return fmt.Errorf("failed to exec SaveDeployment: %w", err)
+		return def, fmt.Errorf("failed to exec SaveDeployment: %w", err)
 	}
 
-	return nil
+	return def, nil
 }
 
 func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domain.AppDefinition, error) {
@@ -127,6 +128,58 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domai
 	}
 
 	return defs, nil
+}
+
+func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction for LinkGithub: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Insert installation record
+	installQuery, args, err := s.sq.Insert("installations").
+		Columns("githubId", "orgName", "status", "createdAt").
+		Values(installationID, senderLogin, "active", now()).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build installation query: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, installQuery, args...); err != nil {
+		return fmt.Errorf("failed to insert installation: %w", err)
+	}
+
+	// Insert repositories
+	if len(repos) > 0 {
+		repoQuery := s.sq.Insert("installedRepos").
+			Columns("githubId", "fullName", "private", "installationId", "createdAt")
+
+		for _, repo := range repos {
+			repoQuery = repoQuery.Values(
+				repo.ID,
+				repo.FullName,
+				repo.Private,
+				installationID,
+				now(),
+			)
+		}
+
+		sql, args, err := repoQuery.ToSql()
+		if err != nil {
+			return fmt.Errorf("failed to build repositories query: %w", err)
+		}
+
+		if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
+			return fmt.Errorf("failed to insert repositories: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Store) GetConnectedRepositories(ctx context.Context, email string) ([]domain.GithubRepository, error) {
@@ -189,99 +242,6 @@ func (s *Store) RemoveConnectedRepository(ctx context.Context, email string, rep
 	}
 
 	return nil
-}
-
-func (s *Store) SaveAuthState(ctx context.Context, email, state string) error {
-	query, args, err := s.sq.Insert("authStates").
-		Columns("email", "state", "createdAt").
-		Values(email, state, now()).
-		Suffix("ON CONFLICT (email) DO UPDATE SET state = EXCLUDED.state, createdAt = EXCLUDED.createdAt").
-		ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to build SaveAuthState query: %w", err)
-	}
-
-	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
-		return fmt.Errorf("failed to exec SaveAuthState: %w", err)
-	}
-
-	return nil
-}
-
-// AuthStateExists checks if the auth state exists in the database
-// it returns a email if it exists
-// after reading it deletes the state from the database
-func (s *Store) AuthStateExists(ctx context.Context, state string) (string, error) {
-	selectQuery, args, err := s.sq.Select("email").
-		From("authStates").
-		Where(sq.Eq{"state": state}).
-		Limit(1).
-		ToSql()
-	if err != nil {
-		return "", fmt.Errorf("failed to build GetAuthState query: %w", err)
-	}
-
-	var email string
-	if err := s.db.QueryRowContext(ctx, selectQuery, args...).Scan(&email); err != nil {
-		return "", fmt.Errorf("failed to query AuthStateExists: %w", err)
-	}
-
-	query, args, err := s.sq.Delete("authState").
-		From("authStates").
-		Where(sq.Eq{"state": state}).
-		ToSql()
-	if err != nil {
-		return email, fmt.Errorf("failed to build GetAuthState query: %w", err)
-	}
-
-	res, err := s.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return email, fmt.Errorf("failed to query GetAuthState: %w", err)
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return email, fmt.Errorf("failed to get RowsAffected for GetAuthState: %w", err)
-	}
-	if rowsAffected == 0 {
-		return email, ErrNoAuthState
-	}
-
-	return email, nil
-}
-
-func (s *Store) SaveTokenPair(ctx context.Context, email string, token string) error {
-	query, args, err := s.sq.Insert("githubTokens").
-		Columns("email", "accessToken", "createdAt").
-		Values(email, token, now()).
-		Suffix("ON CONFLICT (email) DO UPDATE SET accessToken = EXCLUDED.accessToken, createdAt = EXCLUDED.createdAt").
-		ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to build SaveTokenPair query: %w", err)
-	}
-
-	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
-		return fmt.Errorf("failed to exec SaveTokenPair: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Store) GetTokenPair(ctx context.Context, email string) (string, error) {
-	query, args, err := s.sq.Select("accessToken").
-		From("githubTokens").
-		Where(sq.Eq{"email": email}).
-		Limit(1).
-		ToSql()
-	if err != nil {
-		return "", fmt.Errorf("failed to build GetTokenPair query: %w", err)
-	}
-
-	var tokenPair domain.TokenPair
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&tokenPair.AccessToken); err != nil {
-		return "", fmt.Errorf("failed to query GetTokenPair: %w", err)
-	}
-
-	return tokenPair.AccessToken, nil
 }
 
 func (s *Store) SaveGithubRepos(ctx context.Context, email string, repos []domain.GithubRepository) error {

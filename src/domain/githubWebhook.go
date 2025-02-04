@@ -59,7 +59,14 @@ type Sender struct {
 }
 
 type Installation struct {
-	ID int `json:"id"`
+	ID      int                 `json:"id"`
+	Account InstallationAccount `json:"account"`
+}
+
+type InstallationAccount struct {
+	ID    int    `json:"id"`
+	Type  string `json:"type"`
+	Login string `json:"login"`
 }
 
 type Repository struct {
@@ -134,7 +141,16 @@ type AppDefinition struct {
 }
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
-	// TODO: Save installation id link to a profile
+	// Save installation id link to a profile
+	if req.Action == "created" {
+		err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
+	}
 	for _, repo := range req.ReposToProcess() {
 		token := ""
 		if repo.Private {
@@ -167,7 +183,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 		defer h.extractor.Close(extractorID)
 
-		appDef, err := h.extractor.ExtractConfig(extractorID, repoDir)
+		appSpace, err := h.extractor.ExtractConfig(extractorID, repoDir)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Code:    "UNKNOWN",
@@ -175,9 +191,9 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		dockerFilePath := filepath.Join(repoDir, appDef.Service.DockerfilePath)
+		dockerFilePath := filepath.Join(repoDir, appSpace.Service.DockerfilePath)
 		image, err := h.docker.Build(ctx, BuildArtifactRequest{
-			Name:       appDef.Service.Name,
+			Name:       appSpace.Service.Name,
 			Path:       repoDir,
 			Dockerfile: dockerFilePath,
 			Tag:        "latest",
@@ -189,8 +205,20 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		id := "1234"
-		appKubeDef := h.kube.DefineApp(ctx, id, appDef, image)
+		appDef, err := h.db.SaveDeployment(ctx, AppDefinition{
+			App:  appSpace,
+			Tag:  image.Tag,
+			User: req.Sender.Login,
+			Sha:  req.After,
+		})
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
+
+		appKubeDef := h.kube.DefineApp(ctx, appDef.ID, appSpace, image)
 		if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Code:    "UNKNOWN",
@@ -198,18 +226,6 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		if err := h.db.SaveDeployment(ctx, AppDefinition{
-			AppID: id,
-			App:   appDef,
-			Tag:   image.Tag,
-			User:  req.Sender.Login,
-			Sha:   req.After,
-		}); err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
-			}
-		}
 	}
 
 	return GithubWebhookResponse{}, nil

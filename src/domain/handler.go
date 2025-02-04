@@ -65,20 +65,22 @@ type ReposConnector interface {
 }
 
 type Database interface {
+	// User domain
+	////////////////////////
 	GetOrCreateUser(ctx context.Context, user UserInfo) (UserInfo, error)
-	SaveDeployment(ctx context.Context, def AppDefinition) error
+
+	// Deployment domain
+	// ////////////////
+	SaveDeployment(ctx context.Context, def AppDefinition) (AppDefinition, error)
 	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDefinition, error)
 
-	GetConnectedRepositories(ctx context.Context, email string) ([]GithubRepository, error)
-	SaveConnectedRepository(ctx context.Context, email string, repo GithubRepository) error
-	RemoveConnectedRepository(ctx context.Context, email string, repoID int) error
-
-	SaveAuthState(ctx context.Context, email, state string) error
-	AuthStateExists(ctx context.Context, state string) (string, error)
-	SaveTokenPair(ctx context.Context, email string, tokenPair string) error
-	GetTokenPair(ctx context.Context, email string) (string, error)
-	SaveGithubRepos(ctx context.Context, email string, repos []GithubRepository) error
-	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, error)
+	// Github repos domain
+	// //////////////////////
+	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
+	SaveGithubRepos(ctx context.Context, email string, installationID int, repos []InstalledRepository) error
+	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
+	GetGithubRepos(ctx context.Context, email string) ([]InstalledRepository, error)
+	ConnectRepoBranch(ctx context.Context, repoID int, branch string) error
 }
 
 type GithubCleint interface {
