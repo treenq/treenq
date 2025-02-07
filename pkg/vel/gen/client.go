@@ -15,9 +15,7 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-var (
-	ErrStructRequired = errors.New("api input/output must be only struct")
-)
+var ErrStructRequired = errors.New("api input/output must be only struct")
 
 // ClientGen defines api client generator
 // it doesn't support the following:
@@ -56,30 +54,18 @@ func New(clientDesc ClientDesc, meta []vel.HandlerMeta) (*ClientGen, error) {
 		}
 
 		for j := range desc[i].Input.Fields {
-			if desc[i].Input.Fields[j].Type.Kind() == reflect.Struct {
-				subType, err := extractDataType(desc[i].Input.Fields[j].Type)
-				if err != nil {
-					return nil, err
-				}
-				name = subType.Name
-				if _, ok := dataTypeSet[name]; !ok && len(subType.Fields) > 0 {
-					dataTypes = append(dataTypes, subType)
-					dataTypeSet[name] = struct{}{}
-				}
+			types, err := collectStructs(desc[i].Input.Fields[j], dataTypeSet)
+			if err != nil {
+				return nil, err
 			}
+			dataTypes = append(dataTypes, types...)
 		}
 		for j := range desc[i].Output.Fields {
-			if desc[i].Output.Fields[j].Type.Kind() == reflect.Struct {
-				subType, err := extractDataType(desc[i].Output.Fields[j].Type)
-				if err != nil {
-					return nil, err
-				}
-				name = subType.Name
-				if _, ok := dataTypeSet[name]; !ok && len(subType.Fields) > 0 {
-					dataTypes = append(dataTypes, subType)
-					dataTypeSet[name] = struct{}{}
-				}
+			types, err := collectStructs(desc[i].Output.Fields[j], dataTypeSet)
+			if err != nil {
+				return nil, err
 			}
+			dataTypes = append(dataTypes, types...)
 		}
 
 		desc[i].DataTypes = dataTypes
@@ -90,6 +76,66 @@ func New(clientDesc ClientDesc, meta []vel.HandlerMeta) (*ClientGen, error) {
 			Apis:   desc,
 		},
 	}, nil
+}
+
+func collectStructs(field Field, dataTypeSet map[string]struct{}) ([]DataType, error) {
+	dataTypes := make([]DataType, 0)
+
+	if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Map {
+		field.Type = field.Type.Elem()
+	}
+	if field.Type.Kind() == reflect.Pointer {
+		field.Type = field.Type.Elem()
+	}
+	if field.Type.Kind() == reflect.Struct {
+		subTypes, err := collectTypes(field, dataTypeSet)
+		if err != nil {
+			return nil, err
+		}
+		dataTypes = append(dataTypes, subTypes...)
+	}
+
+	return dataTypes, nil
+}
+
+func collectTypes(field Field, dataTypeSet map[string]struct{}) ([]DataType, error) {
+	dataTypes := make([]DataType, 0)
+	subType, err := extractDataType(field.Type)
+	if err != nil {
+		return nil, err
+	}
+	name := subType.Name
+	if _, ok := dataTypeSet[name]; !ok && len(subType.Fields) > 0 {
+		dataTypes = append(dataTypes, subType)
+		dataTypeSet[name] = struct{}{}
+
+		for _, subField := range subType.Fields {
+			if subField.Type.Kind() == reflect.Struct {
+				subTypes, err := collectTypes(subField, dataTypeSet)
+				if err != nil {
+					return nil, err
+				}
+
+				dataTypes = append(dataTypes, subTypes...)
+			}
+			if subField.Type.Kind() == reflect.Slice || subField.Type.Kind() == reflect.Map || subField.Type.Kind() == reflect.Pointer {
+				if subField.Type.Elem().Kind() == reflect.Pointer {
+					subField.Type = subField.Type.Elem()
+				}
+				if subField.Type.Elem().Kind() == reflect.Struct {
+					subField.Type = subField.Type.Elem()
+					subTypes, err := collectTypes(subField, dataTypeSet)
+					if err != nil {
+						return nil, err
+					}
+
+					dataTypes = append(dataTypes, subTypes...)
+				}
+			}
+		}
+	}
+
+	return dataTypes, nil
 }
 
 func MakeApiDesc(meta vel.HandlerMeta) (ApiDesc, error) {
@@ -116,16 +162,22 @@ func MakeApiDesc(meta vel.HandlerMeta) (ApiDesc, error) {
 func extractDataType(t reflect.Type) (DataType, error) {
 	var fields []Field
 
-	if t.Kind() != reflect.Struct {
-		return DataType{}, ErrStructRequired
-	}
-
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		typeName := field.Type.String()
 		if field.Type.Kind() == reflect.Struct {
 			typeName = field.Type.Name()
 		}
+		if field.Type.Kind() == reflect.Pointer && field.Type.Elem().Kind() == reflect.Struct {
+			typeName = "*" + field.Type.Elem().Name()
+		}
+		if field.Type.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+			typeName = "[]" + field.Type.Elem().Name()
+		}
+		if field.Type.Kind() == reflect.Map && field.Type.Elem().Kind() == reflect.Struct {
+			typeName = "map[" + field.Type.Key().Name() + "]" + field.Type.Elem().Name()
+		}
+
 		fields = append(fields, Field{
 			Name:     field.Name,
 			Type:     field.Type,
@@ -165,6 +217,8 @@ type ApiDesc struct {
 type DataType struct {
 	Name   string
 	Fields []Field
+	// OtherTypes defines a list of types required to generate the fields
+	OtherTypes []DataType
 }
 
 type Field struct {

@@ -65,41 +65,40 @@ func HandleErr(resp *http.Response) error {
 	return nil
 }
 
-func (c *Client) Deploy(ctx context.Context) error {
-
-	body := bytes.NewBuffer(nil)
-
-	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	r = r.WithContext(ctx)
-	r.Header = c.headers
-
-	resp, err := c.client.Do(r)
-	if err != nil {
-		return fmt.Errorf("failed to call deploy: %w", err)
-	}
-	defer resp.Body.Close()
-
-	err = HandleErr(resp)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 type GithubWebhookRequest struct {
-	Ref          string       `json:"ref"`
-	Installation Installation `json:"installation"`
-	Repository   Repository   `json:"repository"`
+	After               string                `json:"after"`
+	Installation        Installation          `json:"installation"`
+	Sender              Sender                `json:"sender"`
+	Action              string                `json:"action"`
+	Repositories        []InstalledRepository `json:"repositories"`
+	RepositoriesAdded   []InstalledRepository `json:"repositories_added"`
+	RepositoriesRemoved []InstalledRepository `json:"repositories_removed"`
+	Ref                 string                `json:"ref"`
+	Repository          Repository            `json:"repository"`
 }
 type Installation struct {
-	ID int `json:"id"`
+	ID      int                 `json:"id"`
+	Account InstallationAccount `json:"account"`
+}
+type InstallationAccount struct {
+	ID    int    `json:"id"`
+	Type  string `json:"type"`
+	Login string `json:"login"`
+}
+type Sender struct {
+	Login string `json:"login"`
+}
+type InstalledRepository struct {
+	ID       int    `json:"id"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
+	Branch   string `json:"branch"`
 }
 type Repository struct {
+	ID       int    `json:"id"`
 	CloneUrl string `json:"clone_url"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
 }
 
 func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) error {
@@ -167,9 +166,12 @@ func (c *Client) Info(ctx context.Context) (InfoResponse, error) {
 }
 
 type GetProfileResponse struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
+	UserInfo UserInfo `json:"userInfo"`
+}
+type UserInfo struct {
+	ID          string `json:"id"`
+	Email       string `json:"email"`
+	DisplayName string `json:"displayName"`
 }
 
 func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {

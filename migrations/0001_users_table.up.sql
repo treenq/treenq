@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS installations (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
     githubId integer NOT NULL,
     userId uuid FOREIGN KEY(id) REFERENCES tableName(users) NOT NULL,
-    orgName varchar(85) NOT NULL,
     status varchar(40) NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -22,12 +21,13 @@ CREATE TABLE IF NOT EXISTS installations (
 );
 
 CREATE TABLE IF NOT EXISTS installedRepos (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+    id uuid PRIMARY KEY DEFAULT uuid             _generate_v4() NOT NULL,
     githubId integer NOT NULL,
     fullName varchar(255) NOT NULL,
     private boolean NOT NULL,
-    installationId FOREIGN KEY(githubId) REFERENCES tableName(installations),
+    installationId FOREIGN KEY(id) REFERENCES tableName(installations),
     userId uuid FOREIGN KEY(id) REFERENCES tableName(users) NOT NULL,
+    branch varchar(255) NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

@@ -77,9 +77,15 @@ type Repository struct {
 }
 
 type InstalledRepository struct {
+	// Fields come from github api
+
 	ID       int    `json:"id"`
 	FullName string `json:"full_name"`
 	Private  bool   `json:"private"`
+
+	// fields managed by treenq
+
+	Branch string `json:"branch"`
 }
 
 func (r InstalledRepository) CloneUrl() string {

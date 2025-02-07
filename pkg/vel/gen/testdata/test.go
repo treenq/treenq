@@ -105,12 +105,40 @@ func (c *Client) Test1(ctx context.Context, req TestTypeNoJsonTags) (TestTypeNoJ
 }
 
 type TestTypeNestedTypes struct {
-	Data  TestStruct `json:"data"`
-	Chunk []uint8    `json:"chunk"`
+	Data             TestStruct          `json:"data"`
+	Chunk            []uint8             `json:"chunk"`
+	NextLevelSlice   []HighElem          `json:"slice"`
+	Map              map[int]HighMapElem `json:"map"`
+	NextLevelNestedP *HighPointer        `json:"nextP"`
 }
 type TestStruct struct {
-	Row  int    `json:"row"`
-	Line string `json:"line"`
+	Row              int                   `json:"row"`
+	Line             string                `json:"line"`
+	NextLevelNested  TestNextLevelStruct   `json:"next"`
+	NextLevelSlice   []TestNextLevelElem   `json:"slice"`
+	Map              map[int]MapValue      `json:"map"`
+	NextLevelNestedP *TestNextLevelStructP `json:"nextP"`
+}
+type TestNextLevelStruct struct {
+	Extra string `json:"extra"`
+}
+type TestNextLevelElem struct {
+	Int int `json:"int"`
+}
+type MapValue struct {
+	Value string
+}
+type TestNextLevelStructP struct {
+	Extra string `json:"extra"`
+}
+type HighElem struct {
+	Int int `json:"int"`
+}
+type HighMapElem struct {
+	Value string
+}
+type HighPointer struct {
+	Extra string `json:"extra"`
 }
 
 func (c *Client) Test2(ctx context.Context, req TestTypeNestedTypes) (TestTypeNestedTypes, error) {
@@ -147,6 +175,7 @@ func (c *Client) Test2(ctx context.Context, req TestTypeNestedTypes) (TestTypeNe
 
 	return res, nil
 }
+
 func (c *Client) TestEmpty(ctx context.Context) error {
 
 	body := bytes.NewBuffer(nil)

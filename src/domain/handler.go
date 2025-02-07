@@ -8,8 +8,6 @@ import (
 )
 
 type Handler struct {
-	reposConnector ReposConnector
-
 	db           Database
 	githubClient GithubCleint
 	git          Git
@@ -60,10 +58,6 @@ func NewHandler(
 	}
 }
 
-type ReposConnector interface {
-	ConnectRepos(ctx context.Context, repo RepoConnection) error
-}
-
 type Database interface {
 	// User domain
 	////////////////////////
@@ -77,7 +71,7 @@ type Database interface {
 	// Github repos domain
 	// //////////////////////
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
-	SaveGithubRepos(ctx context.Context, email string, installationID int, repos []InstalledRepository) error
+	SaveGithubRepos(ctx context.Context, userID int, installationID int, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]InstalledRepository, error)
 	ConnectRepoBranch(ctx context.Context, repoID int, branch string) error

@@ -15,9 +15,10 @@ func TestGetProfile(t *testing.T) {
 	profile, err := apiClient.GetProfile(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, client.GetProfileResponse{
-		Email:    "",
-		Username: "RegularUser",
-		Name:     "Name",
+		UserInfo: client.UserInfo{
+			Email:       "some@email.jo",
+			DisplayName: "RegularUser",
+		},
 	}, profile)
 }
 

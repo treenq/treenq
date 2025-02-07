@@ -51,6 +51,7 @@ func (h *Handler) Rollback(ctx context.Context, req RollbackRequest) (RollbackRe
 }
 
 func (h *Handler) deployDefinition(def AppDefinition) error {
+	panic("NOT IMPLEMENTED")
 	return nil
 	// apply
 	// update
