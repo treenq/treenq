@@ -83,7 +83,6 @@ func (j *JwtIssuer) VerifyToken(tokenString string) (map[string]interface{}, err
 	if !ok {
 		return nil, fmt.Errorf("invalid claims format")
 	}
-	// TODO verify issuer
 
 	// Verify issuer
 	if iss, ok := claims["iss"].(string); !ok || iss != j.issuer {
@@ -98,19 +97,19 @@ func NewJwtMiddleware(jwtIssuer *JwtIssuer, l *slog.Logger) vel.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				http.Error(w, "authorization header is empty", http.StatusUnauthorized)
+				http.Error(w, (&vel.Error{Code: "UNAUTHORIZED", Message: "authorization header is empty"}).JsonString(), http.StatusUnauthorized)
 				return
 			}
 
 			token, isBearer := strings.CutPrefix(authHeader, "Bearer ")
 			if !isBearer {
-				http.Error(w, "authorization token is not bearer kind", http.StatusUnauthorized)
+				http.Error(w, (&vel.Error{Code: "UNAUTHORIZED", Message: "no bearer token found"}).JsonString(), http.StatusUnauthorized)
 				return
 			}
 
 			claims, err := jwtIssuer.VerifyToken(token)
 			if err != nil {
-				http.Error(w, "token is invalid", http.StatusForbidden)
+				http.Error(w, (&vel.Error{Code: "UNAUTHORIZED", Message: "token is invalid", Err: err}).JsonString(), http.StatusForbidden)
 				return
 			}
 			*r = *r.WithContext(ClaimsToCtx(r.Context(), claims))

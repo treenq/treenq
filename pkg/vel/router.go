@@ -97,6 +97,7 @@ type Error struct {
 	Code    string            `json:"code"`
 	Message string            `json:"message"`
 	Meta    map[string]string `json:"meta"`
+	Err     error             `json:"-"`
 }
 
 func (e *Error) Error() string {
@@ -104,6 +105,13 @@ func (e *Error) Error() string {
 		return e.Code
 	}
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func (e *Error) JsonString() string {
+	// we assume it never gives an error,
+	// either way we catch it in the other tests
+	data, _ := json.Marshal(e)
+	return string(data)
 }
 
 func NewRouter() *Router {
