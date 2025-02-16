@@ -8,13 +8,17 @@ import (
 )
 
 type Config struct {
-	GithubClientID            string       `envconfig:"GITHUB_CLIENT_ID" required:"true"`
-	GithubPrivateKey          StringBase64 `envconfig:"GITHUB_PRIVATE_KEY" required:"true"`
-	GithubSecret              string       `envconfig:"GITHUB_SECRET" required:"true"`
-	GithubRedirectURL         string       `envconfig:"GITHUB_REDIRECT_URL" required:"true"`
-	GithubWebhookSecret       string       `envconfig:"GITHUB_WEBHOOK_SECRET" required:"true"`
-	GithubWebhookSecretEnable bool         `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
-	GithubWebhookURL          string       `envconfig:"GITHUB_WEBHOOK_URL" required:"true"`
+	GithubClientID string `envconfig:"GITHUB_CLIENT_ID" required:"true"`
+	// GithubPrivateKey is used to issue JWT in order to access the users' repositories
+	GithubPrivateKey StringBase64 `envconfig:"GITHUB_PRIVATE_KEY" required:"true"`
+	// GithubSecret is used to verify oauth code
+	GithubSecret      string `envconfig:"GITHUB_SECRET" required:"true"`
+	GithubRedirectURL string `envconfig:"GITHUB_REDIRECT_URL" required:"true"`
+	// GithubWebhookSecret is used to verify the webhooks source
+	GithubWebhookSecret string `envconfig:"GITHUB_WEBHOOK_SECRET" required:"true"`
+	// TODO: Enable in e2e tests
+	GithubWebhookSecretEnable bool   `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
+	GithubWebhookURL          string `envconfig:"GITHUB_WEBHOOK_URL" required:"true"`
 
 	JwtTtl time.Duration `envconfig:"JWT_TTL" default:"5m"`
 

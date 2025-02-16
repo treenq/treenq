@@ -27,20 +27,21 @@ import (
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
-func New(conf Config) (http.Handler, error) {
+func OpenDB(dbDsn, migrationsDirName string) (*sqlx.DB, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	l := log.NewLogger(os.Stdout, slog.LevelDebug)
-	db, err := sqlx.Connect("pgx", conf.DbDsn)
+	db, err := sqlx.Connect("pgx", dbDsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
-	migrationsDir := filepath.Join(filepath.Join("file:///", wd), conf.MigrationsDir)
+	migrationsPath := filepath.Join(filepath.Join("file:///", wd), migrationsDirName)
+	fmt.Println("[DEBUG] create migration instance on path=", migrationsPath)
 	m, err := migrate.New(
-		migrationsDir,
-		conf.DbDsn)
+		migrationsPath,
+		dbDsn,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migration instance: %w", err)
 	}
@@ -48,6 +49,20 @@ func New(conf Config) (http.Handler, error) {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	return db, nil
+}
+
+func New(conf Config) (http.Handler, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	l := log.NewLogger(os.Stdout, slog.LevelDebug)
+
+	db, err := OpenDB(conf.DbDsn, conf.MigrationsDir)
+	if err != nil {
+		return nil, err
+	}
 	store, err := repo.NewStore(db)
 	if err != nil {
 		return nil, err
@@ -80,7 +95,6 @@ func New(conf Config) (http.Handler, error) {
 		conf.KubeConfig,
 		oauthProvider,
 		authJwtIssuer,
-		conf.GithubWebhookSecret,
 		conf.GithubWebhookURL,
 		l,
 	)
@@ -98,8 +112,10 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 
 	vel.Register(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
-	vel.Register(router, "info", handlers.Info, auth)
 	// regular authentication handlers
+	vel.Register(router, "info", handlers.Info, auth)
 	vel.Register(router, "getProfile", handlers.GetProfile, auth)
+	vel.Register(router, "getRepos", handlers.GetRepos, auth)
+
 	return router
 }

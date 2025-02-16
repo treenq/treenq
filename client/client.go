@@ -204,3 +204,38 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 
 	return res, nil
 }
+
+type GetReposResponse struct {
+	Repos []InstalledRepository `json:"repos"`
+}
+
+func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
+	var res GetReposResponse
+
+	body := bytes.NewBuffer(nil)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getRepos", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getRepos: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getRepos response: %w", err)
+	}
+
+	return res, nil
+}

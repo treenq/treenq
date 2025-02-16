@@ -5,24 +5,31 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
 )
 
 func TestGetProfile(t *testing.T) {
+	clearDatabase()
+
+	user := client.UserInfo{ID: uuid.NewString(), Email: "test@gmail.com", DisplayName: "testing"}
+	userToken, err := createUser(user)
+	require.NoError(t, err)
+
 	ctx := context.Background()
+	apiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+		"Authorization": "Bearer " + userToken,
+	})
 	profile, err := apiClient.GetProfile(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, client.GetProfileResponse{
-		UserInfo: client.UserInfo{
-			Email:       "some@email.jo",
-			DisplayName: "RegularUser",
-		},
+		UserInfo: user,
 	}, profile)
 }
 
-func TestGetProfileInvalidToken(t *testing.T) {
+func TestGetProfileNoToken(t *testing.T) {
 	ctx := context.Background()
 	_, err := client.NewClient("http://localhost:8000", http.DefaultClient, nil).GetProfile(ctx)
 	var e *client.Error
@@ -30,7 +37,7 @@ func TestGetProfileInvalidToken(t *testing.T) {
 	assert.Equal(t, e.Code, "UNAUTHORIZED")
 }
 
-func TestGetProfileNoToken(t *testing.T) {
+func TestGetProfileInvalidToken(t *testing.T) {
 	ctx := context.Background()
 	_, err := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
 		"Authorization": "Bearer invalid",

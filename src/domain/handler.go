@@ -17,10 +17,9 @@ type Handler struct {
 
 	kubeConfig string
 
-	oauthProvider       OauthProvider
-	jwtIssuer           JwtIssuer
-	githubWebhookSecret string
-	githubWebhookURL    string
+	oauthProvider    OauthProvider
+	jwtIssuer        JwtIssuer
+	githubWebhookURL string
 
 	l *slog.Logger
 }
@@ -36,7 +35,6 @@ func NewHandler(
 
 	oauthProvider OauthProvider,
 	jwtIssuer JwtIssuer,
-	githubWebhookSecret string,
 	githubWebhookURL string,
 	l *slog.Logger,
 ) *Handler {
@@ -50,11 +48,10 @@ func NewHandler(
 
 		kubeConfig: kubeConfig,
 
-		oauthProvider:       oauthProvider,
-		jwtIssuer:           jwtIssuer,
-		githubWebhookSecret: githubWebhookSecret,
-		githubWebhookURL:    githubWebhookURL,
-		l:                   l,
+		oauthProvider:    oauthProvider,
+		jwtIssuer:        jwtIssuer,
+		githubWebhookURL: githubWebhookURL,
+		l:                l,
 	}
 }
 

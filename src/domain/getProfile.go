@@ -17,7 +17,7 @@ func (h *Handler) GetProfile(ctx context.Context, _ struct{}) (GetProfileRespons
 		UserInfo: UserInfo{
 			ID:          claims["id"].(string),
 			Email:       claims["email"].(string),
-			DisplayName: claims["DisplayName"].(string),
+			DisplayName: claims["displayName"].(string),
 		},
 	}, nil
 }

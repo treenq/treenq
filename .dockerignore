@@ -1,5 +1,7 @@
 .git/
 *vendor
+.vscode/
+.idea/
 *.DS_Store
 Makefile
 LICENSE
