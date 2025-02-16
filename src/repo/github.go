@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	cache "github.com/Code-Hex/go-generics-cache"
 )
 
 type TokenIssuer interface {
@@ -14,6 +16,7 @@ type TokenIssuer interface {
 
 type GithubClient struct {
 	tokenIssuer TokenIssuer
+	cachee      cache.Cache[int, string]
 	client      *http.Client
 }
 
@@ -28,10 +31,14 @@ func NewGithubClient(tokenIssuer TokenIssuer, client *http.Client) *GithubClient
 }
 
 var responseBody struct {
-	Token string `json:"token"`
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
+	if token, ok := c.cachee.Get(installationID); ok {
+		return token, nil
+	}
 	jwtToken, err := c.tokenIssuer.GenerateJwtToken(nil)
 	if err != nil {
 		return "", err
@@ -59,6 +66,9 @@ func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
+
+	ttl := time.Until(responseBody.ExpiresAt)
+	c.cachee.Set(installationID, responseBody.Token, cache.WithExpiration(ttl-time.Second*20))
 
 	return responseBody.Token, nil
 }
