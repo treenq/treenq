@@ -159,6 +159,28 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 		return GithubWebhookResponse{}, nil
 	}
+	if req.Action == "added" {
+		err := h.db.SaveGithubRepos(ctx, req.Installation.ID, req.Sender.Login, req.RepositoriesAdded)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
+		return GithubWebhookResponse{}, nil
+
+	}
+	if req.Action == "removed" {
+		err := h.db.RemoveGithubRepos(ctx, req.Installation.ID, req.RepositoriesRemoved)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Code:    "UNKNOWN",
+				Message: err.Error(),
+			}
+		}
+		return GithubWebhookResponse{}, nil
+
+	}
 	for _, repo := range req.ReposToProcess() {
 		token := ""
 		if repo.Private {

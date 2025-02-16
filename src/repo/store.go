@@ -130,6 +130,11 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domai
 	return defs, nil
 }
 
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -137,22 +142,11 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	}
 	defer tx.Rollback()
 
-	// Get user ID by display name
-	userQuery, userArgs, err := s.sq.Select("id").
-		From("users").
-		Where(sq.Eq{"displayName": senderLogin}).
-		ToSql()
+	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, tx)
 	if err != nil {
-		return fmt.Errorf("failed to build user query: %w", err)
+		return err
 	}
 
-	var userID string
-	if err := tx.QueryRowContext(ctx, userQuery, userArgs...).Scan(&userID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return domain.ErrUserNotFound
-		}
-		return fmt.Errorf("failed to get user ID: %w", err)
-	}
 	installationInternalID := uuid.NewString()
 	timestamp := now()
 
@@ -170,32 +164,9 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	}
 
 	// Insert repositories
-	if len(repos) > 0 {
-		repoQuery := s.sq.Insert("installedRepos").
-			Columns("id", "githubId", "fullName", "private", "installationId", "userId", "branch", "createdAt")
-
-		for _, repo := range repos {
-			id := uuid.NewString()
-			repoQuery = repoQuery.Values(
-				id,
-				repo.ID,
-				repo.FullName,
-				repo.Private,
-				installationInternalID,
-				userID,
-				"",
-				timestamp,
-			)
-		}
-
-		sql, args, err := repoQuery.ToSql()
-		if err != nil {
-			return fmt.Errorf("failed to build repositories query: %w", err)
-		}
-
-		if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
-			return fmt.Errorf("failed to insert repositories: %w", err)
-		}
+	err = s.insertInstalledRepos(ctx, repos, userID, installationInternalID, timestamp, tx)
+	if err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -205,27 +176,51 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	return nil
 }
 
-func (s *Store) SaveGithubRepos(ctx context.Context, userID int, installationID int, repos []domain.InstalledRepository) error {
+func (s *Store) getUserIDByDisplayName(ctx context.Context, senderLogin string, q Querier) (string, error) {
+	// Get user ID by display name
+	userQuery, userArgs, err := s.sq.Select("id").
+		From("users").
+		Where(sq.Eq{"displayName": senderLogin}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build user query: %w", err)
+	}
+
+	var userID string
+	if err := q.QueryRowContext(ctx, userQuery, userArgs...).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", domain.ErrUserNotFound
+		}
+		return "", fmt.Errorf("failed to get user ID: %w", err)
+	}
+	return userID, nil
+}
+
+func (s *Store) insertInstalledRepos(
+	ctx context.Context,
+	repos []domain.InstalledRepository,
+	userID, installationInternalID string,
+	createdAt time.Time,
+	q Querier,
+) error {
 	if len(repos) == 0 {
 		return nil
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction for SaveGithubRepos: %w", err)
-	}
-	defer tx.Rollback()
-
 	repoQuery := s.sq.Insert("installedRepos").
-		Columns("githubId", "fullName", "private", "installationId", "createdAt")
+		Columns("id", "githubId", "fullName", "private", "installationId", "userId", "branch", "createdAt")
 
 	for _, repo := range repos {
+		id := uuid.NewString()
 		repoQuery = repoQuery.Values(
+			id,
 			repo.ID,
 			repo.FullName,
 			repo.Private,
-			installationID,
-			now(),
+			installationInternalID,
+			userID,
+			"",
+			createdAt,
 		)
 	}
 
@@ -234,38 +229,69 @@ func (s *Store) SaveGithubRepos(ctx context.Context, userID int, installationID 
 		return fmt.Errorf("failed to build repositories query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
+	if _, err := q.ExecContext(ctx, sql, args...); err != nil {
 		return fmt.Errorf("failed to insert repositories: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	return nil
+}
+
+func (s *Store) SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
+	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
+	if err != nil {
+		return err
+	}
+
+	installationInternalID, err := s.getInstallationByGithub(ctx, installationID)
+	if err != nil {
+		return err
+	}
+	timestamp := now()
+
+	err = s.insertInstalledRepos(ctx, repos, userID, installationInternalID, timestamp, s.db)
+	if err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func (s *Store) getInstallationByGithub(ctx context.Context, githubID int) (string, error) {
+	userQuery, userArgs, err := s.sq.Select("id").
+		From("installations").
+		Where(sq.Eq{"githubId": githubID}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build user query: %w", err)
+	}
+
+	var installationID string
+	if err := s.db.QueryRowContext(ctx, userQuery, userArgs...).Scan(&installationID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", domain.ErrUserNotFound
+		}
+		return "", fmt.Errorf("failed to get user ID: %w", err)
+	}
+	return installationID, nil
 }
 
 func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos []domain.InstalledRepository) error {
 	if len(repos) == 0 {
 		return nil
 	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
+	installationInternalID, err := s.getInstallationByGithub(ctx, installationID)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction for RemoveGithubRepos: %w", err)
+		return err
 	}
-	defer tx.Rollback()
 
-	// Collect all repo IDs
 	repoIDs := make([]int, len(repos))
 	for i, repo := range repos {
 		repoIDs[i] = repo.ID
 	}
 
-	// Delete repositories
 	deleteQuery, args, err := s.sq.Delete("installedRepos").
 		Where(sq.And{
-			sq.Eq{"installationId": installationID},
+			sq.Eq{"installationId": installationInternalID},
 			sq.Eq{"githubId": repoIDs},
 		}).
 		ToSql()
@@ -273,12 +299,8 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 		return fmt.Errorf("failed to build delete query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, deleteQuery, args...); err != nil {
+	if _, err := s.db.ExecContext(ctx, deleteQuery, args...); err != nil {
 		return fmt.Errorf("failed to delete repositories: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -288,7 +310,7 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Ins
 	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.branch").
 		From("installedRepos r").
 		Where(sq.Eq{"r.userId": userID}).
-		OrderBy("r.createdAt DESC").
+		OrderBy("r.createdAt ASC").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build GetGithubRepos query: %w", err)

@@ -68,7 +68,7 @@ type Database interface {
 	// Github repos domain
 	// //////////////////////
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
-	SaveGithubRepos(ctx context.Context, userID int, installationID int, repos []InstalledRepository) error
+	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]InstalledRepository, error)
 	ConnectRepoBranch(ctx context.Context, repoID int, branch string) error
