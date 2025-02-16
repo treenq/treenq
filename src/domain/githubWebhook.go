@@ -85,7 +85,8 @@ type InstalledRepository struct {
 
 	// fields managed by treenq
 
-	Branch string `json:"branch"`
+	TreenqID string `json:"treenqID"`
+	Branch   string `json:"branch"`
 }
 
 func (r InstalledRepository) CloneUrl() string {
@@ -156,6 +157,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 				Message: err.Error(),
 			}
 		}
+		return GithubWebhookResponse{}, nil
 	}
 	for _, repo := range req.ReposToProcess() {
 		token := ""
@@ -207,7 +209,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to build an image",
+				Err:     err,
 			}
 		}
 

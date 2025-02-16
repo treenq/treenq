@@ -148,6 +148,9 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 
 	var userID string
 	if err := tx.QueryRowContext(ctx, userQuery, userArgs...).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.ErrUserNotFound
+		}
 		return fmt.Errorf("failed to get user ID: %w", err)
 	}
 	installationInternalID := uuid.NewString()
@@ -169,7 +172,7 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	// Insert repositories
 	if len(repos) > 0 {
 		repoQuery := s.sq.Insert("installedRepos").
-			Columns("id", "githubId", "fullName", "private", "installationId", "userId", "branch", "createdAt", "updatedAt")
+			Columns("id", "githubId", "fullName", "private", "installationId", "userId", "branch", "createdAt")
 
 		for _, repo := range repos {
 			id := uuid.NewString()
@@ -181,7 +184,6 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 				installationInternalID,
 				userID,
 				"",
-				timestamp,
 				timestamp,
 			)
 		}
@@ -283,7 +285,7 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 }
 
 func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.InstalledRepository, error) {
-	query, args, err := s.sq.Select("r.githubId", "r.fullName", "r.private", "r.branch").
+	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.branch").
 		From("installedRepos r").
 		Where(sq.Eq{"r.userId": userID}).
 		OrderBy("r.createdAt DESC").
@@ -301,7 +303,7 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Ins
 	var repos []domain.InstalledRepository
 	for rows.Next() {
 		var repo domain.InstalledRepository
-		if err := rows.Scan(&repo.ID, &repo.FullName, &repo.Private, &repo.Branch); err != nil {
+		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Branch); err != nil {
 			return nil, fmt.Errorf("failed to scan GetGithubRepos row: %w", err)
 		}
 		repos = append(repos, repo)

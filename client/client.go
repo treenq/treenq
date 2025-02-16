@@ -92,6 +92,7 @@ type InstalledRepository struct {
 	ID       int    `json:"id"`
 	FullName string `json:"full_name"`
 	Private  bool   `json:"private"`
+	TreenqID string `json:"treenqID"`
 	Branch   string `json:"branch"`
 }
 type Repository struct {

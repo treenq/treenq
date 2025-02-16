@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
@@ -27,14 +28,14 @@ import (
 
 // drop a database
 
-// go:embed ../src/domain/testdata/appInstall.json
+//go:embed testdata/appInstall.json
 var appInstallRequestBody []byte
 
 func TestGithubAppInstallation(t *testing.T) {
 	clearDatabase()
 
 	// create a user and obtain its token
-	user := client.UserInfo{Email: "test@email.com", DisplayName: "testing"}
+	user := client.UserInfo{ID: uuid.NewString(), Email: "test@mail.com", DisplayName: "testing"}
 	userToken, err := createUser(user)
 	require.NoError(t, err, "user must be created")
 
@@ -53,7 +54,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err := apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.InstalledRepository{
-		{},
+		{
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/treenq",
+			Private:  false,
+			Branch:   "",
+		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
 	//
