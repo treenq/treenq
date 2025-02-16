@@ -16,7 +16,7 @@ type TokenIssuer interface {
 
 type GithubClient struct {
 	tokenIssuer TokenIssuer
-	cachee      cache.Cache[int, string]
+	cachee      *cache.Cache[int, string]
 	client      *http.Client
 }
 
@@ -24,9 +24,11 @@ func NewGithubClient(tokenIssuer TokenIssuer, client *http.Client) *GithubClient
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
+	newCache := cache.New[int, string]()
 	return &GithubClient{
 		tokenIssuer: tokenIssuer,
 		client:      client,
+		cachee:      newCache,
 	}
 }
 
