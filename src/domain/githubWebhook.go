@@ -85,8 +85,12 @@ type InstalledRepository struct {
 
 	// fields managed by treenq
 
+	// TreenqID is an internal identifier
 	TreenqID string `json:"treenqID"`
-	Branch   string `json:"branch"`
+	// Branch defines a connected branch from which the deployment/app definitions is read
+	Branch string `json:"branch"`
+	// Status describes whether a repo is actively deployed or suspended
+	Status string `json:"status"`
 }
 
 func (r InstalledRepository) CloneUrl() string {

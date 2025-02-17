@@ -15,7 +15,6 @@ var (
 	db         *sqlx.DB
 	tableNames = []string{
 		"users",
-		"installations",
 		"installedRepos",
 		"deployments",
 	}
