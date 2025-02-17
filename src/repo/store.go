@@ -292,28 +292,25 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Ins
 	return repos, nil
 }
 
-func (s *Store) ConnectRepoBranch(ctx context.Context, repoID int, branch string) error {
+func (s *Store) ConnectRepoBranch(ctx context.Context, userID, repoID, branch string) (domain.InstalledRepository, error) {
 	query, args, err := s.sq.Update("installedRepos").
 		Set("branch", branch).
-		Where(sq.Eq{"githubId": repoID}).
+		Where(sq.Eq{"id": repoID, "userId": userID}).
+		Suffix("RETURNING id, githubId, fullName, private, branch, status").
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
+		return domain.InstalledRepository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
 	}
 
-	result, err := s.db.ExecContext(ctx, query, args...)
+	row := s.db.QueryRowContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
+		return domain.InstalledRepository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
 	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get affected rows: %w", err)
+	var repo domain.InstalledRepository
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Branch, &repo.Status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repo, domain.ErrRepoNotFound
+		}
 	}
-
-	if rows == 0 {
-		return fmt.Errorf("no repository found with ID %d", repoID)
-	}
-
-	return nil
+	return repo, nil
 }

@@ -71,7 +71,7 @@ type Database interface {
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]InstalledRepository, error)
-	ConnectRepoBranch(ctx context.Context, repoID int, branch string) error
+	ConnectRepoBranch(ctx context.Context, userID, repoID, branch string) (InstalledRepository, error)
 }
 
 type GithubCleint interface {

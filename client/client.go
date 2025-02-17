@@ -94,6 +94,7 @@ type InstalledRepository struct {
 	Private  bool   `json:"private"`
 	TreenqID string `json:"treenqID"`
 	Branch   string `json:"branch"`
+	Status   string `json:"status"`
 }
 type Repository struct {
 	ID       int    `json:"id"`
@@ -236,6 +237,49 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return res, fmt.Errorf("failed to decode getRepos response: %w", err)
+	}
+
+	return res, nil
+}
+
+type ConnectBranchRequest struct {
+	RepoID string
+	Branch string
+}
+type ConnectBranchResponse struct {
+	Repo InstalledRepository `json:"repo"`
+}
+
+func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, error) {
+	var res ConnectBranchResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/connectRepoBranch", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call connectRepoBranch: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode connectRepoBranch response: %w", err)
 	}
 
 	return res, nil

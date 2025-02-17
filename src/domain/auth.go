@@ -10,7 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+var (
+	ErrUserNotFound = errors.New("user not found")
+	ErrRepoNotFound = errors.New("repo not found")
+)
 
 type UserInfo struct {
 	ID          string `json:"id"`
