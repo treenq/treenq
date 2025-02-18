@@ -106,7 +106,7 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 		router.Use(middlewares[i])
 	}
 
-	vel.RegisterHandlerFunc(router, "/auth", handlers.GithubAuthHandler)
+	vel.RegisterHandlerFunc(router, "GET /auth", handlers.GithubAuthHandler)
 	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
 
 	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)

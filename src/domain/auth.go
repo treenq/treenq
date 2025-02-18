@@ -38,8 +38,8 @@ func generateStateOauthCookie(w http.ResponseWriter) string {
 }
 
 type CodeExchangeRequest struct {
-	State string `state:"state"`
-	Code  string `query:"code"`
+	State string `schema:"state"`
+	Code  string `schema:"code"`
 }
 
 type TokenResponse struct {
@@ -52,7 +52,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 	r := vel.RequestFromContext(ctx)
 	oauthState, _ := r.Cookie("authstate")
 
-	if req.Code != oauthState.Value {
+	if req.State != oauthState.Value {
 		return TokenResponse{}, &vel.Error{
 			Code: "STATE_DOESNT_MATCH",
 			Err:  errors.New("state doesn't match"),
