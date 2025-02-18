@@ -13,13 +13,6 @@ import (
 	"github.com/treenq/treenq/client"
 )
 
-// suspend installation
-// get repos to check there are none, but installation has a changed status
-// delete installation
-// get repos to check there are none
-
-// drop a database
-
 //go:embed testdata/appInstall.json
 var appInstallRequestBody []byte
 

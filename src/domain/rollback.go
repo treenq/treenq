@@ -20,27 +20,21 @@ func (h *Handler) Rollback(ctx context.Context, req RollbackRequest) (RollbackRe
 	history, err := h.db.GetDeploymentHistory(ctx, req.AppID)
 	if err != nil {
 		return RollbackResponse{}, &vel.Error{
-			Code:    "UNKNOWN",
-			Message: err.Error(),
+			Message: "failed to get deployment history",
+			Err:     err,
 		}
 	}
 
 	for i := range history {
 		if history[i].Tag == req.Tag {
-			if err := h.deployDefinition(history[i]); err != nil {
-				return RollbackResponse{}, &vel.Error{
-					Code:    "UNKNOWN",
-					Message: err.Error(),
-				}
+			if velErr := h.deployDefinition(history[i]); velErr != nil {
+				return RollbackResponse{}, velErr
 			}
 		}
 
 		if history[i].Sha == req.Sha {
-			if err := h.deployDefinition(history[i]); err != nil {
-				return RollbackResponse{}, &vel.Error{
-					Code:    "UNKNOWN",
-					Message: err.Error(),
-				}
+			if velErr := h.deployDefinition(history[i]); velErr != nil {
+				return RollbackResponse{}, velErr
 			}
 		}
 	}
@@ -50,7 +44,7 @@ func (h *Handler) Rollback(ctx context.Context, req RollbackRequest) (RollbackRe
 	}, nil
 }
 
-func (h *Handler) deployDefinition(def AppDefinition) error {
+func (h *Handler) deployDefinition(def AppDefinition) *vel.Error {
 	panic("NOT IMPLEMENTED")
 	return nil
 	// apply

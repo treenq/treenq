@@ -6,13 +6,13 @@ import (
 )
 
 type (
-	requestKeyType string
-	writerKeyType  string
+	requestKeyType int
+	writerKeyType  int
 )
 
 const (
-	requestKey requestKeyType = "requestKey"
-	writerKey  writerKeyType  = "writerKey"
+	requestKey requestKeyType = 1
+	writerKey  writerKeyType  = 1
 )
 
 func RequestWithContext(ctx context.Context, r *http.Request) context.Context {

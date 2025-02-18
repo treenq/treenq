@@ -1,13 +1,13 @@
 package domain
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/treenq/treenq/pkg/vel"
 )
 
 var (
@@ -37,45 +37,52 @@ func generateStateOauthCookie(w http.ResponseWriter) string {
 	return state
 }
 
-type TokenPair struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresIn    time.Time `json:"expires_in"`
+type CodeExchangeRequest struct {
+	State string `state:"state"`
+	Code  string `query:"code"`
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"accessToken"`
 }
 
 // GithubCallbackHandler is the handler for the callback from Github
 // It exchanges the code for an access token and returns the given access and refresh tokens
-func (h *Handler) GithubCallbackHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeRequest) (TokenResponse, *vel.Error) {
+	r := vel.RequestFromContext(ctx)
 	oauthState, _ := r.Cookie("authstate")
 
-	if r.URL.Query().Get("state") != oauthState.Value {
-		log.Println("invalid auth state")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
+	if req.Code != oauthState.Value {
+		return TokenResponse{}, &vel.Error{
+			Code: "STATE_DOESNT_MATCH",
+			Err:  errors.New("state doesn't match"),
+		}
 	}
 
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		http.Error(w, "Code not found", http.StatusBadRequest)
-		return
-	}
-	token, err := h.oauthProvider.ExchangeCode(r.Context(), code)
+	token, err := h.oauthProvider.ExchangeCode(ctx, req.Code)
 	if err != nil {
-		http.Error(w, "Failed to exchange code", http.StatusInternalServerError)
-		return
+		return TokenResponse{}, &vel.Error{
+			Message: "failed to exchange code to token",
+			Err:     err,
+		}
 	}
 
 	user, err := h.oauthProvider.FetchUser(r.Context(), token)
 	if err != nil {
-		http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
-		return
+		return TokenResponse{}, &vel.Error{
+			Code:    "UNKNOWN",
+			Message: "failed to fetch user form oauth provider",
+			Err:     err,
+		}
 	}
 
 	// save user if doesn't exist
 	savedUser, err := h.db.GetOrCreateUser(r.Context(), user)
 	if err != nil {
-		http.Error(w, "Failed to get or create user", http.StatusInternalServerError)
-		return
+		return TokenResponse{}, &vel.Error{
+			Message: "failed get to create user",
+			Err:     err,
+		}
 	}
 
 	tokens, err := h.jwtIssuer.GenerateJwtToken(map[string]interface{}{
@@ -84,13 +91,13 @@ func (h *Handler) GithubCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		"displayName": savedUser.DisplayName,
 	})
 	if err != nil {
-		http.Error(w, "failed to issue jwt token", http.StatusInternalServerError)
+		return TokenResponse{}, &vel.Error{
+			Message: "failed ogenerate jwt token",
+			Err:     err,
+		}
 	}
-	// issue a token
 	// TODO: issue a token pair instead: access, refresh, expiry
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(tokens); err != nil {
-		http.Error(w, "Failed to write tokens to response", http.StatusInternalServerError)
-		return
-	}
+	return TokenResponse{
+		AccessToken: tokens,
+	}, nil
 }

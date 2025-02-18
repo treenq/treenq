@@ -20,8 +20,8 @@ func (h *Handler) GetRepos(ctx context.Context, req GetReposRequest) (GetReposRe
 	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
-			Code:    "FAILED_GET_GITHUB_REPOS",
-			Message: err.Error(),
+			Code: "FAILED_GET_GITHUB_REPOS",
+			Err:  err,
 		}
 	}
 	return GetReposResponse{Repos: repos}, nil

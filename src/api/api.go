@@ -17,7 +17,6 @@ import (
 	"github.com/treenq/treenq/pkg/crypto"
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/auth"
-	"github.com/treenq/treenq/pkg/vel/log"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
@@ -57,7 +56,7 @@ func New(conf Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := log.NewLogger(os.Stdout, slog.LevelDebug)
+	l := vel.NewLogger(os.Stdout, slog.LevelDebug)
 
 	db, err := OpenDB(conf.DbDsn, conf.MigrationsDir)
 	if err != nil {
@@ -98,7 +97,7 @@ func New(conf Config) (http.Handler, error) {
 		conf.GithubWebhookURL,
 		l,
 	)
-	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, log.NewLoggingMiddleware(l)).Mux(), nil
+	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
 }
 
 func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middlewares ...vel.Middleware) *vel.Router {
@@ -108,15 +107,15 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	}
 
 	vel.RegisterHandlerFunc(router, "/auth", handlers.GithubAuthHandler)
-	vel.RegisterHandlerFunc(router, "/authCallback", handlers.GithubCallbackHandler)
+	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
 
-	vel.Register(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
+	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
 	// regular authentication handlers
-	vel.Register(router, "info", handlers.Info, auth)
-	vel.Register(router, "getProfile", handlers.GetProfile, auth)
-	vel.Register(router, "getRepos", handlers.GetRepos, auth)
-	vel.Register(router, "connectRepoBranch", handlers.ConnectBranch, auth)
+	vel.RegisterPost(router, "info", handlers.Info, auth)
+	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
+	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)
+	vel.RegisterPost(router, "connectRepoBranch", handlers.ConnectBranch, auth)
 
 	return router
 }

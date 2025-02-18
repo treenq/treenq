@@ -39,8 +39,9 @@ func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 
 		res, callErr := call(r.Context(), i)
 		if callErr != nil {
+			*r = *r.WithContext(LogAttrsToContext(r.Context(), "err", callErr.Err, "code", callErr.Code, "errMsg", callErr.Message))
 			status := http.StatusBadRequest
-			if callErr.Code == "UNKNOWN" || callErr.Code == "" {
+			if callErr.Code == "" {
 				status = http.StatusInternalServerError
 			}
 			w.WriteHeader(status)
@@ -91,6 +92,7 @@ type HandlerMeta struct {
 	Input       any
 	Output      any
 	OperationID string
+	Method      string
 }
 
 type Error struct {
@@ -123,23 +125,41 @@ func NewRouter() *Router {
 	return &Router{mux: mux}
 }
 
-type Middleware func(http.Handler) http.Handler
+type (
+	Middleware func(http.Handler) http.Handler
+)
 
 func NoopMiddleware(h http.Handler) http.Handler {
 	return h
 }
 
-func Register[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
+func RegisterPost[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
 	var i I
 	var o O
 	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
 		Input:       i,
 		Output:      o,
 		OperationID: operationID,
+		Method:      "POST",
 	})
 
 	var h http.Handler = NewHandler(handler)
+
 	RegisterHandler(r, "POST /"+operationID, h, middlewares...)
+}
+
+func RegisterGet[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
+	var i I
+	var o O
+	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
+		Input:       i,
+		Output:      o,
+		OperationID: operationID,
+		Method:      "GET",
+	})
+
+	var h http.Handler = NewHandler(handler)
+	RegisterHandler(r, "GET /"+operationID, h, middlewares...)
 }
 
 func RegisterHandler(r *Router, pattern string, handler http.Handler, middlewares ...Middleware) {

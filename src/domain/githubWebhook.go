@@ -157,8 +157,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to link github",
+				Err:     err,
 			}
 		}
 		return GithubWebhookResponse{}, nil
@@ -167,8 +167,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		err := h.db.SaveGithubRepos(ctx, req.Installation.ID, req.Sender.Login, req.RepositoriesAdded)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to save github repos",
+				Err:     err,
 			}
 		}
 		return GithubWebhookResponse{}, nil
@@ -178,8 +178,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		err := h.db.RemoveGithubRepos(ctx, req.Installation.ID, req.RepositoriesRemoved)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to remove github repos",
+				Err:     err,
 			}
 		}
 		return GithubWebhookResponse{}, nil
@@ -193,8 +193,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			token, err = h.githubClient.IssueAccessToken(req.Installation.ID)
 			if err != nil {
 				return GithubWebhookResponse{}, &vel.Error{
-					Code:    "UNKNOWN",
-					Message: err.Error(),
+					Message: "failed to issue github access token",
+					Err:     err,
 				}
 			}
 		}
@@ -202,8 +202,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		repoDir, err := h.git.Clone(repo.CloneUrl(), req.Installation.ID, repo.ID, token)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to close git repo",
+				Err:     err,
 			}
 		}
 		defer os.RemoveAll(repoDir)
@@ -211,8 +211,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		extractorID, err := h.extractor.Open()
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to open an extractor",
+				Err:     err,
 			}
 		}
 		defer h.extractor.Close(extractorID)
@@ -220,8 +220,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		appSpace, err := h.extractor.ExtractConfig(extractorID, repoDir)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to extract config",
+				Err:     err,
 			}
 		}
 
@@ -234,7 +234,6 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		})
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
 				Message: "failed to build an image",
 				Err:     err,
 			}
@@ -248,16 +247,16 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		})
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to save deployment",
+				Err:     err,
 			}
 		}
 
 		appKubeDef := h.kube.DefineApp(ctx, appDef.ID, appSpace, image)
 		if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
-				Code:    "UNKNOWN",
-				Message: err.Error(),
+				Message: "failed to apply kube definition",
+				Err:     err,
 			}
 		}
 

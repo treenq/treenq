@@ -18,8 +18,8 @@ func (h *Handler) GetDeploymentHistory(ctx context.Context, req GetDeploymentHis
 	history, err := h.db.GetDeploymentHistory(ctx, req.AppID)
 	if err != nil {
 		return GetDeploymentHistoryResponse{}, &vel.Error{
-			Code:    "UNKNOWN",
-			Message: err.Error(),
+			Message: "failed get deployment history",
+			Err:     err,
 		}
 	}
 

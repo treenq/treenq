@@ -1,4 +1,4 @@
-package log
+package vel
 
 import (
 	"context"
@@ -52,6 +52,31 @@ func LoggerToContext(ctx context.Context, l *slog.Logger) context.Context {
 	return context.WithValue(ctx, logContextKey{}, l)
 }
 
+type logAttrContextKeyType struct{}
+
+var logAttrContextKey = logAttrContextKeyType{}
+
+func LogAttrsToContext(ctx context.Context, kvs ...any) context.Context {
+	attrsVal := ctx.Value(logAttrContextKey)
+
+	var attrs []any
+	if attrsVal == nil {
+		attrs = make([]any, 0, 2)
+	} else {
+		attrs = attrsVal.([]any)
+	}
+	attrs = append(attrs, kvs...)
+	return context.WithValue(ctx, logAttrContextKey, attrs)
+}
+
+func LogAtrtsFromContext(ctx context.Context) []any {
+	attrsVal := ctx.Value(logAttrContextKey)
+	if attrsVal == nil {
+		return nil
+	}
+	return attrsVal.([]any)
+}
+
 func Formatter(groups []string, a slog.Attr) slog.Attr {
 	if a.Key != slog.TimeKey {
 		return a
@@ -72,35 +97,28 @@ func NewLogger(w io.Writer, level slog.Level) *slog.Logger {
 func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// all the magic of opentelemetry could be here
-			logger := l.With("service", "userService")
-
 			resp := &responseWriter{ResponseWriter: w}
 
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					logger.ErrorContext(
+					l.ErrorContext(
 						r.Context(), "recovered from panic",
 						"uri", r.RequestURI,
 						"method", r.Method,
 						"recovered", recovered,
 						"stack", string(debug.Stack()),
+						"time", time.Now().Format(time.RFC3339),
 					)
 					resp.WriteHeader(http.StatusInternalServerError)
 					if _, err := resp.Write([]byte("internal server error")); err != nil {
-						logger.ErrorContext(r.Context(), "failed to write response", "error", err)
+						l.ErrorContext(r.Context(), "failed to write response", "error", err)
 					}
 				}
 			}()
 
 			start := time.Now()
-			logger.DebugContext(
-				r.Context(), "request received",
-				"uri", r.RequestURI,
-				"method", r.Method,
-			)
 
-			ctxWithLogger := LoggerToContext(r.Context(), logger)
+			ctxWithLogger := LoggerToContext(r.Context(), l)
 			r = r.WithContext(ctxWithLogger)
 			next.ServeHTTP(resp, r)
 
@@ -111,18 +129,25 @@ func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {
 			// but now let's enjoy RequestURI
 			var logFunc func(context.Context, string, ...any)
 			if resp.status >= 500 {
-				logFunc = logger.ErrorContext
+				logFunc = l.ErrorContext
 			} else if resp.status >= 400 {
-				logFunc = logger.InfoContext
+				logFunc = l.InfoContext
 			} else {
-				logFunc = logger.DebugContext
+				logFunc = l.DebugContext
 			}
 
-			logFunc(
-				r.Context(), "request completed",
+			attrs := []any{
 				"duration", duration.String(),
 				"time", end.Format(time.RFC3339),
 				"status", resp.status,
+				"uri", r.RequestURI,
+				"method", r.Method,
+			}
+			attrs = append(attrs, LogAtrtsFromContext(r.Context())...)
+
+			logFunc(
+				r.Context(), "request completed",
+				attrs...,
 			)
 		})
 	}
