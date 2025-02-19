@@ -3,6 +3,7 @@ module github.com/treenq/treenq
 go 1.23.1
 
 require (
+	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/aws/constructs-go/constructs/v10 v10.3.0
 	github.com/aws/jsii-runtime-go v1.103.1
@@ -12,6 +13,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/schema v1.4.1
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -24,7 +26,6 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/Code-Hex/go-generics-cache v1.5.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.1.0-alpha.2 // indirect
