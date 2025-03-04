@@ -93,7 +93,7 @@ metadata:
   namespace: id-1234-space
 spec:
   rules:
-    - host: treenq.local
+    - host: id-1234.treenq.com
       http:
         paths:
           - backend:

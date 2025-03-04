@@ -1,10 +1,9 @@
 services:
-
   postgres:
     image: postgres:16.3
     restart: always
     environment:
-      POSTGRES_HOST_AUTH_METHOD: 'trust'
+      POSTGRES_HOST_AUTH_METHOD: "trust"
       POSTGRES_DB: tq
     ports:
       - "5432:5432"
@@ -23,7 +22,7 @@ services:
 
   kube:
     image: rancher/k3s:v1.31.1-k3s1
-    command: 
+    command:
       - server
       - "--kubelet-arg=eviction-hard=imagefs.available<5%,nodefs.available<10%"
       - "--kubelet-arg=eviction-soft=imagefs.available<10%,nodefs.available<15%"
@@ -41,22 +40,24 @@ services:
     environment:
       # - K3S_TOKEN=${K3S_PASSWORD_1} # Only required if we are running more than 1 node
       - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
-      - K3S_KUBECONFIG_MODE=666 
+      - K3S_KUBECONFIG_MODE=666
+      - K3S_URL=https://kube:6443
     volumes:
       - k3s:/var/lib/rancher/k3s
       - ./k3s_data/kubeconfig:/output
       - ./k3s_data/docker_images:/var/lib/rancher/k3s/agent/images
       - ./k3s_data/k3s:/etc/rancher/k3s
     expose:
-      - "6443"  # Kubernetes API Server
-      - "80"    # Ingress controller port 80
-      - "443"   # Ingress controller port 443
+      - "6443" # Kubernetes API Server
+      - "80" # Ingress controller port 80
+      - "443" # Ingress controller port 443
     ports:
       - 6443:6443
+      - 8080:80
+      - 8081:443
 
 volumes:
   pgdata:
     driver: local
   k3s:
     driver: local
- 

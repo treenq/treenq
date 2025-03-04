@@ -17,3 +17,5 @@ sqlite
 
 # k3s links
 k3s_data/k3s/k3s.yaml
+k3s_data/kubeconfig/kubeconfig.yaml
+
