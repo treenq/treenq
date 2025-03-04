@@ -22,10 +22,14 @@ import (
 )
 
 type Kube struct {
+	// host holds a main app host, used to create sub hosts for a quick app preview
+	host string
 }
 
-func NewKube() *Kube {
-	return &Kube{}
+func NewKube(
+	host string,
+) *Kube {
+	return &Kube{host: host}
 }
 
 func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image domain.Image) string {
@@ -99,14 +103,10 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 		Selector: deployment,
 	})
 
+	// define 3d level domain given from the existing domain
 	cdk8splus.NewIngress(chart, jsii.String(app.Service.Name+"-ingress"), &cdk8splus.IngressProps{
-		// Metadata: &cdk8s.ApiObjectMetadata{
-		// 	Annotations: &map[string]*string{
-		// 		"nginx.ingress.kubernetes.io/rewrite-target": jsii.String("/"),
-		// 	},
-		// },
 		Rules: &[]*cdk8splus.IngressRule{{
-			Host:     jsii.String(app.Service.Host),
+			Host:     jsii.String(id + "." + k.host),
 			Path:     jsii.String("/"),
 			PathType: cdk8splus.HttpIngressPathType_PREFIX,
 			Backend:  cdk8splus.IngressBackend_FromResource(service),
