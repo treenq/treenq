@@ -83,9 +83,7 @@ type Git interface {
 }
 
 type Extractor interface {
-	Open() (string, error)
-	ExtractConfig(id, repoDir string) (tqsdk.Space, error)
-	Close(string) error
+	ExtractConfig(repoDir string) (tqsdk.Space, error)
 }
 
 type DockerArtifactory interface {

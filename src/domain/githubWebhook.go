@@ -208,16 +208,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 		defer os.RemoveAll(repoDir)
 
-		extractorID, err := h.extractor.Open()
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to open an extractor",
-				Err:     err,
-			}
-		}
-		defer h.extractor.Close(extractorID)
-
-		appSpace, err := h.extractor.ExtractConfig(extractorID, repoDir)
+		appSpace, err := h.extractor.ExtractConfig(repoDir)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to extract config",

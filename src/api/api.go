@@ -73,7 +73,7 @@ func New(conf Config) (http.Handler, error) {
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
 	docker := artifacts.NewDockerArtifactory(conf.DockerRegistry)
-	extractor := extract.NewExtractor(filepath.Join(wd, "builder"), conf.BuilderPackage)
+	extractor := extract.NewExtractor()
 
 	authMiddleware := auth.NewJwtMiddleware(authJwtIssuer, l)
 	githubAuthMiddleware := vel.NoopMiddleware
@@ -83,7 +83,7 @@ func New(conf Config) (http.Handler, error) {
 	}
 
 	oauthProvider := authService.New(conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL)
-	kube := cdk.NewKube()
+	kube := cdk.NewKube(conf.Host)
 	handlers := domain.NewHandler(
 		store,
 		githubClient,

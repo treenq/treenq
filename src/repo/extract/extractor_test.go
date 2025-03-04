@@ -11,7 +11,7 @@ import (
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
-//go:embed testdata/tq.go
+//go:embed testdata/tq.json
 var testBuildConfig []byte
 
 func TestExtractor_ExtractConfig(t *testing.T) {
@@ -23,38 +23,19 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 		}
 	}()
 
-	tqDir := filepath.Join(srcDir, tqRelativePath)
-	err = os.MkdirAll(tqDir, 0766)
+	tqConfigFile := filepath.Join(srcDir, tqRelativePath)
 	require.NoError(t, err)
 
-	tmpFile := filepath.Join(tqDir, tqBuildLauncherFile)
-	if err := os.WriteFile(tmpFile, testBuildConfig, 0766); err != nil {
+	if err := os.WriteFile(tqConfigFile, testBuildConfig, 0766); err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 
-	currentDir, err := os.Getwd()
-	require.NoError(t, err)
-	builderDir := filepath.Join(filepath.Dir(currentDir), "builder")
-	extractor := NewExtractor(builderDir, "/src/repo")
-	id, err := extractor.Open()
-	require.NoError(t, err)
+	extractor := NewExtractor()
 
-	buildIdDir := filepath.Join(builderDir, id)
-
-	// check the builder directory is created
-	_, err = os.Stat(buildIdDir)
-	assert.ErrorIs(t, err, nil)
-
-	resource, err := extractor.ExtractConfig(id, srcDir)
+	resource, err := extractor.ExtractConfig(srcDir)
 	assert.ErrorIs(t, err, nil)
 	assert.Equal(t, resource, tqsdk.Space{
 		Key:    "key",
 		Region: "nyc",
 	})
-
-	// check the close removes the builder directory
-	err = extractor.Close(id)
-	require.NoError(t, err)
-	_, err = os.Stat(buildIdDir)
-	assert.ErrorIs(t, err, os.ErrNotExist)
 }
