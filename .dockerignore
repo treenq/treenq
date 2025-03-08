@@ -19,6 +19,3 @@ docs/
 *_test.go
 e2e
 
-# Probably secrets
-*.json
-*.yaml
