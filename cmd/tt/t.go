@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/containers/buildah"
 	"github.com/containers/buildah/define"
 	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/storage"
-	"github.com/containers/storage/pkg/reexec"
+	"github.com/containers/storage/pkg/unshare"
 )
 
 func main() {
-	reexec.Init()
+	if buildah.InitReexec() {
+		return
+	}
+	unshare.MaybeReexecUsingUserNamespace(false)
 	buildStoreOptions, err := storage.DefaultStoreOptions()
 	ifErr(err)
 	buildStore, err := storage.GetStore(buildStoreOptions)
