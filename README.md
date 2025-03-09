@@ -12,7 +12,7 @@ TBD
 
 # Treenq
 
-> ### 🚧 **Pre-Alpha Notice**: _The project is in pre-alpha stage, the release is planned in_ **2025 Q2**
+> ### 🚧 **Pre-Alpha Notice**: _The project is in pre-alpha stage, the alpha test planned in_ **2025 Q2**
 
 Treenq is a Platform as a Service (as Code) solves the infrastructure and App Delivery complexity in Kubernetes.
 
