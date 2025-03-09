@@ -4,7 +4,7 @@
 
 # treenq
 
-Platform as a Code for Kubernetes to let you build, deliver, provision cloud applications and dependencies.
+An open-source Platform as Code for Kubernetes to simplify app delivery, cloud resource provisioning, and infrastructure management.
 
 ## Demo
 
@@ -12,27 +12,32 @@ TBD
 
 # Treenq
 
-### **The project is in pre-alpha stage, the release is planned in 2025 Q2.**
+> ### 🚧 **Pre-Alpha Notice**: _The project is in pre-alpha stage, the release is planned in_ **2025 Q2**
 
-Treenq is a Platform as a Service (as Code) solves the infrastracture and app delivery complexity in Kubernetes.
+Treenq is a Platform as a Service (as Code) solves the infrastructure and App Delivery complexity in Kubernetes.
 
-On the very early stage every team needs:
+Early-stage teams need:
 
-- Fast and afordable app building, shortly saying basic CI with no code
-- Database or another cloud resource provision
-- Support secrets and configuration for the resources
-- Quick preview for the first customers
+- 🚀 **Fast & affordable CI/CD** – Build and deploy apps without complex pipelines.
+- 🛠 **Database & cloud resources** – Provision services seamlessly.
+- 🔐 **Secure secrets & configurations** – Manage credentials and settings effortlessly.
+- ⚡ **Instant previews** – Get early feedback with temporary environments.
 
-This project is created to solve it.
+Treenq solves this problem.
 
 And finally you can install an open source platform and use it for free in order to get:
 
-- 🚀 App delivery using your Dockerfile/Containerfile or providing build/run commands
-- 🌍 Get quick 3d level domain
-- 🗄️ Request a database for your service, securely store its credentials and set them to the built app
-- ⚖️ Request small fractional resources for your app
+- 🚀 **App Delivery** – Deploy from Dockerfile/Containerfile or build & run commands.
+- 🌍 **Custom Domains** – Instantly get a third-level domain for your app.
+- 🗄️ **Database Provisioning** – Securely provision and inject database credentials.
+- ⚖️ **Optimized Resource Allocation** – Use minimal cloud resources efficiently.
 
-Any many more planed (environments, database branches, per api handler metrics, alerting, app delivery from local machine right to the testing environment, get env config file for specific environment to run your app locally, etc.)
+And many more planned Features:
+
+- 🏗 **Environment Management** – Easily configure dev, staging, and production.
+- 📊 **API-Level Metrics & Alerts** – Track and optimize performance.
+- 🔄 **Local-to-Cloud Deployment** – Push from your machine to test environments.
+- 🔧 **Per-Environment Config Export** – Get configuration files to run apps locally.
 
 ## Documentation
 
@@ -40,32 +45,28 @@ TBD
 
 ## Motivation
 
-There plenty of similar solutions and you know those names if you came here.
-All of them provide very expensive proxy to aws with a fancy UI.
+Most PaaS solutions are closed-source, costly, and lock you into their ecosystem.
+Treenq offers a fully open-source alternative, giving you full control over your app management and infrastructure.
 
-- very few tools are opensource
-- some still give vendor lock to a specific SDK
-- some require from you a lot of configuration or manual cloud resource management
+Treenq is designed to prioritize Application Management over infrastructure concerns. While it provides helpful constraints, self-hosting allows full access to your Kubernetes cluster.
 
-This project is born to give application mangement instead of infra.
-It's supposed to give some constrainst as well, but in case of selfhosting this solution you still have access to your cluster.
+Many teams end up building complex **Internal Developer Platforms (IDPs)**.
+Treenq isn’t meant to replace IDPs but to offer **fast, streamlined app delivery**, letting engineers focus on shipping code.
 
-The worst case a team builds a complex Internal Developer Platform.
-This project is far from replacing IDP, but rather give a fast delivery and lets focus on app delivery to engineers.
+## Contributor guide
 
-## Contributors guide
-
-⭐ If you enjoyed the project's experience then giving us a start is your first contribution step.
+⭐ **Enjoying Treenq?**
+Support the project by giving it a star on GitHub! Your support helps us grow!
 
 ### How to run
 
-- install go https://go.dev/doc/install
-- install docker/colima/podman in order to run docker-compose dev environment
-- for mac: install macfuse `brew install macfuse` in order to support overlafs on the host machine to run the app inside a docker container
-- run the dev environment using `docker compose up` or `docker-compose up`
-- run `go run cmd/server/main.go`
+- Install [Go](https://go.dev/doc/install)
+- Install Docker/Colima/Podman for running dev environment
+- Mac users only: install macFUSE: `brew install macfuse`
+- Run the dev environment: `docker compose up`
+- Run `go run cmd/server/main.go`
 
 ### How to contribute
 
-We are happy to see an issue created before submitting and code.
-Any collaboration is welcome.
+📢 **Want to contribute?**
+We welcome all contributions! Before submitting code, please open an issue to discuss your changes.
