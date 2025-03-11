@@ -3,14 +3,12 @@ package gen
 import (
 	"bytes"
 	_ "embed"
-	"log"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/pkg/vel"
-	"github.com/treenq/treenq/src/api"
-	"github.com/treenq/treenq/src/domain"
 )
 
 //go:embed testdata/test.go
@@ -64,7 +62,15 @@ type HighPointer struct {
 	Extra string `json:"extra"`
 }
 
-type Empty struct {
+type Empty struct{}
+
+type GetQuery struct {
+	Value string `schema:"value"`
+	Field int    `schema:"field"`
+}
+
+type GetResp struct {
+	Getting int
 }
 
 func TestGenClient(t *testing.T) {
@@ -78,29 +84,21 @@ func TestGenClient(t *testing.T) {
 		TypeName:    "Client",
 		PackageName: "client",
 	}, []vel.HandlerMeta{
-		{Input: TestTypeNoJsonTags{}, Output: TestTypeNoJsonTags{}, OperationID: "test1"},
-		{Input: TestTypeNestedTypes{}, Output: TestTypeNestedTypes{}, OperationID: "test2"},
-		{Input: struct{}{}, Output: Empty{}, OperationID: "testEmpty"},
+		{Input: TestTypeNoJsonTags{}, Output: TestTypeNoJsonTags{}, OperationID: "test1", Method: "POST"},
+		{Input: TestTypeNestedTypes{}, Output: TestTypeNestedTypes{}, OperationID: "test2", Method: "POST"},
+		{Input: struct{}{}, Output: Empty{}, OperationID: "testEmpty", Method: "POST"},
+		{Input: GetQuery{}, Output: GetResp{}, OperationID: "testGet", Method: "GET"},
 	})
 	require.NoError(t, err)
 	err = gener.Generate(buf)
 	require.NoError(t, err)
 	assert.Equal(t, infoClientOutput, buf.String())
-}
 
-func TestJo(t *testing.T) {
-	buf := &bytes.Buffer{}
+	// optional step to visualize the diff 
+	// f, err := os.OpenFile("./testdata/out.go", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	// require.NoError(t, err)
+	// defer f.Close()
 
-	router := api.NewRouter(&domain.Handler{}, vel.NoopMiddleware, vel.NoopMiddleware)
-	gener, err := New(ClientDesc{
-		TypeName:    "Client",
-		PackageName: "client",
-	}, router.Meta())
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	err = gener.Generate(buf)
-	t.Log(buf.String())
-	require.NoError(t, err)
+	// _, err = f.Write(buf.Bytes())
+	// require.NoError(t, err)
 }

@@ -154,49 +154,43 @@ func NoopMiddleware(h http.Handler) http.Handler {
 func RegisterPost[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
 	var i I
 	var o O
-	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
+
+	var h http.Handler = NewHandler(handler)
+	RegisterHandler(r, h, HandlerMeta{
 		Input:       i,
 		Output:      o,
 		OperationID: operationID,
-		Method:      "POST",
-	})
-
-	var h http.Handler = NewHandler(handler)
-
-	RegisterHandler(r, "POST /"+operationID, h, middlewares...)
+		Method:      "GET",
+	}, middlewares...)
 }
 
 func RegisterGet[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
 	var i I
 	var o O
-	r.handlersMeta = append(r.handlersMeta, HandlerMeta{
+
+	var h http.Handler = NewHandler(handler)
+	RegisterHandler(r, h, HandlerMeta{
 		Input:       i,
 		Output:      o,
 		OperationID: operationID,
 		Method:      "GET",
-	})
-
-	var h http.Handler = NewHandler(handler)
-	RegisterHandler(r, "GET /"+operationID, h, middlewares...)
+	}, middlewares...)
 }
 
-func RegisterHandler(r *Router, pattern string, handler http.Handler, middlewares ...Middleware) {
-	for i := range middlewares {
-		handler = middlewares[i](handler)
-	}
-	for i := range r.middlewares {
-		handler = r.middlewares[i](handler)
-	}
-	r.mux.Handle(pattern, handler)
-}
-
-func RegisterHandlerFunc(r *Router, pattern string, h http.HandlerFunc, middlewares ...Middleware) {
+func RegisterHandlerFunc(r *Router, meta HandlerMeta, h http.HandlerFunc, middlewares ...Middleware) {
 	var handler http.Handler = h
+	RegisterHandler(r, handler, meta, middlewares...)
+}
+
+func RegisterHandler(r *Router, handler http.Handler, meta HandlerMeta, middlewares ...Middleware) {
 	for i := range middlewares {
 		handler = middlewares[i](handler)
 	}
 	for i := range r.middlewares {
 		handler = r.middlewares[i](handler)
 	}
+
+	r.handlersMeta = append(r.handlersMeta, meta)
+	pattern := meta.Method + "/" + meta.OperationID
 	r.mux.Handle(pattern, handler)
 }

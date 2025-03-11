@@ -154,6 +154,7 @@ func MakeApiDesc(meta vel.HandlerMeta) (ApiDesc, error) {
 		Input:       inputType,
 		Output:      outputType,
 		OperationID: meta.OperationID,
+		Method:      meta.Method,
 		FuncName:    Capitalize(meta.OperationID),
 	}, nil
 }
@@ -179,10 +180,11 @@ func extractDataType(t reflect.Type) (DataType, error) {
 		}
 
 		fields = append(fields, Field{
-			Name:     field.Name,
-			Type:     field.Type,
-			TypeName: typeName,
-			JsonTag:  field.Tag.Get("json"),
+			Name:      field.Name,
+			Type:      field.Type,
+			TypeName:  typeName,
+			JsonTag:   field.Tag.Get("json"),
+			SchemaTag: field.Tag.Get("schema"),
 		})
 	}
 
@@ -210,6 +212,7 @@ type ApiDesc struct {
 	Input       DataType
 	Output      DataType
 	OperationID string
+	Method      string
 	FuncName    string
 	DataTypes   []DataType
 }
@@ -222,10 +225,11 @@ type DataType struct {
 }
 
 type Field struct {
-	Name     string
-	Type     reflect.Type
-	TypeName string
-	JsonTag  string
+	Name      string
+	Type      reflect.Type
+	TypeName  string
+	JsonTag   string
+	SchemaTag string
 }
 
 func (g *ClientGen) Generate(w io.Writer) error {

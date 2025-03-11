@@ -100,13 +100,20 @@ func New(conf Config) (http.Handler, error) {
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
 }
 
+
 func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middlewares ...vel.Middleware) *vel.Router {
 	router := vel.NewRouter()
 	for i := range middlewares {
 		router.Use(middlewares[i])
 	}
 
-	vel.RegisterHandlerFunc(router, "GET /auth", handlers.GithubAuthHandler)
+	// auth is an endpoint contain redirect, therefore it must be GET
+	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
+		Input:       struct{}{},
+		Output:      domain.TokenResponse{},
+		Method:      "GET",
+		OperationID: "auth",
+	}, handlers.GithubAuthHandler)
 	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
 
 	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)

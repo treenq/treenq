@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type Client struct {
@@ -111,6 +112,7 @@ type TestTypeNestedTypes struct {
 	Map              map[int]HighMapElem `json:"map"`
 	NextLevelNestedP *HighPointer        `json:"nextP"`
 }
+
 type TestStruct struct {
 	Row              int                   `json:"row"`
 	Line             string                `json:"line"`
@@ -119,24 +121,31 @@ type TestStruct struct {
 	Map              map[int]MapValue      `json:"map"`
 	NextLevelNestedP *TestNextLevelStructP `json:"nextP"`
 }
+
 type TestNextLevelStruct struct {
 	Extra string `json:"extra"`
 }
+
 type TestNextLevelElem struct {
 	Int int `json:"int"`
 }
+
 type MapValue struct {
 	Value string
 }
+
 type TestNextLevelStructP struct {
 	Extra string `json:"extra"`
 }
+
 type HighElem struct {
 	Int int `json:"int"`
 }
+
 type HighMapElem struct {
 	Value string
 }
+
 type HighPointer struct {
 	Extra string `json:"extra"`
 }
@@ -177,7 +186,6 @@ func (c *Client) Test2(ctx context.Context, req TestTypeNestedTypes) (TestTypeNe
 }
 
 func (c *Client) TestEmpty(ctx context.Context) error {
-
 	body := bytes.NewBuffer(nil)
 
 	r, err := http.NewRequest("POST", c.baseUrl+"/testEmpty", body)
@@ -199,4 +207,44 @@ func (c *Client) TestEmpty(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+type GetQuery struct {
+	Value string
+	Field int
+}
+
+type GetResp struct {
+	Getting int
+}
+
+func (c *Client) TestGet(ctx context.Context, req GetQuery) (GetResp, error) {
+	q := make(url.Values)
+	q.Set("value", req.Value)
+	q.Set("field", req.Field)
+
+	r, err := http.NewRequest("GET", c.baseUrl+"/testGet?"+q.Encode(), nil)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call testGet: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode testGet response: %w", err)
+	}
+
+	return res, nil
 }
