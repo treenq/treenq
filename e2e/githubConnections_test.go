@@ -52,14 +52,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the app has been installed and the repos are saved
 	reposResponse, err := apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.InstalledRepository{
+	assert.Equal(t, []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
 			FullName: "treenq/treenq",
 			Private:  false,
 			Status:   "active",
-			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -72,14 +71,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been added
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
-	assert.Equal(t, []client.InstalledRepository{
+	assert.Equal(t, []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
 			FullName: "treenq/treenq",
 			Private:  false,
 			Status:   "active",
-			Branch:   "",
 		},
 		{
 			TreenqID: reposResponse.Repos[1].TreenqID,
@@ -87,7 +85,6 @@ func TestGithubAppInstallation(t *testing.T) {
 			FullName: "treenq/treenq-cli",
 			Private:  false,
 			Status:   "active",
-			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -100,21 +97,19 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.InstalledRepository{
+	assert.Equal(t, []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
 			FullName: "treenq/treenq",
 			Private:  false,
 			Status:   "active",
-			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
 	// test another user can't connect a branch
 	connectRepoResponse, err := anotherApiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
-		Branch: "first",
 	})
 	assert.Equal(t, err, &client.Error{
 		Code: "REPO_NOT_FOUND",
@@ -123,30 +118,29 @@ func TestGithubAppInstallation(t *testing.T) {
 	// connect a Branch
 	connectRepoResponse, err = apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
-		Branch: "first",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
-		Repo: client.InstalledRepository{
-			TreenqID: reposResponse.Repos[0].TreenqID,
-			ID:       805585115,
-			FullName: "treenq/treenq",
-			Private:  false,
-			Status:   "active",
-			Branch:   "first",
+		Repo: client.Repository{
+			TreenqID:  reposResponse.Repos[0].TreenqID,
+			ID:        805585115,
+			FullName:  "treenq/treenq",
+			Private:   false,
+			Status:    "active",
+			Connected: true,
 		},
 	})
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.InstalledRepository{
+	assert.Equal(t, []client.Repository{
 		{
-			TreenqID: reposResponse.Repos[0].TreenqID,
-			ID:       805585115,
-			FullName: "treenq/treenq",
-			Private:  false,
-			Status:   "active",
-			Branch:   "first",
+			TreenqID:  reposResponse.Repos[0].TreenqID,
+			ID:        805585115,
+			FullName:  "treenq/treenq",
+			Private:   false,
+			Status:    "active",
+			Connected: true,
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 }

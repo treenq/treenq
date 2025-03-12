@@ -9,6 +9,10 @@ type {{ .Name }} struct {
 {{ end }}
 
 func (c *{{ $.Client.TypeName }}) {{ .FuncName }}(ctx context.Context{{ if ne .Input.Name "" }}, req {{ .Input.Name }}{{ end }}) ({{if ne .Output.Name "" }}{{ .Output.Name }}, {{ end }}error) {
+    {{- if gt (len .Output.Fields) 0 }}
+    var res {{ .Output.Name }}
+
+    {{ end }}
     {{- if eq .Method "GET" }}
 	q := make(url.Values)
 
@@ -18,10 +22,6 @@ func (c *{{ $.Client.TypeName }}) {{ .FuncName }}(ctx context.Context{{ if ne .I
 
     r, err := http.NewRequest("GET", c.baseUrl+"/{{ .OperationID }}?" + q.Encode(), nil)
     {{- else }}
-    {{- if gt (len .Output.Fields) 0 }}
-    var res {{ .Output.Name }}
-
-    {{ end }}
     {{- if ne .Input.Name "" }}
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {

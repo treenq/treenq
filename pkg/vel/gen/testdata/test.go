@@ -219,6 +219,8 @@ type GetResp struct {
 }
 
 func (c *Client) TestGet(ctx context.Context, req GetQuery) (GetResp, error) {
+	var res GetResp
+
 	q := make(url.Values)
 	q.Set("value", req.Value)
 	q.Set("field", req.Field)

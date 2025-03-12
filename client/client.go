@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type Client struct {
@@ -65,6 +66,79 @@ func HandleErr(resp *http.Response) error {
 	return nil
 }
 
+type TokenResponse struct {
+	AccessToken string `json:"accessToken"`
+}
+
+func (c *Client) Auth(ctx context.Context) (TokenResponse, error) {
+	var res TokenResponse
+
+	q := make(url.Values)
+
+	r, err := http.NewRequest("GET", c.baseUrl+"/auth?"+q.Encode(), nil)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call auth: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode auth response: %w", err)
+	}
+
+	return res, nil
+}
+
+type CodeExchangeRequest struct {
+	State string
+	Code  string
+}
+
+func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) (TokenResponse, error) {
+	var res TokenResponse
+
+	q := make(url.Values)
+	q.Set("state", req.State)
+	q.Set("code", req.Code)
+
+	r, err := http.NewRequest("GET", c.baseUrl+"/authCallback?"+q.Encode(), nil)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call authCallback: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode authCallback response: %w", err)
+	}
+
+	return res, nil
+}
+
 type GithubWebhookRequest struct {
 	After               string                `json:"after"`
 	Installation        Installation          `json:"installation"`
@@ -76,35 +150,40 @@ type GithubWebhookRequest struct {
 	Ref                 string                `json:"ref"`
 	Repository          Repository            `json:"repository"`
 }
+
 type Installation struct {
 	ID      int                 `json:"id"`
 	Account InstallationAccount `json:"account"`
 }
+
 type InstallationAccount struct {
 	ID    int    `json:"id"`
 	Type  string `json:"type"`
 	Login string `json:"login"`
 }
+
 type Sender struct {
 	Login string `json:"login"`
 }
+
 type InstalledRepository struct {
 	ID       int    `json:"id"`
 	FullName string `json:"full_name"`
 	Private  bool   `json:"private"`
-	TreenqID string `json:"treenqID"`
-	Branch   string `json:"branch"`
-	Status   string `json:"status"`
 }
+
 type Repository struct {
-	ID       int    `json:"id"`
-	CloneUrl string `json:"clone_url"`
-	FullName string `json:"full_name"`
-	Private  bool   `json:"private"`
+	ID            int    `json:"id"`
+	CloneUrl      string `json:"clone_url"`
+	FullName      string `json:"full_name"`
+	Private       bool   `json:"private"`
+	DefaultBranch string `json:"default_branch"`
+	TreenqID      string `json:"treenqID"`
+	Status        string `json:"status"`
+	Connected     bool   `json:"connected"`
 }
 
 func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) error {
-
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
@@ -170,6 +249,7 @@ func (c *Client) Info(ctx context.Context) (InfoResponse, error) {
 type GetProfileResponse struct {
 	UserInfo UserInfo `json:"userInfo"`
 }
+
 type UserInfo struct {
 	ID          string `json:"id"`
 	Email       string `json:"email"`
@@ -208,7 +288,7 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Repos []InstalledRepository `json:"repos"`
+	Repos []Repository `json:"repos"`
 }
 
 func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
@@ -244,10 +324,10 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 
 type ConnectBranchRequest struct {
 	RepoID string
-	Branch string
 }
+
 type ConnectBranchResponse struct {
-	Repo InstalledRepository `json:"repo"`
+	Repo Repository `json:"repo"`
 }
 
 func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, error) {

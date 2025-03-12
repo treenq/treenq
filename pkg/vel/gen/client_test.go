@@ -3,7 +3,6 @@ package gen
 import (
 	"bytes"
 	_ "embed"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

@@ -9,11 +9,10 @@ import (
 
 type ConnectBranchRequest struct {
 	RepoID string
-	Branch string
 }
 
 type ConnectBranchResponse struct {
-	Repo InstalledRepository `json:"repo"`
+	Repo Repository `json:"repo"`
 }
 
 func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, *vel.Error) {
@@ -22,7 +21,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		return ConnectBranchResponse{}, rpcErr
 	}
 
-	repo, err := h.db.ConnectRepoBranch(ctx, profile.UserInfo.ID, req.RepoID, req.Branch)
+	repo, err := h.db.ConnectRepo(ctx, profile.UserInfo.ID, req.RepoID)
 	if err != nil {
 		if errors.Is(err, ErrRepoNotFound) {
 			return ConnectBranchResponse{}, &vel.Error{

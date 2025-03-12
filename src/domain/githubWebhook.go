@@ -28,32 +28,6 @@ type GithubWebhookRequest struct {
 	Repository Repository `json:"repository"`
 }
 
-func (g GithubWebhookRequest) ReposToProcess() []InstalledRepository {
-	// app install
-	if g.Action == "created" {
-		return g.Repositories
-	}
-	// repo added
-	if g.Action == "added" {
-		return g.RepositoriesAdded
-	}
-	// branch
-	if g.Action == "" {
-		if g.Ref != "refs/heads/master" && g.Ref != "refs/heads/main" {
-			return nil
-		}
-		return []InstalledRepository{
-			{
-				ID:       g.Repository.ID,
-				FullName: g.Repository.FullName,
-				Private:  g.Repository.Private,
-			},
-		}
-	}
-
-	return nil
-}
-
 type Sender struct {
 	Login string `json:"login"`
 }
@@ -70,31 +44,28 @@ type InstallationAccount struct {
 }
 
 type Repository struct {
-	ID       int    `json:"id"`
-	CloneUrl string `json:"clone_url"`
-	FullName string `json:"full_name"`
-	Private  bool   `json:"private"`
-}
-
-type InstalledRepository struct {
 	// Fields come from github api
 
-	ID       int    `json:"id"`
-	FullName string `json:"full_name"`
-	Private  bool   `json:"private"`
+	ID            int    `json:"id"`
+	CloneUrl      string `json:"clone_url"`
+	FullName      string `json:"full_name"`
+	Private       bool   `json:"private"`
+	DefaultBranch string `json:"default_branch"`
 
 	// fields managed by treenq
 
 	// TreenqID is an internal identifier
 	TreenqID string `json:"treenqID"`
-	// Branch defines a connected branch from which the deployment/app definitions is read
-	Branch string `json:"branch"`
 	// Status describes whether a repo is actively deployed or suspended
 	Status string `json:"status"`
+	// Connected describes whether the repo is used as an app
+	Connected bool `json:"connected"`
 }
 
-func (r InstalledRepository) CloneUrl() string {
-	return fmt.Sprintf("https://github.com/%s.git", r.FullName)
+type InstalledRepository struct {
+	ID       int    `json:"id"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
 }
 
 type BuildArtifactRequest struct {
@@ -123,31 +94,19 @@ func (i Image) FullPath() string {
 
 type GithubWebhookResponse struct{}
 
-type Resource struct {
-	Key     string
-	Kind    ResourceKind
-	Payload []byte
-}
-
-type ResourceKind string
-
-const (
-	ResourceKindService ResourceKind = "service"
-)
-
-type RepoConnection struct {
-	Username   string
-	Connect    []InstalledRepository
-	Disconnect []InstalledRepository
-}
-
-type AppDefinition struct {
-	ID        string
-	AppID     string
-	App       tqsdk.Space
-	Tag       string
-	Sha       string
-	User      string
+type AppDeployment struct {
+	ID string
+	// RepoID is a reference to a repository id
+	RepoID string
+	// Space is a treenq space definition
+	Space tqsdk.Space
+	// Sha is a commit sha a user requested to deploy or given from a github webhook
+	Sha string
+	// BuildTag is a docker build image or an image created using buildpacks
+	BuildTag string
+	// UserDisplayName is a user loging, comes from a user token or github hook Sender
+	UserDisplayName string
+	// CreatedAt marks the start of the deployment (might not fit the exact start of the execution)
 	CreatedAt time.Time
 }
 
@@ -185,9 +144,29 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		return GithubWebhookResponse{}, nil
 
 	}
-	for _, repo := range req.ReposToProcess() {
+
+	// new commit to the default branch
+	if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.DefaultBranch {
+		treenqRepoID, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Message: "failed to get treenq repo by github",
+				Err:     err,
+			}
+		}
+		ok, err := h.db.RepoIsConnected(ctx, treenqRepoID)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Message: "failed to get repo connection status",
+				Err:     err,
+			}
+		}
+		if !ok {
+			return GithubWebhookResponse{}, nil
+		}
+
 		token := ""
-		if repo.Private {
+		if req.Repository.Private {
 			var err error
 			// TODO: cache an issued token
 			token, err = h.githubClient.IssueAccessToken(req.Installation.ID)
@@ -199,7 +178,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		repoDir, err := h.git.Clone(repo.CloneUrl(), req.Installation.ID, repo.ID, token)
+		repoDir, err := h.git.Clone(req.Repository.CloneUrl, req.Installation.ID, req.Repository.ID, token)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to close git repo",
@@ -217,12 +196,13 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		}
 
 		dockerFilePath := filepath.Join(repoDir, appSpace.Service.DockerfilePath)
-		image, err := h.docker.Build(ctx, BuildArtifactRequest{
+		buildRequest := BuildArtifactRequest{
 			Name:       appSpace.Service.Name,
 			Path:       repoDir,
 			Dockerfile: dockerFilePath,
 			Tag:        "latest",
-		})
+		}
+		image, err := h.docker.Build(ctx, buildRequest)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to build an image",
@@ -230,11 +210,12 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		appDef, err := h.db.SaveDeployment(ctx, AppDefinition{
-			App:  appSpace,
-			Tag:  image.Tag,
-			User: req.Sender.Login,
-			Sha:  req.After,
+		_, err = h.db.SaveDeployment(ctx, AppDeployment{
+			RepoID:          treenqRepoID,
+			Space:           appSpace,
+			Sha:             req.After,
+			BuildTag:        buildRequest.Tag,
+			UserDisplayName: req.Sender.Login,
 		})
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
@@ -243,7 +224,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		appKubeDef := h.kube.DefineApp(ctx, appDef.ID, appSpace, image)
+		appKubeDef := h.kube.DefineApp(ctx, treenqRepoID, appSpace, image)
 		if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to apply kube definition",

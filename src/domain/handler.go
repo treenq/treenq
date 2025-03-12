@@ -62,16 +62,18 @@ type Database interface {
 
 	// Deployment domain
 	// ////////////////
-	SaveDeployment(ctx context.Context, def AppDefinition) (AppDefinition, error)
-	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDefinition, error)
+	SaveDeployment(ctx context.Context, def AppDeployment) (AppDeployment, error)
+	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDeployment, error)
 
 	// Github repos domain
 	// //////////////////////
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
-	GetGithubRepos(ctx context.Context, email string) ([]InstalledRepository, error)
-	ConnectRepoBranch(ctx context.Context, userID, repoID, branch string) (InstalledRepository, error)
+	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
+	ConnectRepo(ctx context.Context, userID, repoID string) (Repository, error)
+	GetRepoByGithub(ctx context.Context, githubRepoID int) (string, error)
+	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 }
 
 type GithubCleint interface {

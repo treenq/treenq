@@ -9,7 +9,7 @@ import (
 type GetReposRequest struct{}
 
 type GetReposResponse struct {
-	Repos []InstalledRepository `json:"repos"`
+	Repos []Repository `json:"repos"`
 }
 
 func (h *Handler) GetRepos(ctx context.Context, req GetReposRequest) (GetReposResponse, *vel.Error) {

@@ -7,15 +7,15 @@ import (
 )
 
 type GetDeploymentHistoryRequest struct {
-	AppID string
+	RepoID string
 }
 
 type GetDeploymentHistoryResponse struct {
-	History []AppDefinition
+	History []AppDeployment
 }
 
 func (h *Handler) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, *vel.Error) {
-	history, err := h.db.GetDeploymentHistory(ctx, req.AppID)
+	history, err := h.db.GetDeploymentHistory(ctx, req.RepoID)
 	if err != nil {
 		return GetDeploymentHistoryResponse{}, &vel.Error{
 			Message: "failed get deployment history",

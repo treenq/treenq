@@ -100,7 +100,6 @@ func New(conf Config) (http.Handler, error) {
 	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
 }
 
-
 func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middlewares ...vel.Middleware) *vel.Router {
 	router := vel.NewRouter()
 	for i := range middlewares {
@@ -116,9 +115,10 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	}, handlers.GithubAuthHandler)
 	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
 
+	// vcs webhooks 
 	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
-	// regular authentication handlers
+	// treenq api
 	vel.RegisterPost(router, "info", handlers.Info, auth)
 	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
 	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)

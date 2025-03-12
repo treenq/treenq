@@ -7,8 +7,6 @@ import (
 )
 
 type DeployRequest struct {
-	Repo   string
-	Branch string
 	AppID  string
 }
 

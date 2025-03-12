@@ -32,6 +32,11 @@ func NewStore(db *sqlx.DB) (*Store, error) {
 	return &Store{db: db, sq: sq}, nil
 }
 
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 var now = func() time.Time {
 	return time.Now().UTC().Round(time.Millisecond)
 }
@@ -72,17 +77,17 @@ func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.Us
 	return user, nil
 }
 
-func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) (domain.AppDefinition, error) {
-	id := uuid.NewString()
-	def.ID = id
-	appPayload, err := json.Marshal(def.App)
+func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (domain.AppDeployment, error) {
+	def.ID = uuid.NewString()
+	def.CreatedAt = now()
+	appPayload, err := json.Marshal(def.Space)
 	if err != nil {
 		return def, fmt.Errorf("failed to marshal app definition to json: %w", err)
 	}
 
 	query, args, err := s.sq.Insert("deployments").
-		Columns("id", "appId", "app", "tag", "sha", "user", "createdAt").
-		Values(id, def.AppID, string(appPayload), def.Tag, def.Sha, def.User, now()).
+		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
+		Values(def.ID, string(appPayload), def.Sha, def.UserDisplayName, def.CreatedAt).
 		ToSql()
 	if err != nil {
 		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
@@ -95,15 +100,15 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDefinition) (d
 	return def, nil
 }
 
-func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domain.AppDefinition, error) {
-	query, args, err := s.sq.Select("id", "appId", "app", "tag", "sha", "user", "createdAt").
+func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
+	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
 		From("deployments").
-		Where(sq.Eq{"appId": appID}).
+		Where(sq.Eq{"id": repoID}).
 		OrderBy("createdAt DESC").
 		Limit(20).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build SaveDeployment query: %w", err)
+		return nil, fmt.Errorf("failed to build GetDeploymentHistory query: %w", err)
 	}
 
 	rows, err := s.db.QueryContext(ctx, query, args)
@@ -112,32 +117,27 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, appID string) ([]domai
 	}
 	defer rows.Close()
 
-	var defs []domain.AppDefinition
+	var deps []domain.AppDeployment
 	for rows.Next() {
-		var def domain.AppDefinition
-		var appPayload string
-		if err := rows.Scan(&def.ID, &def.AppID, &appPayload, &def.Tag, &def.Sha, &def.User, &def.CreatedAt); err != nil {
+		var dep domain.AppDeployment
+		var spacePayload string
+		if err := rows.Scan(&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan GetDeploymentHistory row: %w", err)
 		}
 
 		var a tqsdk.Space
-		if err := json.Unmarshal([]byte(appPayload), &appPayload); err != nil {
+		if err := json.Unmarshal([]byte(spacePayload), &spacePayload); err != nil {
 			return nil, fmt.Errorf("failed to decode app payload in GetDeploymentHistory: %w", err)
 		}
-		def.App = a
-		defs = append(defs, def)
+		dep.Space = a
+		deps = append(deps, dep)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("an error occured in iterating GetDeploymentHistory rows: %w", err)
 	}
 
-	return defs, nil
-}
-
-type Querier interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	return deps, nil
 }
 
 func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
@@ -190,7 +190,7 @@ func (s *Store) insertInstalledRepos(
 	}
 
 	repoQuery := s.sq.Insert("installedRepos").
-		Columns("id", "githubId", "fullName", "private", "installationId", "userId", "status", "branch", "createdAt")
+		Columns("id", "githubId", "fullName", "private", "installationId", "userId", "status", "connected", "createdAt")
 
 	for _, repo := range repos {
 		id := uuid.NewString()
@@ -202,7 +202,7 @@ func (s *Store) insertInstalledRepos(
 			installationID,
 			userID,
 			StatusRepoActive,
-			"",
+			false,
 			createdAt,
 		)
 	}
@@ -260,8 +260,8 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 	return nil
 }
 
-func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.InstalledRepository, error) {
-	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.branch", "r.status").
+func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Repository, error) {
+	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.status", "r.connected").
 		From("installedRepos r").
 		Where(sq.Eq{"r.userId": userID}).
 		OrderBy("r.createdAt ASC").
@@ -276,10 +276,10 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Ins
 	}
 	defer rows.Close()
 
-	var repos []domain.InstalledRepository
+	var repos []domain.Repository
 	for rows.Next() {
-		var repo domain.InstalledRepository
-		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Branch, &repo.Status); err != nil {
+		var repo domain.Repository
+		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Connected); err != nil {
 			return nil, fmt.Errorf("failed to scan GetGithubRepos row: %w", err)
 		}
 		repos = append(repos, repo)
@@ -292,25 +292,61 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Ins
 	return repos, nil
 }
 
-func (s *Store) ConnectRepoBranch(ctx context.Context, userID, repoID, branch string) (domain.InstalledRepository, error) {
+func (s *Store) ConnectRepo(ctx context.Context, userID, repoID string) (domain.Repository, error) {
 	query, args, err := s.sq.Update("installedRepos").
-		Set("branch", branch).
+		Set("connected", true).
 		Where(sq.Eq{"id": repoID, "userId": userID}).
-		Suffix("RETURNING id, githubId, fullName, private, branch, status").
+		Suffix("RETURNING id, githubId, fullName, private,  status, connected").
 		ToSql()
 	if err != nil {
-		return domain.InstalledRepository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
+		return domain.Repository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
 	}
 
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err != nil {
-		return domain.InstalledRepository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
+		return domain.Repository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
 	}
-	var repo domain.InstalledRepository
-	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Branch, &repo.Status); err != nil {
+	var repo domain.Repository
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Connected); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return repo, domain.ErrRepoNotFound
 		}
 	}
 	return repo, nil
+}
+
+func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error) {
+	query, args, err := s.sq.Select("connected").
+		From("installedRepos").
+		Where(sq.Eq{"id": repoID}).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to build RepoIsConnected query: %w", err)
+	}
+
+	row := s.db.QueryRowContext(ctx, query, args...)
+	var connected bool
+	if err := row.Scan(&connected); err != nil {
+		return connected, fmt.Errorf("failed to scan RepoIsConnected value: %w", err)
+	}
+
+	return connected, nil
+}
+
+func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (string, error) {
+	query, args, err := s.sq.Select("id").
+		From("installedRepos").
+		Where(sq.Eq{"githubId": githubRepoID}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build GetRepoByGithub query: %w", err)
+	}
+
+	row := s.db.QueryRowContext(ctx, query, args...)
+	var id string
+	if err := row.Scan(&id); err != nil {
+		return id, fmt.Errorf("failed to scan GetRepoByGithub value: %w", err)
+	}
+
+	return id, nil
 }

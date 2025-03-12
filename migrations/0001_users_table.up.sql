@@ -18,18 +18,19 @@ CREATE TABLE IF NOT EXISTS installedRepos (
     installationId integer NOT NULL,
     userId uuid REFERENCES users(id) NOT NULL,
     status varchar(25) NOT NULL,
-    branch varchar(255) NOT NULL,
+    connected boolean NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS deployments (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
-    appId uuid NOT NULL,
-    app jsonb NOT NULL,
-    tag varchar(255) NOT NULL,
-    sha varchar(255) NOT NULL,
-    "user" uuid NOT NULL,
+    repoId integer NOT NULL,
+
+    space jsonb NOT NULL,
+    sha char(64) NOT NULL,
+    buildTag varchar(80),
+    userDisplayName varchar(255) NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
