@@ -1,0 +1,9 @@
+:root {
+  --sl-color-text-accent: #12a594;
+  --sl-color-accent-high: #0d1514;
+}
+
+/* button */
+.sl-link-button {
+  border-radius: 0;
+}
