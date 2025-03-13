@@ -25,26 +25,28 @@ func TestClone(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	reposDir := filepath.Join(wd, "repos")
-	gitUtil := NewGit(reposDir)
+	git := NewGit(reposDir)
 
 	repoURL := "file://" + mockRepoPath
 
-	cloneDir, err := gitUtil.Clone(repoURL, 1, 1, "dummy-access-token")
+	firstGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
 	require.NoError(t, err)
-	defer os.RemoveAll(cloneDir)
+	defer os.RemoveAll(firstGitRepo.Dir)
+	assert.Equal(t, len(firstGitRepo.Sha), 40)
 
-	clonedReadmePath := filepath.Join(cloneDir, "README.md")
+	clonedReadmePath := filepath.Join(firstGitRepo.Dir, "README.md")
 	_, err = os.Stat(clonedReadmePath)
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	secondCloneDir, err := gitUtil.Clone(repoURL, 1, 1, "dummy-access-token")
+	secondGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
 	require.NoError(t, err)
-	defer os.RemoveAll(secondCloneDir) // Clean up
+	defer os.RemoveAll(secondGitRepo.Dir) // Clean up
 
-	clonedNewFilePath := filepath.Join(secondCloneDir, "NEW_FILE.md")
+	clonedNewFilePath := filepath.Join(secondGitRepo.Dir, "NEW_FILE.md")
 	_, err = os.Stat(clonedNewFilePath)
 	assert.NoError(t, err)
+	assert.Equal(t, len(secondGitRepo.Sha), 40)
 }
 
 func newRepo(t *testing.T, path string) *git.Worktree {

@@ -72,7 +72,8 @@ type Database interface {
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
 	ConnectRepo(ctx context.Context, userID, repoID string) (Repository, error)
-	GetRepoByGithub(ctx context.Context, githubRepoID int) (string, error)
+	GetRepoByGithub(ctx context.Context, githubRepoID int) (Repository, error)
+	GetRepoByID(ctx context.Context, userID, repoID string) (Repository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 }
 
@@ -81,7 +82,7 @@ type GithubCleint interface {
 }
 
 type Git interface {
-	Clone(url string, installationID, repoID int, accesstoken string) (string, error)
+	Clone(url string, installationID int, repoID string, accesstoken string) (GitRepo, error)
 }
 
 type Extractor interface {

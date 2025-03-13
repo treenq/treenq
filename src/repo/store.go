@@ -16,11 +16,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 )
 
-const (
-	StatusRepoActive    = "active"
-	StatusRepoSuspended = "suspended"
-)
-
 type Store struct {
 	db *sqlx.DB
 	sq sq.StatementBuilderType
@@ -201,7 +196,7 @@ func (s *Store) insertInstalledRepos(
 			repo.Private,
 			installationID,
 			userID,
-			StatusRepoActive,
+			domain.StatusRepoActive,
 			false,
 			createdAt,
 		)
@@ -333,20 +328,40 @@ func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error
 	return connected, nil
 }
 
-func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (string, error) {
-	query, args, err := s.sq.Select("id").
+func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.Repository, error) {
+	var repo domain.Repository
+	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "installationId", "status", "connected").
 		From("installedRepos").
 		Where(sq.Eq{"githubId": githubRepoID}).
 		ToSql()
 	if err != nil {
-		return "", fmt.Errorf("failed to build GetRepoByGithub query: %w", err)
+		return repo, fmt.Errorf("failed to build GetRepoByGithub query: %w", err)
 	}
 
 	row := s.db.QueryRowContext(ctx, query, args...)
-	var id string
-	if err := row.Scan(&id); err != nil {
-		return id, fmt.Errorf("failed to scan GetRepoByGithub value: %w", err)
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
+		&repo.Private, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
+		return domain.Repository{}, fmt.Errorf("failed to scan GetRepoByGithub value: %w", err)
 	}
 
-	return id, nil
+	return repo, nil
+}
+
+func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (domain.Repository, error) {
+	var repo domain.Repository
+	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "installationId", "status", "connected").
+		From("installedRepos").
+		Where(sq.Eq{"id": repoID, "userId": userID}).
+		ToSql()
+	if err != nil {
+		return repo, fmt.Errorf("failed to build GetRepoByID query: %w", err)
+	}
+
+	row := s.db.QueryRowContext(ctx, query, args...)
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
+		&repo.Private, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
+		return domain.Repository{}, fmt.Errorf("failed to scan GetRepoByID value: %w", err)
+	}
+
+	return repo, nil
 }

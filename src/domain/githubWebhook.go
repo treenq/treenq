@@ -54,6 +54,8 @@ type Repository struct {
 
 	// fields managed by treenq
 
+	// InstallationID defiens a github app Installation id
+	InstallationID int `json:"installationID"`
 	// TreenqID is an internal identifier
 	TreenqID string `json:"treenqID"`
 	// Status describes whether a repo is actively deployed or suspended
@@ -61,6 +63,11 @@ type Repository struct {
 	// Connected describes whether the repo is used as an app
 	Connected bool `json:"connected"`
 }
+
+const (
+	StatusRepoActive    = "active"
+	StatusRepoSuspended = "suspended"
+)
 
 type InstalledRepository struct {
 	ID       int    `json:"id"`
@@ -93,6 +100,11 @@ func (i Image) FullPath() string {
 }
 
 type GithubWebhookResponse struct{}
+
+type GitRepo struct {
+	Dir string
+	Sha string
+}
 
 type AppDeployment struct {
 	ID string
@@ -147,92 +159,107 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 
 	// new commit to the default branch
 	if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.DefaultBranch {
-		treenqRepoID, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
+		repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to get treenq repo by github",
 				Err:     err,
 			}
 		}
-		ok, err := h.db.RepoIsConnected(ctx, treenqRepoID)
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to get repo connection status",
-				Err:     err,
-			}
-		}
-		if !ok {
-			return GithubWebhookResponse{}, nil
-		}
+		req.Repository.InstallationID = req.Installation.ID
+		req.Repository.TreenqID = repo.TreenqID
+		req.Repository.Status = repo.Status
+		req.Repository.Connected = repo.Connected
 
-		token := ""
-		if req.Repository.Private {
-			var err error
-			// TODO: cache an issued token
-			token, err = h.githubClient.IssueAccessToken(req.Installation.ID)
-			if err != nil {
-				return GithubWebhookResponse{}, &vel.Error{
-					Message: "failed to issue github access token",
-					Err:     err,
-				}
-			}
-		}
+		// TODO: update repo it changes
+		// if repo.HasDiff(req.Repository) {
+		// 	h.db.UpdateRepository(ctx, req.Repository)
+		// }
 
-		repoDir, err := h.git.Clone(req.Repository.CloneUrl, req.Installation.ID, req.Repository.ID, token)
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to close git repo",
-				Err:     err,
-			}
-		}
-		defer os.RemoveAll(repoDir)
-
-		appSpace, err := h.extractor.ExtractConfig(repoDir)
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to extract config",
-				Err:     err,
-			}
-		}
-
-		dockerFilePath := filepath.Join(repoDir, appSpace.Service.DockerfilePath)
-		buildRequest := BuildArtifactRequest{
-			Name:       appSpace.Service.Name,
-			Path:       repoDir,
-			Dockerfile: dockerFilePath,
-			Tag:        "latest",
-		}
-		image, err := h.docker.Build(ctx, buildRequest)
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to build an image",
-				Err:     err,
-			}
-		}
-
-		_, err = h.db.SaveDeployment(ctx, AppDeployment{
-			RepoID:          treenqRepoID,
-			Space:           appSpace,
-			Sha:             req.After,
-			BuildTag:        buildRequest.Tag,
-			UserDisplayName: req.Sender.Login,
-		})
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to save deployment",
-				Err:     err,
-			}
-		}
-
-		appKubeDef := h.kube.DefineApp(ctx, treenqRepoID, appSpace, image)
-		if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to apply kube definition",
-				Err:     err,
-			}
-		}
-
+		return GithubWebhookResponse{}, h.deployRepo(
+			ctx,
+			req.Sender.Login,
+			req.Repository,
+		)
 	}
 
 	return GithubWebhookResponse{}, nil
+}
+
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) *vel.Error {
+	if !repo.Connected {
+		return nil
+	}
+	if repo.Status != StatusRepoActive {
+		// not expected case, suspended repos won't send any events,
+		// but in case we introduce a new status it must handle it
+		return nil
+	}
+
+	token := ""
+	if repo.Private {
+		var err error
+		token, err = h.githubClient.IssueAccessToken(repo.InstallationID)
+		if err != nil {
+			return &vel.Error{
+				Message: "failed to issue github access token",
+				Err:     err,
+			}
+		}
+	}
+
+	gitRepo, err := h.git.Clone(repo.CloneUrl, repo.InstallationID, repo.TreenqID, token)
+	if err != nil {
+		return &vel.Error{
+			Message: "failed to close git repo",
+			Err:     err,
+		}
+	}
+	defer os.RemoveAll(gitRepo.Dir)
+
+	appSpace, err := h.extractor.ExtractConfig(gitRepo.Dir)
+	if err != nil {
+		return &vel.Error{
+			Message: "failed to extract config",
+			Err:     err,
+		}
+	}
+
+	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
+	buildRequest := BuildArtifactRequest{
+		Name:       appSpace.Service.Name,
+		Path:       gitRepo.Dir,
+		Dockerfile: dockerFilePath,
+		Tag:        "latest",
+	}
+	image, err := h.docker.Build(ctx, buildRequest)
+	if err != nil {
+		return &vel.Error{
+			Message: "failed to build an image",
+			Err:     err,
+		}
+	}
+
+	_, err = h.db.SaveDeployment(ctx, AppDeployment{
+		RepoID:          repo.TreenqID,
+		Space:           appSpace,
+		Sha:             gitRepo.Sha,
+		BuildTag:        buildRequest.Tag,
+		UserDisplayName: userDisplayName,
+	})
+	if err != nil {
+		return &vel.Error{
+			Message: "failed to save deployment",
+			Err:     err,
+		}
+	}
+
+	appKubeDef := h.kube.DefineApp(ctx, repo.TreenqID, appSpace, image)
+	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
+		return &vel.Error{
+			Message: "failed to apply kube definition",
+			Err:     err,
+		}
+	}
+	return nil
 }
