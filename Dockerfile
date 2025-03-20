@@ -20,9 +20,9 @@ RUN mkdir -p /etc/containers/ && touch /etc/containers/registries.conf && echo '
 COPY policy.json /etc/containers/policy.json
 COPY storage.conf /etc/containers/storage.conf 
 
-# Disable CGO to ensure fully static binaries
-ENV CGO_ENABLED=0 
-ENV GOOS=linux
+# # Disable CGO to ensure fully static binaries
+# ENV CGO_ENABLED=0 
+# ENV GOOS=linux
 
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -33,7 +33,7 @@ COPY . .
 FROM builder AS dev
 
 # Install Delve (debugger)
-RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go install github.com/go-delve/delve/cmd/dlv@v1.23.0
+RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go install github.com/go-delve/delve/cmd/dlv@v1.24.1
 
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -gcflags=all="-N -l" -o server ./cmd/server
 
