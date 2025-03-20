@@ -11,12 +11,19 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 		router.Use(middlewares[i])
 	}
 
-	vel.RegisterHandlerFunc(router, "GET /auth", handlers.GithubAuthHandler)
+	// auth is an endpoint contain redirect, therefore it must be GET
+	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
+		Input:       struct{}{},
+		Output:      domain.TokenResponse{},
+		Method:      "GET",
+		OperationID: "auth",
+	}, handlers.GithubAuthHandler)
 	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
 
+	// vcs webhooks
 	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
-	// regular authentication handlers
+	// treenq api
 	vel.RegisterPost(router, "info", handlers.Info, auth)
 	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
 	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)

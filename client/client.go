@@ -173,14 +173,15 @@ type InstalledRepository struct {
 }
 
 type Repository struct {
-	ID            int    `json:"id"`
-	CloneUrl      string `json:"clone_url"`
-	FullName      string `json:"full_name"`
-	Private       bool   `json:"private"`
-	DefaultBranch string `json:"default_branch"`
-	TreenqID      string `json:"treenqID"`
-	Status        string `json:"status"`
-	Connected     bool   `json:"connected"`
+	ID             int    `json:"id"`
+	CloneUrl       string `json:"clone_url"`
+	FullName       string `json:"full_name"`
+	Private        bool   `json:"private"`
+	DefaultBranch  string `json:"default_branch"`
+	InstallationID int    `json:"installationID"`
+	TreenqID       string `json:"treenqID"`
+	Status         string `json:"status"`
+	Connected      bool   `json:"connected"`
 }
 
 func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) error {
