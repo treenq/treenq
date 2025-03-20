@@ -7,12 +7,11 @@ import (
 
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/gen"
-	"github.com/treenq/treenq/src/api"
-	"github.com/treenq/treenq/src/domain"
+	"github.com/treenq/treenq/src/router"
 )
 
 func main() {
-	router := api.NewRouter(&domain.Handler{}, vel.NoopMiddleware, vel.NoopMiddleware)
+	router := router.NewRouter(nil, vel.NoopMiddleware, vel.NoopMiddleware)
 	gener, err := gen.New(gen.ClientDesc{
 		TypeName:    "Client",
 		PackageName: "client",

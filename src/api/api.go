@@ -21,6 +21,7 @@ import (
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
 	"github.com/treenq/treenq/src/repo/extract"
+	"github.com/treenq/treenq/src/router"
 
 	authService "github.com/treenq/treenq/src/services/auth"
 	"github.com/treenq/treenq/src/services/cdk"
@@ -72,7 +73,10 @@ func New(conf Config) (http.Handler, error) {
 	githubClient := repo.NewGithubClient(githubJwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
-	docker := artifacts.NewDockerArtifactory(conf.DockerRegistry)
+	docker, err := artifacts.NewDockerArtifactory(conf.DockerRegistry)
+	if err != nil {
+		return nil, err
+	}
 	extractor := extract.NewExtractor()
 
 	authMiddleware := auth.NewJwtMiddleware(authJwtIssuer, l)
@@ -97,32 +101,5 @@ func New(conf Config) (http.Handler, error) {
 		conf.GithubWebhookURL,
 		l,
 	)
-	return NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
-}
-
-func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middlewares ...vel.Middleware) *vel.Router {
-	router := vel.NewRouter()
-	for i := range middlewares {
-		router.Use(middlewares[i])
-	}
-
-	// auth is an endpoint contain redirect, therefore it must be GET
-	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
-		Input:       struct{}{},
-		Output:      domain.TokenResponse{},
-		Method:      "GET",
-		OperationID: "auth",
-	}, handlers.GithubAuthHandler)
-	vel.RegisterGet(router, "authCallback", handlers.GithubCallbackHandler)
-
-	// vcs webhooks 
-	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
-
-	// treenq api
-	vel.RegisterPost(router, "info", handlers.Info, auth)
-	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
-	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)
-	vel.RegisterPost(router, "connectRepoBranch", handlers.ConnectBranch, auth)
-
-	return router
+	return router.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
 }

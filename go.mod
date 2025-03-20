@@ -10,6 +10,7 @@ require (
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.69.5
 	github.com/cdk8s-team/cdk8s-plus-go/cdk8splus31/v2 v2.0.1
 	github.com/containers/buildah v1.39.2
+	github.com/containers/image/v5 v5.34.1
 	github.com/containers/storage v1.57.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -51,7 +52,6 @@ require (
 	github.com/containernetworking/cni v1.2.3 // indirect
 	github.com/containernetworking/plugins v1.5.1 // indirect
 	github.com/containers/common v0.62.1 // indirect
-	github.com/containers/image/v5 v5.34.1 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/luksy v0.0.0-20250106202729-a3a812db5b72 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect

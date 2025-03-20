@@ -58,6 +58,11 @@ Treenq isn’t meant to replace IDPs but to offer **fast, streamlined app delive
 ⭐ **Enjoying Treenq?**
 Support the project by giving it a star on GitHub! Your support helps us grow!
 
+### How to contribute
+
+📢 **Want to contribute?**
+We welcome all contributions! Before submitting code, please open an issue to discuss your changes.
+
 ### How to run
 
 - Install [Go](https://go.dev/doc/install)
@@ -66,7 +71,16 @@ Support the project by giving it a star on GitHub! Your support helps us grow!
 - Run the dev environment: `docker compose up`
 - Run `go run cmd/server/main.go`
 
-### How to contribute
+#### Run e2e tests
 
-📢 **Want to contribute?**
-We welcome all contributions! Before submitting code, please open an issue to discuss your changes.
+Running a dev container locally for e2e tests require additional security options.
+This tip will also help to run the service inside a container.
+
+###### Option 1: podman
+
+`podman run --device /dev/fuse:rw localhost/treenq`
+
+###### Option 2: docker/colima
+
+Docker is able running only a privileged container:
+`docker run --privileged  -it treenq`
