@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/treenq/treenq/client"
 	"github.com/treenq/treenq/pkg/vel/auth"
-	"github.com/treenq/treenq/src/api"
+	"github.com/treenq/treenq/src/resources"
 )
 
 var (
@@ -90,7 +90,7 @@ QcUxsLirFRIbYzTUu3Czn6vFCJhnHQC364//Y5mCcon3dbcs5ooB32v+Mlt2guBa
 
 func openDB() {
 	var err error
-	db, err = api.OpenDB("postgres://postgres@localhost:5432/tq?sslmode=disable", "../migrations")
+	db, err = resources.OpenDB("postgres://postgres@localhost:5432/tq?sslmode=disable", "../migrations")
 	if err != nil {
 		panic(err)
 	}
