@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/treenq/treenq/src/domain"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
@@ -19,14 +20,12 @@ func NewExtractor() *Extractor {
 	return &Extractor{}
 }
 
-var ErrNoConfigFileFound = errors.New("no config file found")
-
 func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 	configFile := filepath.Join(repoDir, tqRelativePath)
 
 	data, err := os.ReadFile(configFile)
 	if os.IsNotExist(err) {
-		return tqsdk.Space{}, ErrNoConfigFileFound
+		return tqsdk.Space{}, domain.ErrNoConfigFileFound
 	}
 	if err != nil {
 		return tqsdk.Space{}, fmt.Errorf("failed to read config file: %w", err)

@@ -70,21 +70,21 @@
       "id": 805584367,
       "node_id": "R_kgDOMAQ97w",
       "name": "treenq-sdk-go",
-      "full_name": "treenq/treenq-sdk-go",
+      "full_name": "treenq/useless-sdk-go",
       "private": false
     },
     {
       "id": 805584540,
       "node_id": "R_kgDOMAQ-nA",
       "name": "treenq-cli",
-      "full_name": "treenq/treenq-cli",
+      "full_name": "treenq/useless-cli",
       "private": false
     },
     {
       "id": 805585115,
       "node_id": "R_kgDOMARA2w",
       "name": "treenq",
-      "full_name": "treenq/treenq",
+      "full_name": "treenq/useless",
       "private": false
     },
     {

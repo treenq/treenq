@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/pkg/vel"
 )
+
+var ErrNoConfigFileFound = errors.New("no config file found")
 
 type GithubWebhookRequest struct {
 	// After holds a latest commit SHA
@@ -46,8 +49,11 @@ type InstallationAccount struct {
 type Repository struct {
 	// Fields come from github api
 
-	ID            int    `json:"id"`
-	CloneUrl      string `json:"clone_url"`
+	ID int `json:"id"`
+	// CloneUrl field exists, but it's missing in InstalledRepository,
+	// as a result we can't save it in a database on installing a github app,
+	// so currently for github repos we rely on building url from FullName
+	// CloneUrl      string `json:"clone_url"`
 	FullName      string `json:"full_name"`
 	Private       bool   `json:"private"`
 	DefaultBranch string `json:"default_branch"`
@@ -62,6 +68,10 @@ type Repository struct {
 	Status string `json:"status"`
 	// Connected describes whether the repo is used as an app
 	Connected bool `json:"connected"`
+}
+
+func (r Repository) CloneUrl() string {
+	return fmt.Sprintf("https://github.com/%s.git", r.FullName)
 }
 
 const (
@@ -208,10 +218,10 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 		}
 	}
 
-	gitRepo, err := h.git.Clone(repo.CloneUrl, repo.InstallationID, repo.TreenqID, token)
+	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token)
 	if err != nil {
 		return &vel.Error{
-			Message: "failed to close git repo",
+			Message: "failed to clone git repo",
 			Err:     err,
 		}
 	}
@@ -219,6 +229,12 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 
 	appSpace, err := h.extractor.ExtractConfig(gitRepo.Dir)
 	if err != nil {
+		if errors.Is(err, ErrNoConfigFileFound) {
+			return &vel.Error{
+				Message: "failed to extract config",
+				Code:    "NO_TQ_CONFIG_FOUND",
+			}
+		}
 		return &vel.Error{
 			Message: "failed to extract config",
 			Err:     err,

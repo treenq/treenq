@@ -4,10 +4,17 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/containers/buildah"
+    "github.com/containers/storage/pkg/unshare"
 	"github.com/treenq/treenq/src/api"
 )
 
 func main() {
+	if buildah.InitReexec() {
+		return
+	}
+	unshare.MaybeReexecUsingUserNamespace(false)
+
 	conf, err := api.NewConfig()
 	if err != nil {
 		log.Fatalln("failed to load config:", err)

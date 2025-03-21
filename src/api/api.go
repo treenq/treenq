@@ -6,6 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
+	//TODO: check if we can remove those imports 
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jackc/pgx/stdlib"
+	_ "github.com/lib/pq"
 	"github.com/treenq/treenq/pkg/crypto"
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/auth"

@@ -56,7 +56,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
-			FullName: "treenq/treenq",
+			FullName: "treenq/useless",
 			Private:  false,
 			Status:   "active",
 		},
@@ -75,14 +75,14 @@ func TestGithubAppInstallation(t *testing.T) {
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
-			FullName: "treenq/treenq",
+			FullName: "treenq/useless",
 			Private:  false,
 			Status:   "active",
 		},
 		{
 			TreenqID: reposResponse.Repos[1].TreenqID,
 			ID:       805584540,
-			FullName: "treenq/treenq-cli",
+			FullName: "treenq/useless-cli",
 			Private:  false,
 			Status:   "active",
 		},
@@ -101,7 +101,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
-			FullName: "treenq/treenq",
+			FullName: "treenq/useless",
 			Private:  false,
 			Status:   "active",
 		},
@@ -124,7 +124,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		Repo: client.Repository{
 			TreenqID:  reposResponse.Repos[0].TreenqID,
 			ID:        805585115,
-			FullName:  "treenq/treenq",
+			FullName:  "treenq/useless",
 			Private:   false,
 			Status:    "active",
 			Connected: true,
@@ -137,7 +137,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		{
 			TreenqID:  reposResponse.Repos[0].TreenqID,
 			ID:        805585115,
-			FullName:  "treenq/treenq",
+			FullName:  "treenq/useless",
 			Private:   false,
 			Status:    "active",
 			Connected: true,
