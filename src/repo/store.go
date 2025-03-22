@@ -185,7 +185,7 @@ func (s *Store) insertInstalledRepos(
 	}
 
 	repoQuery := s.sq.Insert("installedRepos").
-		Columns("id", "githubId", "fullName", "private", "installationId", "userId", "status", "connected", "createdAt")
+		Columns("id", "githubId", "fullName", "private", "installationId", "userId", "status", "connected", "createdAt", "defaultBranch")
 
 	for _, repo := range repos {
 		id := uuid.NewString()
@@ -199,6 +199,7 @@ func (s *Store) insertInstalledRepos(
 			domain.StatusRepoActive,
 			false,
 			createdAt,
+			repo.DefaultBranch,
 		)
 	}
 
@@ -256,7 +257,7 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 }
 
 func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Repository, error) {
-	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.status", "r.connected").
+	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.status", "r.connected", "r.DefaultBranch").
 		From("installedRepos r").
 		Where(sq.Eq{"r.userId": userID}).
 		OrderBy("r.createdAt ASC").
@@ -274,7 +275,7 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Rep
 	var repos []domain.Repository
 	for rows.Next() {
 		var repo domain.Repository
-		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Connected); err != nil {
+		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Connected, &repo.DefaultBranch); err != nil {
 			return nil, fmt.Errorf("failed to scan GetGithubRepos row: %w", err)
 		}
 		repos = append(repos, repo)
@@ -291,7 +292,7 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID string) (domain.
 	query, args, err := s.sq.Update("installedRepos").
 		Set("connected", true).
 		Where(sq.Eq{"id": repoID, "userId": userID}).
-		Suffix("RETURNING id, githubId, fullName, private,  status, connected").
+		Suffix("RETURNING id, githubId, fullName, private, defaultBranch,  status, connected").
 		ToSql()
 	if err != nil {
 		return domain.Repository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
@@ -302,7 +303,36 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID string) (domain.
 		return domain.Repository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
 	}
 	var repo domain.Repository
-	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Connected); err != nil {
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.DefaultBranch, &repo.Status, &repo.Connected); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repo, domain.ErrRepoNotFound
+		}
+	}
+	return repo, nil
+}
+
+func (s *Store) UpdateRepoDefaultBranch(ctx context.Context, senderLogin, newDefaultBranch string, repoID int) (domain.Repository, error) {
+
+	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
+	if err != nil {
+		return domain.Repository{}, err
+	}
+
+	query, args, err := s.sq.Update("installedRepos").
+		Set("defaultBranch", newDefaultBranch).
+		Where(sq.Eq{"githubid": repoID, "userId": userID}).
+		Suffix("RETURNING id, githubId, fullName, private, defaultBranch,  status, connected").
+		ToSql()
+	if err != nil {
+		return domain.Repository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
+	}
+
+	row := s.db.QueryRowContext(ctx, query, args...)
+	if err != nil {
+		return domain.Repository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
+	}
+	var repo domain.Repository
+	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.DefaultBranch, &repo.Status, &repo.Connected); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return repo, domain.ErrRepoNotFound
 		}
@@ -330,7 +360,7 @@ func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error
 
 func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.Repository, error) {
 	var repo domain.Repository
-	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "installationId", "status", "connected").
+	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "defaultBranch", "installationId", "status", "connected").
 		From("installedRepos").
 		Where(sq.Eq{"githubId": githubRepoID}).
 		ToSql()
@@ -340,7 +370,7 @@ func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.R
 
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
-		&repo.Private, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
+		&repo.Private, &repo.DefaultBranch, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
 		return domain.Repository{}, fmt.Errorf("failed to scan GetRepoByGithub value: %w", err)
 	}
 
@@ -349,7 +379,7 @@ func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.R
 
 func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (domain.Repository, error) {
 	var repo domain.Repository
-	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "installationId", "status", "connected").
+	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "defaultBranch", "installationId", "status", "connected").
 		From("installedRepos").
 		Where(sq.Eq{"id": repoID, "userId": userID}).
 		ToSql()
@@ -359,7 +389,7 @@ func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (
 
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
-		&repo.Private, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
+		&repo.Private, &repo.DefaultBranch, &repo.InstallationID, &repo.Status, &repo.Connected); err != nil {
 		return domain.Repository{}, fmt.Errorf("failed to scan GetRepoByID value: %w", err)
 	}
 
