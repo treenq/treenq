@@ -164,7 +164,6 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 		return GithubWebhookResponse{}, nil
-
 	}
 
 	// new commit to the default branch
@@ -176,15 +175,21 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 				Err:     err,
 			}
 		}
+
+		if repo.Private != req.Repository.Private || repo.DefaultBranch != req.Repository.DefaultBranch {
+			repo, err = h.db.UpdateRepoPrivateFlagAndDefaultBranch(ctx, req.Repository.DefaultBranch, req.Repository.Private, req.Repository.ID)
+			if err != nil {
+				return GithubWebhookResponse{}, &vel.Error{
+					Message: "failed to update treenq repo by github",
+					Err:     err,
+				}
+			}
+		}
+
 		req.Repository.InstallationID = req.Installation.ID
 		req.Repository.TreenqID = repo.TreenqID
 		req.Repository.Status = repo.Status
 		req.Repository.Connected = repo.Connected
-
-		// TODO: update repo it changes
-		// if repo.HasDiff(req.Repository) {
-		// 	h.db.UpdateRepository(ctx, req.Repository)
-		// }
 
 		return GithubWebhookResponse{}, h.deployRepo(
 			ctx,
