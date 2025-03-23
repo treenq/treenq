@@ -14,6 +14,7 @@ type ComputationResource struct {
 }
 
 func (s SizeSlug) ToComputationResource() ComputationResource {
+	// TODO: drop panic and make it as an error
 	parts := strings.Split(string(s), "-")
 	if len(parts) != 3 {
 		panic("expected 3 parts in SizeSlug value, given=" + s)

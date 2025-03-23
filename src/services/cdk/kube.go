@@ -39,11 +39,12 @@ func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image 
 	return *out
 }
 
-func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Space, image domain.Image) cdk8s.Chart {
-	ns := jsii.String(id + "-" + app.Key)
-	chart := cdk8s.NewChart(scope, jsii.String(id), &cdk8s.ChartProps{
+func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Space, image domain.Image) []cdk8s.Chart {
+	ns := jsii.String(app.Key + "-" + id)
+	chart := cdk8s.NewChart(scope, jsii.String(app.Key), &cdk8s.ChartProps{
 		Namespace: ns,
 	})
+	ingressChart := cdk8s.NewChart(scope, jsii.String(app.Key+"-ingress"), &cdk8s.ChartProps{})
 
 	cdk8splus.NewNamespace(chart, jsii.String(id+"-ns"), &cdk8splus.NamespaceProps{
 		Metadata: &cdk8s.ApiObjectMetadata{
@@ -58,7 +59,8 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 	}
 	computeRes := app.Service.SizeSlug.ToComputationResource()
 
-	tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
+	// tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
+	// nginxVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-nginx"), jsii.String("nginx"), nil)
 
 	deployment := cdk8splus.NewDeployment(chart, jsii.String(app.Service.Name+"-deployment"), &cdk8splus.DeploymentProps{
 		Replicas: jsii.Number(app.Service.Replicas),
@@ -70,12 +72,16 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 				Name:   jsii.String("http"),
 			}},
 			EnvVariables: &envs,
-			VolumeMounts: &[]*cdk8splus.VolumeMount{
-				{
-					Path:   jsii.String("/tmp"),
-					Volume: tmpVolume,
-				},
-			},
+			// VolumeMounts: &[]*cdk8splus.VolumeMount{
+			// 	{
+			// 		Path:   jsii.String("/tmp"),
+			// 		Volume: tmpVolume,
+			// 	},
+			// 	{
+			// 		Path:   jsii.String("/var"),
+			// 		Volume: nginxVolume,
+			// 	},
+			// },
 			Resources: &cdk8splus.ContainerResources{
 				Cpu: &cdk8splus.CpuResources{
 					Limit:   cdk8splus.Cpu_Millis(jsii.Number(computeRes.CpuUnits)),
@@ -90,30 +96,46 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 					Request: cdk8s.Size_Mebibytes(jsii.Number(computeRes.MemoryMibs)),
 				},
 			},
+			SecurityContext: &cdk8splus.ContainerSecurityContextProps{
+				AllowPrivilegeEscalation: jsii.Bool(false),
+				EnsureNonRoot:            jsii.Bool(true),
+				Privileged:               jsii.Bool(false),
+				// ReadOnlyRootFilesystem:   jsii.Bool(true),
+				User: jsii.Number(1000),
+			},
 		}},
-		Volumes: &[]cdk8splus.Volume{tmpVolume},
+		// Volumes: &[]cdk8splus.Volume{tmpVolume, nginxVolume},
+		SecurityContext: &cdk8splus.PodSecurityContextProps{
+			EnsureNonRoot:       jsii.Bool(true),
+			FsGroupChangePolicy: cdk8splus.FsGroupChangePolicy_ALWAYS,
+			User:                jsii.Number(1000),
+		},
 	})
+
+	servicePort := jsii.Number(80)
 
 	service := cdk8splus.NewService(chart, jsii.String(app.Service.Name+"-service"), &cdk8splus.ServiceProps{
 		Ports: &[]*cdk8splus.ServicePort{{
 			Name:       jsii.String("http"),
-			Port:       jsii.Number(80),
+			Port:       servicePort,
 			TargetPort: jsii.Number(app.Service.HttpPort),
 		}},
 		Selector: deployment,
 	})
 
 	// define 3d level domain given from the existing domain
-	cdk8splus.NewIngress(chart, jsii.String(app.Service.Name+"-ingress"), &cdk8splus.IngressProps{
+	cdk8splus.NewIngress(chart, jsii.String("ingress"), &cdk8splus.IngressProps{
 		Rules: &[]*cdk8splus.IngressRule{{
-			Host:     jsii.String(id + "." + k.host),
+			Host:     jsii.String("qwer" + "." + k.host),
 			Path:     jsii.String("/"),
 			PathType: cdk8splus.HttpIngressPathType_PREFIX,
-			Backend:  cdk8splus.IngressBackend_FromResource(service),
+			Backend: cdk8splus.IngressBackend_FromService(service, &cdk8splus.ServiceIngressBackendOptions{
+				Port: servicePort,
+			}),
 		}},
 	})
 
-	return chart
+	return []cdk8s.Chart{chart, ingressChart}
 }
 
 func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {

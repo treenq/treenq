@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS installedRepos (
 
 CREATE TABLE IF NOT EXISTS deployments (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
-    repoId integer NOT NULL,
+    repoId uuid NOT NULL,
 
     space jsonb NOT NULL,
     sha char(64) NOT NULL,

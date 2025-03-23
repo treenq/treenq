@@ -82,7 +82,7 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 
 	query, args, err := s.sq.Insert("deployments").
 		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
-		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.UserDisplayName, def.CreatedAt).
+		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.CreatedAt).
 		ToSql()
 	if err != nil {
 		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
