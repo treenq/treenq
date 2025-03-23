@@ -22,6 +22,9 @@ var repoAddedRequestBody []byte
 //go:embed testdata/repoRemoved.json
 var repoRemoveRequestBody []byte
 
+//go:embed testdata/branchMergeMain.json
+var repoBranchMergeMainRequestBody []byte
+
 func TestGithubAppInstallation(t *testing.T) {
 	clearDatabase()
 
@@ -73,18 +76,47 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repos must be available after added repo")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID: reposResponse.Repos[0].TreenqID,
-			ID:       805585115,
-			FullName: "treenq/useless",
-			Private:  false,
-			Status:   "active",
+			TreenqID:      reposResponse.Repos[0].TreenqID,
+			ID:            805585115,
+			FullName:      "treenq/useless",
+			Private:       false,
+			Status:        "active",
+			DefaultBranch: "",
 		},
 		{
-			TreenqID: reposResponse.Repos[1].TreenqID,
-			ID:       805584540,
-			FullName: "treenq/useless-cli",
-			Private:  false,
-			Status:   "active",
+			TreenqID:      reposResponse.Repos[1].TreenqID,
+			ID:            805584540,
+			FullName:      "treenq/useless-cli",
+			Private:       false,
+			Status:        "active",
+			DefaultBranch: "",
+		},
+	}, reposResponse.Repos, "installed repositories don't match")
+
+	var mergeMainReq client.GithubWebhookRequest
+	err = json.Unmarshal(repoBranchMergeMainRequestBody, &mergeMainReq)
+	require.NoError(t, err, "merge main request must be unmarshalled")
+	err = githubHookClient.GithubWebhook(ctx, mergeMainReq)
+	require.NoError(t, err, "merge main webhook must be processed")
+	reposResponse, err = apiClient.GetRepos(ctx)
+	require.NoError(t, err, "repos must be available after merge main")
+
+	assert.Equal(t, []client.Repository{
+		{
+			TreenqID:      reposResponse.Repos[0].TreenqID,
+			ID:            805585115,
+			FullName:      "treenq/useless",
+			Private:       false,
+			Status:        "active",
+			DefaultBranch: "main",
+		},
+		{
+			TreenqID:      reposResponse.Repos[1].TreenqID,
+			ID:            805584540,
+			FullName:      "treenq/useless-cli",
+			Private:       false,
+			Status:        "active",
+			DefaultBranch: "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -99,11 +131,12 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID: reposResponse.Repos[0].TreenqID,
-			ID:       805585115,
-			FullName: "treenq/useless",
-			Private:  false,
-			Status:   "active",
+			TreenqID:      reposResponse.Repos[0].TreenqID,
+			ID:            805585115,
+			FullName:      "treenq/useless",
+			Private:       false,
+			Status:        "active",
+			DefaultBranch: "main",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -122,12 +155,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
 		Repo: client.Repository{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Connected: true,
+			TreenqID:      reposResponse.Repos[0].TreenqID,
+			ID:            805585115,
+			FullName:      "treenq/useless",
+			Private:       false,
+			Status:        "active",
+			Connected:     true,
+			DefaultBranch: "main",
 		},
 	})
 	// get repos and make sure there is a connected one
@@ -135,12 +169,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Connected: true,
+			TreenqID:      reposResponse.Repos[0].TreenqID,
+			ID:            805585115,
+			FullName:      "treenq/useless",
+			Private:       false,
+			Status:        "active",
+			Connected:     true,
+			DefaultBranch: "main",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 

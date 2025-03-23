@@ -80,10 +80,9 @@ const (
 )
 
 type InstalledRepository struct {
-	ID            int    `json:"id"`
-	FullName      string `json:"full_name"`
-	Private       bool   `json:"private"`
-	DefaultBranch string `json:"default_branch"`
+	ID       int    `json:"id"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
 }
 
 type BuildArtifactRequest struct {
@@ -177,8 +176,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		if repo.DefaultBranch != req.Repository.DefaultBranch {
-			repo, err = h.db.UpdateRepoDefaultBranch(ctx, req.Sender.Login, req.Repository.DefaultBranch, req.Repository.ID)
+		if repo.Private != req.Repository.Private || repo.DefaultBranch != req.Repository.DefaultBranch {
+			repo, err = h.db.UpdateRepoPrivateFlagAndDefaultBranch(ctx, req.Repository.DefaultBranch, req.Repository.Private, req.Repository.ID)
 			if err != nil {
 				return GithubWebhookResponse{}, &vel.Error{
 					Message: "failed to update treenq repo by github",
