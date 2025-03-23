@@ -28,6 +28,7 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
 	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)
 	vel.RegisterPost(router, "connectRepoBranch", handlers.ConnectBranch, auth)
+	vel.RegisterPost(router, "deploy", handlers.Deploy, auth)
 
 	return router
 }

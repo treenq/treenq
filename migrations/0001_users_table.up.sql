@@ -19,14 +19,14 @@ CREATE TABLE IF NOT EXISTS installedRepos (
     userId uuid REFERENCES users(id) NOT NULL,
     status varchar(25) NOT NULL,
     connected boolean NOT NULL,
-    defaultBranch varchar(100),
+    defaultBranch varchar(100) NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS deployments (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
-    repoId integer NOT NULL,
+    repoId uuid NOT NULL,
 
     space jsonb NOT NULL,
     sha char(64) NOT NULL,

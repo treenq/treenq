@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	//TODO: check if we can remove those imports 
+	// TODO: check if we can remove those imports
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/stdlib"
@@ -67,7 +67,7 @@ func New(conf Config) (http.Handler, error) {
 		extractor,
 		docker,
 		kube,
-		conf.KubeConfig,
+		string(conf.KubeConfig),
 		oauthProvider,
 		authJwtIssuer,
 		conf.GithubWebhookURL,

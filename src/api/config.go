@@ -2,6 +2,9 @@ package api
 
 import (
 	"encoding/base64"
+	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -22,7 +25,6 @@ type Config struct {
 
 	JwtTtl time.Duration `envconfig:"JWT_TTL" default:"5m"`
 
-	DoToken        string `envconfig:"DO_TOKEN" required:"true"`
 	DockerRegistry string `envconfig:"DOCKER_REGISTRY" required:"true"`
 
 	DbDsn         string `envconfig:"DB_DSN" required:"true"`
@@ -32,7 +34,7 @@ type Config struct {
 
 	BuilderPackage string `envconfig:"BUILDER_PACKAGE" required:"false"`
 
-	KubeConfig string `envconfig:"KUBE_CONFIG" required:"true"`
+	KubeConfig FileSource `envconfig:"KUBE_CONFIG" required:"true"`
 
 	AuthPrivateKey StringBase64  `envconfig:"AUTH_PRIVATE_KEY" required:"true"`
 	AuthPublicKey  StringBase64  `envconfig:"AUTH_PUBLIC_KEY" required:"true"`
@@ -50,6 +52,25 @@ func (s *StringBase64) Decode(value string) error {
 		return err
 	}
 	*s = StringBase64(decoded)
+	return nil
+}
+
+type FileSource string
+
+func (s *FileSource) Decode(value string) error {
+	f, err := os.Open(value)
+	if err != nil {
+		return fmt.Errorf("failed to read file source config %s: %w", value, err)
+	}
+
+	defer f.Close()
+
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("failed to read file source config %s: %w", value, err)
+	}
+
+	*s = FileSource(b)
 	return nil
 }
 

@@ -364,3 +364,35 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 
 	return res, nil
 }
+
+type DeployRequest struct {
+	RepoID string
+}
+
+func (c *Client) Deploy(ctx context.Context, req DeployRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call deploy: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -3,7 +3,9 @@ FROM ubuntu:25.04 AS builder
 WORKDIR /app
 
 RUN apt-get update
-RUN apt-get -y install buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc skopeo libbtrfs-dev wget fuse-overlayfs && rm -rf /var/lib/apt/lists/*
+RUN apt-get -y install curl gnupg
+RUN curl -sL https://deb.nodesource.com/setup_23.x  | bash -
+RUN apt-get -y install nodejs buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc skopeo libbtrfs-dev wget fuse-overlayfs  && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /etc/containers && \
     mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers && \
     touch /var/lib/shared/overlay-images/images.lock && \
@@ -19,6 +21,7 @@ RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 RUN mkdir -p /etc/containers/ && touch /etc/containers/registries.conf && echo 'unqualified-search-registries=["docker.io"]' > /etc/containers/registries.conf
 COPY policy.json /etc/containers/policy.json
 COPY storage.conf /etc/containers/storage.conf 
+COPY registries.conf /etc/containers/registries.conf 
 
 # # Disable CGO to ensure fully static binaries
 # ENV CGO_ENABLED=0 
