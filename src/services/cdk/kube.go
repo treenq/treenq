@@ -100,7 +100,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 				AllowPrivilegeEscalation: jsii.Bool(false),
 				EnsureNonRoot:            jsii.Bool(true),
 				Privileged:               jsii.Bool(false),
-				// ReadOnlyRootFilesystem:   jsii.Bool(true),
+				ReadOnlyRootFilesystem:   jsii.Bool(true),
 				User: jsii.Number(1000),
 			},
 		}},

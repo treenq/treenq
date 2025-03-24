@@ -6,39 +6,34 @@ hero:
   tagline: deploy your app fast without vendor lock
   actions:
     - text: Get Started
-      link: /guides/example/
+      link: /started/get-started
       icon: right-arrow
 ---
 
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<CardGrid>
+  <Card title="Built for Kubernetes" icon="seti:docker">
+    No yaml hell
+  </Card>
+  <Card title="Github integration" icon="github">
+    Or another version control server
+  </Card>
+</CardGrid>
+
+<CardGrid>
+  <Card title="Fractional compute requests" icon="laptop">
+    Don't double your bill if you need 1 CPU more
+  </Card>
+  <Card title="Provision cloud resource" icon="cloud-download">
+    And manage secrets safely
+  </Card>
+</CardGrid>
+
 <section class="hero">
-  <h1>Treenq: Effortless Cloud Deployments</h1>
-  <p>Deploy, manage, and scale your applications with a single command.</p>
-  <a href="/signup" class="button">
-    Get Started
-  </a>
-</section>
-
-<section class="features">
-  <div class="feature-card">
-    <h3>Blazing Fast Deployments</h3>
-    <p>Push your code, and we handle the rest—zero downtime guaranteed.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Scalability at Its Core</h3>
-    <p>Auto-scale your apps effortlessly with built-in load balancing.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Secure & Reliable</h3>
-    <p>Enterprise-grade security with built-in monitoring and alerts.</p>
-  </div>
-</section>
-
-<section class="cta">
-  <h2>Start Deploying in Seconds</h2>
-  <p>
-    Join thousands of developers using Treenq to streamline their workflows.
-  </p>
-  <a href="/signup" class="button">
-    Sign Up Now
+  <h1>Treenq: Solves Infrastracture Complexity</h1>
+  <p>Deploy, manage, and scale your applications with a single build config</p>
+  <a href="/" class="button">
+    Soon
   </a>
 </section>
