@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/treenq/treenq/src/domain"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
+	"github.com/treenq/treenq/src/domain"
 )
 
 const tqRelativePath = "tq.json"
@@ -33,6 +33,13 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 	var space tqsdk.Space
 	if err := json.Unmarshal(data, &space); err != nil {
 		return tqsdk.Space{}, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if space.Service.SizeSlug != "" {
+		space.Service.ComputationResource, err = space.Service.SizeSlug.ToComputationResource()
+		if err != nil {
+			return tqsdk.Space{}, fmt.Errorf("failed to parse size slug: %w", err)
+		}
 	}
 
 	return space, nil

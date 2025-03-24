@@ -23,6 +23,9 @@ type Service struct {
 	// Replicas defines the amount of instances that this component should be scaled to
 	Replicas int
 	// The name of the component.
-	Name     string
+	Name string
+	// SizeSlug defines a compute resource requirement
 	SizeSlug SizeSlug
+	// ComputationResource is a verbose compute resource requirement, is mutual exclusive to SizeSlug
+	ComputationResource ComputationResource
 }

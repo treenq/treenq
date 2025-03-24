@@ -57,7 +57,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 	for k, v := range app.Service.RuntimeEnvs {
 		envs[k] = cdk8splus.EnvValue_FromValue(jsii.String(v))
 	}
-	computeRes := app.Service.SizeSlug.ToComputationResource()
+	computeRes := app.Service.ComputationResource
 
 	// tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
 	// nginxVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-nginx"), jsii.String("nginx"), nil)

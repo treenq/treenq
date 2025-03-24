@@ -1,6 +1,7 @@
 package tqsdk
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -13,11 +14,12 @@ type ComputationResource struct {
 	DiskGibs   int
 }
 
-func (s SizeSlug) ToComputationResource() ComputationResource {
-	// TODO: drop panic and make it as an error
+var ErrInvalidSizeSlug = errors.New("size slug expected as mCput-mMem-gDisk")
+
+func (s SizeSlug) ToComputationResource() (ComputationResource, error) {
 	parts := strings.Split(string(s), "-")
 	if len(parts) != 3 {
-		panic("expected 3 parts in SizeSlug value, given=" + s)
+		return ComputationResource{}, ErrInvalidSizeSlug
 	}
 
 	cpuStr, memStr, diskStr := parts[0], parts[1], parts[2]
@@ -40,7 +42,7 @@ func (s SizeSlug) ToComputationResource() ComputationResource {
 		CpuUnits:   cpu,
 		MemoryMibs: mem,
 		DiskGibs:   disk,
-	}
+	}, nil
 }
 
 const (
