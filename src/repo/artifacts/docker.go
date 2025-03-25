@@ -9,6 +9,7 @@ import (
 	"github.com/containers/buildah/define"
 	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/image/v5/transports/alltransports"
+	"github.com/containers/image/v5/types"
 	"github.com/containers/storage"
 	"github.com/treenq/treenq/src/domain"
 )
@@ -16,10 +17,23 @@ import (
 type DockerArtifact struct {
 	registry string
 
-	store storage.Store
+	store             storage.Store
+	registryTLSVerify bool
+	registryCertDir   string
+	registryAuthType  string
+	registryUsername  string
+	registryPassword  string
+	registryToken     string
 }
 
-func NewDockerArtifactory(registry string) (*DockerArtifact, error) {
+func NewDockerArtifactory(
+	registry string,
+	registryTLSVerify bool,
+	registryCertDir,
+	registryAuthType,
+	registryUsername,
+	registryPassword,
+	registryToken string) (*DockerArtifact, error) {
 	buildStoreOptions, err := storage.DefaultStoreOptions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build buildah storage option: %w", err)
@@ -31,9 +45,39 @@ func NewDockerArtifactory(registry string) (*DockerArtifact, error) {
 	}
 
 	return &DockerArtifact{
-		registry: registry,
-		store:    buildStore,
+		registry:          registry,
+		store:             buildStore,
+		registryTLSVerify: registryTLSVerify,
+		registryCertDir:   registryCertDir,
+		registryAuthType:  registryAuthType,
+		registryUsername:  registryUsername,
+		registryPassword:  registryPassword,
+		registryToken:     registryToken,
 	}, nil
+}
+
+func (a *DockerArtifact) getAuth() *types.DockerAuthConfig {
+	switch a.registryAuthType {
+	case "basic":
+		return &types.DockerAuthConfig{
+			Username: a.registryUsername,
+			Password: a.registryPassword,
+		}
+	case "token":
+		return &types.DockerAuthConfig{
+			IdentityToken: a.registryToken,
+		}
+	default:
+		return nil
+	}
+}
+
+func (a *DockerArtifact) systemContext() *types.SystemContext {
+	return &types.SystemContext{
+		DockerCertPath:              a.registryCertDir,
+		DockerInsecureSkipTLSVerify: types.NewOptionalBool(!a.registryTLSVerify),
+		DockerAuthConfig:            a.getAuth(),
+	}
 }
 
 func (a *DockerArtifact) Image(args domain.BuildArtifactRequest) domain.Image {
@@ -56,6 +100,7 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		ReportWriter:     os.Stdout,
 		IgnoreFile:       "./.dockerignore",
 		AdditionalTags:   []string{image.FullPath()},
+		SystemContext:    a.systemContext(),
 	}, args.Dockerfile)
 	if err != nil {
 		return image, fmt.Errorf("failed to build a docker container: %w", err)
@@ -68,7 +113,8 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	}
 
 	_, _, err = buildah.Push(ctx, id, storeRef, buildah.PushOptions{
-		Store: a.store,
+		Store:         a.store,
+		SystemContext: a.systemContext(),
 	})
 	if err != nil {
 		return image, fmt.Errorf("failed to push image: %w", err)
