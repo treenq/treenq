@@ -100,7 +100,6 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		ReportWriter:     os.Stdout,
 		IgnoreFile:       "./.dockerignore",
 		AdditionalTags:   []string{image.FullPath()},
-		SystemContext:    a.systemContext(),
 	}, args.Dockerfile)
 	if err != nil {
 		return image, fmt.Errorf("failed to build a docker container: %w", err)

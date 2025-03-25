@@ -43,7 +43,7 @@ type Config struct {
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`
 
-	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"true"`
+	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"false"`
 	RegistryCertDir   string `env:"REGISTRY_CERT_DIR" default:"./certs"`
 	RegistryAuthType  string `env:"REGISTRY_AUTH_TYPE" default:"token"`
 	RegistryUsername  string `env:"REGISTRY_AUTH_USERNAME" default:"testuser"`
