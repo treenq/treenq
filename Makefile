@@ -46,7 +46,7 @@ migrate_v:
 start-e2e-test-env:
 	$(COMPOSE_CMD) -p treenq -f docker-compose.yaml -f docker-compose.e2e.yaml up kube -d 
 	sleep 1
-	sed -i  's#https://127.0.0.1:6443#https://kube:6443#g' k3s_data/k3s/k3s.yaml
+	sed -i '' 's#https://127.0.0.1:6443#https://kube:6443#g' k3s_data/k3s/k3s.yaml
 	$(COMPOSE_CMD) -p treenq -f docker-compose.yaml -f docker-compose.e2e.yaml up -d --build
 	while [ -z '$$(docker ps -q --filter "name=treenq-server")' ]; do sleep 1; done	
 	docker cp k3s_data/k3s/k3s.yaml $$(docker ps -q --filter "name=treenq-server"):/app/kubeconfig.yaml
