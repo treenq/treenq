@@ -43,12 +43,12 @@ type Config struct {
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`
 
-	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"false"`
+	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"true"`
 	RegistryCertDir   string `env:"REGISTRY_CERT_DIR" default:"./certs"`
-	RegistryAuthType  string `env:"REGISTRY_AUTH_TYPE" default:"token"`
+	RegistryAuthType  string `env:"REGISTRY_AUTH_TYPE" default:"basic"`
 	RegistryUsername  string `env:"REGISTRY_AUTH_USERNAME" default:"testuser"`
 	RegistryPassword  string `env:"REGISTRY_AUTH_PASSWORD" default:"testpassword"`
-	RegistryToken     string `env:"REGISTRY_AUTH_TOKEN" default:"dGVzdHVzZXI6dGVzdHBhc3N3b3Jk" `
+	RegistryToken     string `env:"REGISTRY_AUTH_TOKEN" default:"eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwicGFzc3dvcmQiOiJ0ZXN0cGFzc3dvcmQifQo="`
 }
 
 type StringBase64 string
