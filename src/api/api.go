@@ -62,7 +62,7 @@ func New(conf Config) (http.Handler, error) {
 	}
 
 	oauthProvider := authService.New(conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL)
-	kube := cdk.NewKube(conf.Host)
+	kube := cdk.NewKube(conf.Host, conf.DockerRegistry, conf.RegistryUsername, conf.RegistryPassword)
 	handlers := domain.NewHandler(
 		store,
 		githubClient,

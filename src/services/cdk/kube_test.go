@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAppDefinition(t *testing.T) {
-	k := NewKube("treenq.com")
+	k := NewKube("treenq.com", "registry:5000", "testuser", "testpassword")
 	ctx := context.Background()
 	res := k.DefineApp(ctx, "id-1234", tqsdk.Space{
 		Key: "space",

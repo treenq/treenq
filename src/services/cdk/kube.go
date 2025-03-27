@@ -2,6 +2,7 @@ package cdk
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -23,13 +24,16 @@ import (
 
 type Kube struct {
 	// host holds a main app host, used to create sub hosts for a quick app preview
-	host string
+	host           string
+	dockerRegistry string
+	userName       string
+	userPassword   string
 }
 
 func NewKube(
-	host string,
+	host, dockerRegistry, userName, userPassword string,
 ) *Kube {
-	return &Kube{host: host}
+	return &Kube{host: host, dockerRegistry: dockerRegistry, userName: userName, userPassword: userPassword}
 }
 
 func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image domain.Image) string {
@@ -61,6 +65,25 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 
 	// tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
 	// nginxVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-nginx"), jsii.String("nginx"), nil)
+
+	registrySecret := cdk8splus.NewSecret(chart, jsii.String("registry-secret"), &cdk8splus.SecretProps{
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name: jsii.String("registry-credentials"),
+		},
+		StringData: &map[string]*string{
+			".dockerconfigjson": jsii.String(fmt.Sprintf(`{
+		                "auths": {
+		                    "%s": {
+		                        "username": "%s",
+		                        "password": "%s",
+		                        "auth": "%s"
+		                    }
+		                }
+		            }`, k.dockerRegistry, k.userName, k.userPassword,
+				base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", k.userName, k.userPassword))))),
+		},
+		Type: jsii.String("kubernetes.io/dockerconfigjson"),
+	})
 
 	deployment := cdk8splus.NewDeployment(chart, jsii.String(app.Service.Name+"-deployment"), &cdk8splus.DeploymentProps{
 		Replicas: jsii.Number(app.Service.Replicas),
@@ -101,7 +124,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 				EnsureNonRoot:            jsii.Bool(true),
 				Privileged:               jsii.Bool(false),
 				ReadOnlyRootFilesystem:   jsii.Bool(true),
-				User: jsii.Number(1000),
+				User:                     jsii.Number(1000),
 			},
 		}},
 		// Volumes: &[]cdk8splus.Volume{tmpVolume, nginxVolume},
@@ -111,6 +134,11 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 			User:                jsii.Number(1000),
 		},
 	})
+
+	deployment.ApiObject().AddJsonPatch(cdk8s.JsonPatch_Add(
+		jsii.String("/spec/template/spec/imagePullSecrets"),
+		[]map[string]string{{"name": *registrySecret.Name()}},
+	))
 
 	servicePort := jsii.Number(80)
 
