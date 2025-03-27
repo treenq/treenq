@@ -5,7 +5,7 @@
 
 /* button */
 .sl-link-button {
-  border-radius: 0;
+  border-radius: 0 !important;
 }
 
 /* hide theme switcher */
