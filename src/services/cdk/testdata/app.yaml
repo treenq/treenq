@@ -1,22 +1,41 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: id-1234-space
+  name: space-id-1234
   namespace: ""
 spec: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-credentials
+  namespace: space-id-1234
+immutable: false
+stringData:
+  .dockerconfigjson: |-
+    {
+    		                "auths": {
+    		                    "registry:5000": {
+    		                        "username": "testuser",
+    		                        "password": "testpassword",
+    		                        "auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"
+    		                    }
+    		                }
+    		            }
+type: kubernetes.io/dockerconfigjson
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: id-1234-simple-app-deployment-c8fa6f9b
-  namespace: id-1234-space
+  name: space-simple-app-deployment-c84e8755
+  namespace: space-id-1234
 spec:
   minReadySeconds: 0
   progressDeadlineSeconds: 600
   replicas: 1
   selector:
     matchLabels:
-      cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
+      cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -25,7 +44,7 @@ spec:
   template:
     metadata:
       labels:
-        cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
+        cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
     spec:
       automountServiceAccountToken: false
       containers:
@@ -44,38 +63,36 @@ spec:
               name: http
           resources:
             limits:
-              cpu: 500m
-              ephemeral-storage: 2Gi
-              memory: 1024Mi
+              cpu: 0m
+              ephemeral-storage: 0Gi
+              memory: 0Mi
             requests:
-              cpu: 500m
-              ephemeral-storage: 2Gi
-              memory: 1024Mi
+              cpu: 0m
+              ephemeral-storage: 0Gi
+              memory: 0Mi
           securityContext:
             allowPrivilegeEscalation: false
             privileged: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
-          volumeMounts:
-            - mountPath: /tmp
-              name: tmp
+            runAsUser: 1000
       dnsPolicy: ClusterFirst
       hostNetwork: false
+      imagePullSecrets:
+        - name: registry-credentials
       restartPolicy: Always
       securityContext:
         fsGroupChangePolicy: Always
         runAsNonRoot: true
+        runAsUser: 1000
       setHostnameAsFQDN: false
       terminationGracePeriodSeconds: 30
-      volumes:
-        - emptyDir: {}
-          name: tmp
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: id-1234-simple-app-service-c8ec7b56
-  namespace: id-1234-space
+  name: space-simple-app-service-c88a2c28
+  namespace: space-id-1234
 spec:
   externalIPs: []
   ports:
@@ -83,23 +100,23 @@ spec:
       port: 80
       targetPort: 8000
   selector:
-    cdk8s.io/metadata.addr: id-1234-simple-app-deployment-c8887020
+    cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: id-1234-simple-app-ingress-c85c9ca4
-  namespace: id-1234-space
+  name: space-ingress-c8b831e1
+  namespace: space-id-1234
 spec:
   rules:
-    - host: id-1234.treenq.com
+    - host: qwer.treenq.com
       http:
         paths:
           - backend:
-              resource:
-                apiGroup: core
-                kind: Service
-                name: id-1234-simple-app-service-c8ec7b56
+              service:
+                name: space-simple-app-service-c88a2c28
+                port:
+                  number: 80
             path: /
             pathType: Prefix
