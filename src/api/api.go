@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +20,10 @@ import (
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
+var (
+	ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
+)
+
 func New(conf Config) (http.Handler, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -33,6 +38,10 @@ func New(conf Config) (http.Handler, error) {
 	store, err := repo.NewStore(db)
 	if err != nil {
 		return nil, err
+	}
+
+	if conf.RegistryAuthType != "" && conf.RegistryAuthType != "basic" && conf.RegistryAuthType != "token" {
+		return nil, ErrUnknownDockerAuthType
 	}
 
 	githubJwtIssuer := auth.NewJwtIssuer(conf.GithubClientID, []byte(conf.GithubPrivateKey), nil, conf.JwtTtl)

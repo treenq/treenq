@@ -74,13 +74,10 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 			".dockerconfigjson": jsii.String(fmt.Sprintf(`{
 		                "auths": {
 		                    "%s": {
-		                        "username": "%s",
-		                        "password": "%s",
 		                        "auth": "%s"
 		                    }
 		                }
-		            }`, k.dockerRegistry, k.userName, k.userPassword,
-				base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", k.userName, k.userPassword))))),
+		            }`, k.dockerRegistry, base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", k.userName, k.userPassword))))),
 		},
 		Type: jsii.String("kubernetes.io/dockerconfigjson"),
 	})

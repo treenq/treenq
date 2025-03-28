@@ -45,10 +45,10 @@ type Config struct {
 
 	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"true"`
 	RegistryCertDir   string `env:"REGISTRY_CERT_DIR" default:"./certs"`
-	RegistryAuthType  string `env:"REGISTRY_AUTH_TYPE" default:"basic"`
-	RegistryUsername  string `env:"REGISTRY_AUTH_USERNAME" default:"testuser"`
-	RegistryPassword  string `env:"REGISTRY_AUTH_PASSWORD" default:"testpassword"`
-	RegistryToken     string `env:"REGISTRY_AUTH_TOKEN" default:"eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwicGFzc3dvcmQiOiJ0ZXN0cGFzc3dvcmQifQo="`
+	RegistryAuthType  string `envconfig:"REGISTRY_AUTH_TYPE" required:"true"`
+	RegistryUsername  string `envconfig:"REGISTRY_AUTH_USERNAME"`
+	RegistryPassword  string `envconfig:"REGISTRY_AUTH_PASSWORD"`
+	RegistryToken     string `envconfig:"REGISTRY_AUTH_TOKEN" `
 }
 
 type StringBase64 string
