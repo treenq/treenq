@@ -16,8 +16,6 @@ stringData:
     {
     		                "auths": {
     		                    "registry:5000": {
-    		                        "username": "testuser",
-    		                        "password": "testpassword",
     		                        "auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"
     		                    }
     		                }
