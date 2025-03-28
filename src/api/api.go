@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +20,10 @@ import (
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
+var (
+	ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
+)
+
 func New(conf Config) (http.Handler, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -35,12 +40,24 @@ func New(conf Config) (http.Handler, error) {
 		return nil, err
 	}
 
+	if conf.RegistryAuthType != "" && conf.RegistryAuthType != "basic" && conf.RegistryAuthType != "token" {
+		return nil, ErrUnknownDockerAuthType
+	}
+
 	githubJwtIssuer := auth.NewJwtIssuer(conf.GithubClientID, []byte(conf.GithubPrivateKey), nil, conf.JwtTtl)
 	authJwtIssuer := auth.NewJwtIssuer("treenq-api", []byte(conf.AuthPrivateKey), []byte(conf.AuthPublicKey), conf.AuthTtl)
 	githubClient := repo.NewGithubClient(githubJwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
-	docker, err := artifacts.NewDockerArtifactory(conf.DockerRegistry)
+	docker, err := artifacts.NewDockerArtifactory(
+		conf.DockerRegistry,
+		conf.RegistryTLSVerify,
+		conf.RegistryCertDir,
+		conf.RegistryAuthType,
+		conf.RegistryUsername,
+		conf.RegistryPassword,
+		conf.RegistryToken,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +71,7 @@ func New(conf Config) (http.Handler, error) {
 	}
 
 	oauthProvider := authService.New(conf.GithubClientID, conf.GithubSecret, conf.GithubRedirectURL)
-	kube := cdk.NewKube(conf.Host)
+	kube := cdk.NewKube(conf.Host, conf.DockerRegistry, conf.RegistryUsername, conf.RegistryPassword)
 	handlers := domain.NewHandler(
 		store,
 		githubClient,

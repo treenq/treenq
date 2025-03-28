@@ -2,6 +2,7 @@ package artifacts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,17 +10,35 @@ import (
 	"github.com/containers/buildah/define"
 	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/image/v5/transports/alltransports"
+	"github.com/containers/image/v5/types"
 	"github.com/containers/storage"
 	"github.com/treenq/treenq/src/domain"
+)
+
+var (
+	ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
 )
 
 type DockerArtifact struct {
 	registry string
 
-	store storage.Store
+	store             storage.Store
+	registryTLSVerify bool
+	registryCertDir   string
+	registryAuthType  string
+	registryUsername  string
+	registryPassword  string
+	registryToken     string
 }
 
-func NewDockerArtifactory(registry string) (*DockerArtifact, error) {
+func NewDockerArtifactory(
+	registry string,
+	registryTLSVerify bool,
+	registryCertDir,
+	registryAuthType,
+	registryUsername,
+	registryPassword,
+	registryToken string) (*DockerArtifact, error) {
 	buildStoreOptions, err := storage.DefaultStoreOptions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build buildah storage option: %w", err)
@@ -31,8 +50,44 @@ func NewDockerArtifactory(registry string) (*DockerArtifact, error) {
 	}
 
 	return &DockerArtifact{
-		registry: registry,
-		store:    buildStore,
+		registry:          registry,
+		store:             buildStore,
+		registryTLSVerify: registryTLSVerify,
+		registryCertDir:   registryCertDir,
+		registryAuthType:  registryAuthType,
+		registryUsername:  registryUsername,
+		registryPassword:  registryPassword,
+		registryToken:     registryToken,
+	}, nil
+}
+
+func (a *DockerArtifact) getAuth() (*types.DockerAuthConfig, error) {
+	switch a.registryAuthType {
+	case "basic":
+		return &types.DockerAuthConfig{
+			Username: a.registryUsername,
+			Password: a.registryPassword,
+		}, nil
+	case "token":
+		return &types.DockerAuthConfig{
+			IdentityToken: a.registryToken,
+		}, nil
+	case "":
+		return nil, nil
+	default:
+		return nil, ErrUnknownDockerAuthType
+	}
+}
+
+func (a *DockerArtifact) systemContext() (*types.SystemContext, error) {
+	auth, err := a.getAuth()
+	if err != nil {
+		return nil, err
+	}
+	return &types.SystemContext{
+		DockerCertPath:              a.registryCertDir,
+		DockerInsecureSkipTLSVerify: types.NewOptionalBool(!a.registryTLSVerify),
+		DockerAuthConfig:            auth,
 	}, nil
 }
 
@@ -67,8 +122,14 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		return image, fmt.Errorf("failed to parse store reference: %w", err)
 	}
 
+	systemContext, err := a.systemContext()
+	if err != nil {
+		return image, fmt.Errorf("failed to get auth type: %w", err)
+	}
+
 	_, _, err = buildah.Push(ctx, id, storeRef, buildah.PushOptions{
-		Store: a.store,
+		Store:         a.store,
+		SystemContext: systemContext,
 	})
 	if err != nil {
 		return image, fmt.Errorf("failed to push image: %w", err)

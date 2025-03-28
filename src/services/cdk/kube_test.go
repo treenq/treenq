@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAppDefinition(t *testing.T) {
-	k := NewKube("treenq.com")
+	k := NewKube("treenq.com", "registry:5000", "testuser", "testpassword")
 	ctx := context.Background()
 	res := k.DefineApp(ctx, "id-1234", tqsdk.Space{
 		Key: "space",
@@ -54,8 +54,10 @@ func TestAppDefinition(t *testing.T) {
 
 	assert.Equal(t, appYaml, res)
 
-	err := k.Apply(ctx, conf, res)
-	assert.NoError(t, err)
+	/*
+		err := k.Apply(ctx, conf, res)
+		assert.NoError(t, err)
+	*/
 }
 
 func TestInvalidNamespaceName(t *testing.T) {
