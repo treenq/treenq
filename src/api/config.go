@@ -6,8 +6,15 @@ import (
 	"io"
 	"os"
 	"time"
+	"errors"
 
 	"github.com/kelseyhightower/envconfig"
+)
+
+var (
+	ErrRegistryUnknownAuthType = errors.New("OCI registry auth type is unknown")
+	ErrRegistryBasicAuthEmpty = errors.New("oci registry basic auth is empty")
+	ErrRegistryTokenEmpty = errors.New("oci registry token is empty")
 )
 
 type Config struct {
@@ -43,9 +50,9 @@ type Config struct {
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`
 
-	RegistryTLSVerify bool   `env:"REGISTRY_TLS_VERIFY" default:"true"`
-	RegistryCertDir   string `env:"REGISTRY_CERT_DIR" default:"./certs"`
-	RegistryAuthType  string `envconfig:"REGISTRY_AUTH_TYPE" required:"false"`
+	RegistryTLSVerify bool   `envconfig:"REGISTRY_TLS_VERIFY" default:"true"`
+	RegistryCertDir   string `envconfig:"REGISTRY_CERT_DIR" required:"false"`
+	RegistryAuthType  string `envconfig:"REGISTRY_AUTH_TYPE" required:"true"`
 	RegistryUsername  string `envconfig:"REGISTRY_AUTH_USERNAME" required:"false"`
 	RegistryPassword  string `envconfig:"REGISTRY_AUTH_PASSWORD" required:"false"`
 	RegistryToken     string `envconfig:"REGISTRY_AUTH_TOKEN" required:"false"`
@@ -81,11 +88,27 @@ func (s *FileSource) Decode(value string) error {
 	return nil
 }
 
+const (
+	OciAuthTypeNoauth = "noauth"
+	OciAuthTypeBasic = "basic"
+	OciAuthTypeToken = "token"
+)
+
 func NewConfig() (Config, error) {
 	conf := Config{}
 
 	if err := envconfig.Process("", &conf); err != nil {
 		return conf, err
+	}
+
+	if conf.RegistryAuthType != OciAuthTypeNoauth && conf.RegistryAuthType != OciAuthTypeBasic && conf.RegistryAuthType != OciAuthTypeToken {
+		return conf, fmt.Errorf("given '%s': %w", conf.RegistryAuthType, ErrRegistryUnknownAuthType)
+	}
+	if conf.RegistryAuthType == OciAuthTypeBasic && (conf.RegistryUsername == "" || conf.RegistryPassword == "") {
+		return conf, ErrRegistryBasicAuthEmpty
+	}
+	if conf.RegistryAuthType == OciAuthTypeToken && conf.RegistryToken == "" {
+		return conf, ErrRegistryTokenEmpty
 	}
 
 	return conf, nil

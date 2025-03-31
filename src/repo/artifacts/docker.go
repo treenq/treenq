@@ -62,6 +62,7 @@ func NewDockerArtifactory(
 }
 
 func (a *DockerArtifact) getAuth() (*types.DockerAuthConfig, error) {
+	// TODO: reuse api.Oci constant values isntead of hardcoding auth type constants 
 	switch a.registryAuthType {
 	case "basic":
 		return &types.DockerAuthConfig{
@@ -72,7 +73,7 @@ func (a *DockerArtifact) getAuth() (*types.DockerAuthConfig, error) {
 		return &types.DockerAuthConfig{
 			IdentityToken: a.registryToken,
 		}, nil
-	case "":
+	case "noauth":
 		return nil, nil
 	default:
 		return nil, ErrUnknownDockerAuthType
@@ -109,6 +110,7 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		Out:              os.Stdout,
 		Err:              os.Stderr,
 		ReportWriter:     os.Stdout,
+		// TODO: fixme, the dockerignore must come from config
 		IgnoreFile:       "./.dockerignore",
 		AdditionalTags:   []string{image.FullPath()},
 	}, args.Dockerfile)

@@ -15,7 +15,14 @@ staging.env
 *.md
 docs/
 
+# web
+web/
+
 # tests
 *_test.go
 e2e
-
+auth/
+certs/
+client/
+k3s_data/
+tq/
