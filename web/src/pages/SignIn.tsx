@@ -1,11 +1,33 @@
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore, User } from '@/stores/useAuthStore';
+
+/**
+ * getProfile takes a JWT and retrieves a User model from the given claims
+ * @param {string} token is a JWT
+ * @returns {User} a user in the claims
+ */
+function getProfile(token: string): User {
+  const [, payload] = token.split('.');
+  const decodedPayload = JSON.parse(atob(payload));
+  return {
+    id: decodedPayload.id,
+    email: decodedPayload.email,
+    displayName: decodedPayload.displayName,
+  };
+}
 
 export function SignInPage() {
-  const login  = useAuthStore((state) =>  state.login );
+  const login = useAuthStore((state) => state.login);
 
-  const handleGitHubLogin = () => {
-    login({ id: '1', name: 'Test User' });
+  const handleGitHubLogin = async () => {
+    const host = import.meta.env.APP_API_HOST;
+    const response = await fetch(`${host}/auth`);
+    const t = await response.text();
+    console.log(t);
+    const jsonResp = await response.json();
+    const token = jsonResp.token;
+    const user = getProfile(token);
+    login(token, user);
   };
 
   return (
