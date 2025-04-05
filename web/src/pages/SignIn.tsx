@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { toast, Toaster } from '@/components/ui/sonner';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 
 /**
@@ -21,17 +22,68 @@ export function SignInPage() {
 
   const handleGitHubLogin = async () => {
     const host = import.meta.env.APP_API_HOST;
-    const response = await fetch(`${host}/auth`);
-    const t = await response.text();
-    console.log(t);
-    const jsonResp = await response.json();
-    const token = jsonResp.token;
-    const user = getProfile(token);
-    login(token, user);
+    try {
+      // Open popup window
+      const width = 600;
+      const height = 600;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      const popup = window.open(
+        `${host}/auth`,
+        'GitHubLogin',
+        `width=${width},height=${height},left=${left},top=${top}`,
+      );
+
+      if (!popup) {
+        toast.error('Popup blocked! Please enable popups for this site.');
+        return;
+      }
+
+      const tokenReponseListener = () => {
+        if (popup.location.href.startsWith(`${host}/authCallback`)) {
+          popup.removeEventListener('DOMContentLoaded', tokenReponseListener);
+          const content = popup.document.body.innerText;
+          const payload = JSON.parse(content) as { token: string };
+
+          const user = getProfile(payload.token);
+          login(payload.token, user);
+        }
+      };
+      popup.addEventListener('DOMContentLoaded', tokenReponseListener);
+
+      // // Handle 5xx errors
+      // if (response.status >= 500) {
+      //   toast.error('Something went wrong, please try again');
+      //   return;
+      // }
+      //
+      // // Handle 4xx errors with valid JSON
+      // if (response.status >= 400 && response.status < 500) {
+      //   const errorData = (await response.json()) as Error;
+      //   console.error('Auth error:', errorData);
+      //   toast.error(errorData.Code);
+      //   return;
+      // }
+
+      // const jsonResp = await response.json();
+      // const token = jsonResp.token;
+      // const user = getProfile(token);
+      // login(token, user);
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('No internet connection');
+        return;
+      }
+
+      // Handle other errors including invalid JSON
+      toast.error('Something went wrong, please try again');
+    }
   };
 
   return (
     <div className={'flex flex-col gap-6'}>
+      <Toaster />
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>
       </div>

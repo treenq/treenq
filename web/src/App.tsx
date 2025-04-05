@@ -2,7 +2,7 @@ import './App.css';
 
 import { Layout } from '@/Layout';
 import { SignInPage } from '@/pages/SignIn';
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from 'react-router';
+import { BrowserRouter, Route, Routes, Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/useAuthStore'
 
 type ProtectedRageProps = {
