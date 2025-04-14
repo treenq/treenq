@@ -31,12 +31,14 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 RUN --mount=type=cache,target=/go/pkg/mod/ go mod download -x
 
-COPY . .
 
 FROM builder AS dev
 
 # Install Delve (debugger)
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go install github.com/go-delve/delve/cmd/dlv@v1.24.1
+
+# Copy after installed delve in order to cache delve in the upper layer
+COPY . .
 
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -gcflags=all="-N -l" -o server ./cmd/server
 
@@ -44,6 +46,9 @@ RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cac
 CMD ["dlv", "--listen=:40000", "--continue", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "server"]
 
 FROM builder AS prod
+
+# Copy after installed delve in order to cache delve in the upper layer
+COPY . .
 
 # lsflags to strip debug info
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -ldflags "-s -w" -o server ./cmd/server

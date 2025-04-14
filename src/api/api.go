@@ -76,5 +76,5 @@ func New(conf Config) (http.Handler, error) {
 		conf.GithubWebhookURL,
 		l,
 	)
-	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l)).Mux(), nil
+	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l), vel.NewCorsMiddleware(conf.CorsAllowOrigin)).Mux(), nil
 }

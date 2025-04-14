@@ -51,6 +51,12 @@ type TokenResponse struct {
 func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeRequest) (TokenResponse, *vel.Error) {
 	r := vel.RequestFromContext(ctx)
 	oauthState, _ := r.Cookie("authstate")
+	if oauthState == nil {
+		return TokenResponse{}, &vel.Error{
+			Code:    "COOKIE_IS_EMPTY",
+			Message: "cookie auth status is expected",
+		}
+	}
 
 	if req.State != oauthState.Value {
 		return TokenResponse{}, &vel.Error{

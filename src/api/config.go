@@ -2,19 +2,19 @@ package api
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"time"
-	"errors"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 var (
 	ErrRegistryUnknownAuthType = errors.New("OCI registry auth type is unknown")
-	ErrRegistryBasicAuthEmpty = errors.New("oci registry basic auth is empty")
-	ErrRegistryTokenEmpty = errors.New("oci registry token is empty")
+	ErrRegistryBasicAuthEmpty  = errors.New("oci registry basic auth is empty")
+	ErrRegistryTokenEmpty      = errors.New("oci registry token is empty")
 )
 
 type Config struct {
@@ -56,6 +56,9 @@ type Config struct {
 	RegistryUsername  string `envconfig:"REGISTRY_AUTH_USERNAME" required:"false"`
 	RegistryPassword  string `envconfig:"REGISTRY_AUTH_PASSWORD" required:"false"`
 	RegistryToken     string `envconfig:"REGISTRY_AUTH_TOKEN" required:"false"`
+
+	// HTTP settings
+	CorsAllowOrigin string `envconfig:"CORS_ALLOW_ORIGIN" required:"true"`
 }
 
 type StringBase64 string
@@ -90,8 +93,8 @@ func (s *FileSource) Decode(value string) error {
 
 const (
 	OciAuthTypeNoauth = "noauth"
-	OciAuthTypeBasic = "basic"
-	OciAuthTypeToken = "token"
+	OciAuthTypeBasic  = "basic"
+	OciAuthTypeToken  = "token"
 )
 
 func NewConfig() (Config, error) {
