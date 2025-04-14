@@ -1,7 +1,6 @@
 import {
   createRouter,
   createWebHistory,
-  type NavigationGuardNext,
   type RouteLocationNormalized,
   type RouteLocationNormalizedLoaded,
 } from 'vue-router'
@@ -18,22 +17,19 @@ const router = createRouter({
       component: HomeView,
       meta: { authRequired: true },
     },
-    // {
-    //   path: '/auth',
-    //   name: 'auth',
-    //   component: () => import('../pages/AuthPage.vue'),
-    // },
-    // TODO: add authenticated guard
+    {
+      path: '/auth',
+      name: 'auth',
+      component: () => import('../pages/AuthPage.vue'),
+    },
   ],
 })
 
-router.beforeEach(
-  (to: RouteLocationNormalized, from: RouteLocationNormalizedLoaded, next: NavigationGuardNext) => {
-    // protect auth
-    if (to.meta.authRequired && !userStore.isAuthenticated()) return { name: 'auth' }
+router.beforeEach((to: RouteLocationNormalized, from: RouteLocationNormalizedLoaded) => {
+  // protect auth
+  if (to.meta.authRequired && !userStore.isAuthenticated()) return { name: 'auth' }
 
-    next()
-  },
-)
+  return true
+})
 
 export default router
