@@ -1,33 +1,23 @@
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
-import pluginOxlint from 'eslint-plugin-oxlint'
+import js from '@eslint/js'
 import pluginPrettier from 'eslint-plugin-prettier'
-import pluginVue from 'eslint-plugin-vue'
+import svelte from 'eslint-plugin-svelte'
 import { globalIgnores } from 'eslint/config'
+import ts from 'typescript-eslint'
+
+import svelteConfig from './svelte.config.js'
 
 import globals from 'globals'
 
-export default defineConfigWithVueTs(
-  {
-    files: ['**/*.{ts,mts,tsx,vue}'],
-  },
-
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'env.d.ts']),
-
-  pluginVue.configs['flat/essential'],
-  vueTsConfigs.recommended,
-  ...pluginOxlint.configs['flat/recommended'],
+/** @type {import('eslint').Linter.Config[]} */
+export default ts.config(
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'src/env.d.ts']),
+  js.configs.recommended,
+  ...ts.configs.recommended,
+  ...svelte.configs.recommended,
   {
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
       globals: {
         ...globals.browser,
-        ...globals.node,
-        myCustomGlobal: 'readonly',
-      },
-      parserOptions: {
-        project: ['tsconfig.eslint.json', 'tsconfig.node.json', 'tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
       },
     },
   },
@@ -35,7 +25,18 @@ export default defineConfigWithVueTs(
     plugins: { prettier: pluginPrettier },
     rules: {
       'prettier/prettier': 'error',
-      'vue/multi-word-component-names': 'off',
+    },
+  },
+  {
+    files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+    // See more details at: https://typescript-eslint.io/packages/parser/
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        extraFileExtensions: ['.svelte'],
+        parser: ts.parser,
+        svelteConfig,
+      },
     },
   },
   {
