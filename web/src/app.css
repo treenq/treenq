@@ -138,4 +138,19 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  p {
+    @apply leading-7 [&:not(:first-child)]:mt-6;
+  }
+
+  h1 {
+    @apply scroll-m-20 text-4xl font-semibold tracking-tight lg:text-5xl;
+  }
+  h2 {
+    @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0;
+  }
+
+  h4 {
+    @apply scroll-m-20 text-xl font-semibold tracking-tight;
+  }
 }

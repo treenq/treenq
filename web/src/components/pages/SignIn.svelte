@@ -1,15 +1,14 @@
 <script lang="ts">
   import { Button } from '@/components/ui/button'
-  import H2 from '@/components/ui/h2.svelte'
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-background">
   <div class="flex flex-col items-start space-y-6">
     <img src="/logo.png" alt="Logo" width="72" height="72" />
 
-    <H2>Sign In to Treenq</H2>
+    <h1>Sign In to Treenq</h1>
 
-    <Button variant="outline" size="xxl" class="w-90 text-lg flex">
+    <Button variant="outline" size="xxl" class="w-85 text-lg ">
       <svg viewBox="0 0 98 98" class="size-6 mx-2"
         ><path
           fill-rule="evenodd"
