@@ -19,6 +19,7 @@
     "globals": "^16.0.0",
     "prettier-plugin-organize-imports": "^4.1.0",
     "prettier-plugin-svelte": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.11",
     "svelte": "^5.23.1",
     "svelte-check": "^4.1.5",
     "typescript": "~5.7.2",
@@ -26,8 +27,10 @@
     "vite": "^6.3.1"
   },
   "dependencies": {
+    "@mateothegreat/svelte5-router": "^2.14.1",
     "@tailwindcss/vite": "^4.1.4",
     "@types/node": "^22.14.1",
+    "@wjfe/n-savant": "^0.3.0",
     "bits-ui": "^1.3.19",
     "clsx": "^2.1.1",
     "lucide-svelte": "^0.503.0",

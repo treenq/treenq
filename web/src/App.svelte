@@ -1,9 +1,9 @@
 <script lang="ts">
-  import SignIn from './components/pages/SignIn.svelte'
+  import MainRouter from './state/router/MainRouter.svelte'
 </script>
 
 <main>
   <div class="card">
-    <SignIn />
+    <MainRouter />
   </div>
 </main>
