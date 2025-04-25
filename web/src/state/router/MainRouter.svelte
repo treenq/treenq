@@ -14,7 +14,13 @@
 
 <Router>
   <Route key="main" path="/">
-    <ProtectedRouter component={<Main />} satisfies={flag} fallback={Auth} />
+    <ProtectedRouter satisfies={flag}>
+      <Main
+        onClick={() => {
+          flag = !flag
+        }}
+      />
+    </ProtectedRouter>
   </Route>
 
   <Route key="auth" path="/auth">

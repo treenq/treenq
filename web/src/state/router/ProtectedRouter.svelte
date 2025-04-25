@@ -1,9 +1,10 @@
 <script lang="ts">
-  let { component, satisfies, fallback } = $props()
+  import { location } from '@wjfe/n-savant'
+  let { children, satisfies } = $props()
+
+  $effect(() => {
+    if (!satisfies) location.navigate('/auth', { replace: true })
+  })
 </script>
 
-{#if satisfies}
-  {@render component()}
-{:else}
-  {@render fallback()}
-{/if}
+{@render children()}
