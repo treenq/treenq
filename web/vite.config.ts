@@ -1,11 +1,10 @@
-import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [svelte(), tailwindcss()],
+  plugins: [solid(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

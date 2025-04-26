@@ -1,11 +1,28 @@
-### css things we dig for new components
+## Usage
 
-- https://www.shadcn-svelte.com/
-- https://bits-ui.com/docs/introduction
-- https://merakiui.com/components/application-ui/sign-in-and-registration
-- https://floatui.com/components/cta-sections
-- https://www.hyperui.dev/components/application
-- https://daisyui.com/components/card/
-- https://flowbite.com/docs/getting-started/svelte/
-- https://next.melt-ui.com/guides/installation
-- https://www.skeleton.dev/docs/integrations/popover/svelte
+```bash
+$ npm install # or pnpm install or yarn install
+```
+
+### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+
+## Available Scripts
+
+In the project directory, you can run:
+
+### `npm run dev`
+
+Runs the app in the development mode.<br>
+Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
+
+### `npm run build`
+
+Builds the app for production to the `dist` folder.<br>
+It correctly bundles Solid in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.<br>
+Your app is ready to be deployed!
+
+## Deployment
+
+Learn more about deploying your application with the [documentations](https://vite.dev/guide/static-deploy.html)
