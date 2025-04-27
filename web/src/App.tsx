@@ -1,17 +1,17 @@
 import { Navigate, Route, Router } from '@solidjs/router'
 import type { Component, JSX } from 'solid-js'
-import { ParentProps } from 'solid-js'
 
 import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
 import { Show } from 'solid-js'
 
 type ProtectedRouterProps = {
+  children: JSX.Element
   satisfies: boolean
   redirectTo: string
-} & ParentProps
+}
 
-function ProtectedRouter(props: ProtectedRouterProps) {
+function ProtectedRouter(props: ProtectedRouterProps): JSX.Element {
   return (
     <Show when={props.satisfies} fallback={<Navigate href={props.redirectTo} />}>
       {props.children}

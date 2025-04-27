@@ -11,6 +11,9 @@ importers:
       '@kobalte/core':
         specifier: ^0.13.9
         version: 0.13.9(solid-js@1.9.5)
+      '@solid-primitives/storage':
+        specifier: ^4.3.2
+        version: 4.3.2(solid-js@1.9.5)
       '@solidjs/router':
         specifier: ^0.15.3
         version: 0.15.3(solid-js@1.9.5)
@@ -567,6 +570,18 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
 
+  '@solid-primitives/storage@4.3.2':
+    resolution: {integrity: sha512-Vkuk/AqgUOjz6k7Mo5yDFQBQg8KMQcZfaac/bxLApaza3e5c/iNllNvxZWPM9Vf+Gf4m5SgRbvgsm6dSLJ27Jw==}
+    peerDependencies:
+      '@tauri-apps/plugin-store': '*'
+      solid-js: ^1.6.12
+      solid-start: '*'
+    peerDependenciesMeta:
+      '@tauri-apps/plugin-store':
+        optional: true
+      solid-start:
+        optional: true
+
   '@solid-primitives/trigger@1.2.0':
     resolution: {integrity: sha512-sW4/3cDXSjYQampn8CIFZ11BlxgNf2li8r2fXnb3b3YWE6RdZZCl8PhvpPF38Gzl0CnryrbTPJWM7OIkseCDgQ==}
     peerDependencies:
@@ -574,6 +589,11 @@ packages:
 
   '@solid-primitives/utils@6.3.0':
     resolution: {integrity: sha512-e7hTlJ1Ywh2+g/Qug+n4L1mpfxsikoIS4/sHE2EK9WatQt8UJqop/vE6bsLnXlU1xuhb/jo94Ah5Y27rd4wP7A==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
+  '@solid-primitives/utils@6.3.1':
+    resolution: {integrity: sha512-4/Z59nnwu4MPR//zWZmZm2yftx24jMqQ8CSd/JobL26TPfbn4Ph8GKNVJfGJWShg1QB98qObJSskqizbTvcLLA==}
     peerDependencies:
       solid-js: ^1.6.12
 
@@ -1960,12 +1980,21 @@ snapshots:
       '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
       solid-js: 1.9.5
 
+  '@solid-primitives/storage@4.3.2(solid-js@1.9.5)':
+    dependencies:
+      '@solid-primitives/utils': 6.3.1(solid-js@1.9.5)
+      solid-js: 1.9.5
+
   '@solid-primitives/trigger@1.2.0(solid-js@1.9.5)':
     dependencies:
       '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
       solid-js: 1.9.5
 
   '@solid-primitives/utils@6.3.0(solid-js@1.9.5)':
+    dependencies:
+      solid-js: 1.9.5
+
+  '@solid-primitives/utils@6.3.1(solid-js@1.9.5)':
     dependencies:
       solid-js: 1.9.5
 
