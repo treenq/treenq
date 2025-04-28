@@ -27,8 +27,7 @@ type Config struct {
 	// GithubWebhookSecret is used to verify the webhooks source
 	GithubWebhookSecret string `envconfig:"GITHUB_WEBHOOK_SECRET" required:"true"`
 	// TODO: Enable in e2e tests
-	GithubWebhookSecretEnable bool   `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
-	GithubWebhookURL          string `envconfig:"GITHUB_WEBHOOK_URL" required:"true"`
+	GithubWebhookSecretEnable bool `envconfig:"GITHUB_WEBHOOK_SECRET_ENABLE" default:"true"`
 
 	JwtTtl time.Duration `envconfig:"JWT_TTL" default:"5m"`
 
@@ -43,9 +42,10 @@ type Config struct {
 
 	KubeConfig FileSource `envconfig:"KUBE_CONFIG" required:"true"`
 
-	AuthPrivateKey StringBase64  `envconfig:"AUTH_PRIVATE_KEY" required:"true"`
-	AuthPublicKey  StringBase64  `envconfig:"AUTH_PUBLIC_KEY" required:"true"`
-	AuthTtl        time.Duration `envconfig:"AUTH_TTL" default:"24h"`
+	AuthPrivateKey  StringBase64  `envconfig:"AUTH_PRIVATE_KEY" required:"true"`
+	AuthPublicKey   StringBase64  `envconfig:"AUTH_PUBLIC_KEY" required:"true"`
+	AuthTtl         time.Duration `envconfig:"AUTH_TTL" default:"24h"`
+	AuthRedirectUrl string        `envconfig"AUTH_REDIRECT_URL" required:"true"`
 
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`

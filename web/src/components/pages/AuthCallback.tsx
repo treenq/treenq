@@ -18,7 +18,7 @@ function getProfile(token: string): User {
 }
 
 type TokenResponse = {
-  token: string
+  accessToken: string
 }
 
 export default function AuthCallback() {
@@ -37,8 +37,8 @@ export default function AuthCallback() {
       return
     }
 
-    const user = getProfile(tokenResp.token)
-    userStore.login(tokenResp.token, user)
+    const user = getProfile(tokenResp.accessToken)
+    userStore.login(tokenResp.accessToken, user)
     navigate('/', { replace: true })
   })
 

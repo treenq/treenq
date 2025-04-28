@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
@@ -17,9 +18,10 @@ type Handler struct {
 
 	kubeConfig string
 
-	oauthProvider    OauthProvider
-	jwtIssuer        JwtIssuer
-	githubWebhookURL string
+	oauthProvider   OauthProvider
+	jwtIssuer       JwtIssuer
+	authRedirectUrl string
+	authTtl         time.Duration
 
 	l *slog.Logger
 }
@@ -35,7 +37,9 @@ func NewHandler(
 
 	oauthProvider OauthProvider,
 	jwtIssuer JwtIssuer,
-	githubWebhookURL string,
+	authRedirectUrl string,
+	authTtl time.Duration,
+
 	l *slog.Logger,
 ) *Handler {
 	return &Handler{
@@ -48,10 +52,11 @@ func NewHandler(
 
 		kubeConfig: kubeConfig,
 
-		oauthProvider:    oauthProvider,
-		jwtIssuer:        jwtIssuer,
-		githubWebhookURL: githubWebhookURL,
-		l:                l,
+		oauthProvider:   oauthProvider,
+		jwtIssuer:       jwtIssuer,
+		authRedirectUrl: authRedirectUrl,
+		authTtl:         authTtl,
+		l:               l,
 	}
 }
 

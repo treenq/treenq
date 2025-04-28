@@ -73,7 +73,8 @@ func New(conf Config) (http.Handler, error) {
 		string(conf.KubeConfig),
 		oauthProvider,
 		authJwtIssuer,
-		conf.GithubWebhookURL,
+		conf.AuthRedirectUrl,
+		conf.AuthTtl,
 		l,
 	)
 	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l), vel.NewCorsMiddleware(conf.CorsAllowOrigin)).Mux(), nil
