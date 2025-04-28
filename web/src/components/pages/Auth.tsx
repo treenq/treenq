@@ -3,8 +3,7 @@ import { Button } from '@/ui/Button'
 
 export default function Auth() {
   function handleAuth() {
-    console.log(import.meta.env.APP_API_HOST)
-    window.location.href = `${import.meta.env.APP_API_HOST}/auth?redirectUrl=${import.meta.env.APP_HOST}/authCallback`
+    window.location.href = `${import.meta.env.APP_API_HOST}/auth`
   }
 
   return (
