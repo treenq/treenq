@@ -92,17 +92,41 @@ func (j *JwtIssuer) VerifyToken(tokenString string) (map[string]interface{}, err
 	return claims, nil
 }
 
+const (
+	AuthKey    = "Authorization"
+	RefreshKey = "RefreshAuthorization"
+)
+
+func getToken(r *http.Request) string {
+	// browsers authenticate using cookies
+	authHeader, err := r.Cookie(AuthKey)
+	if err != nil {
+		// if no cookies then look at the headers (CLI, e2e tests, etc.)
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			return ""
+		}
+
+		token, isBearer := strings.CutPrefix(authHeader, "Bearer ")
+		if !isBearer {
+			return ""
+		}
+
+		return token
+	}
+
+	if authHeader.Expires.Before(time.Now()) {
+		return ""
+	}
+
+	return authHeader.Value
+}
+
 func NewJwtMiddleware(jwtIssuer *JwtIssuer, l *slog.Logger) vel.Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, (&vel.Error{Code: "UNAUTHORIZED", Message: "authorization header is empty"}).JsonString(), http.StatusUnauthorized)
-				return
-			}
-
-			token, isBearer := strings.CutPrefix(authHeader, "Bearer ")
-			if !isBearer {
+			token := getToken(r)
+			if token == "" {
 				http.Error(w, (&vel.Error{Code: "UNAUTHORIZED", Message: "no bearer token found"}).JsonString(), http.StatusUnauthorized)
 				return
 			}

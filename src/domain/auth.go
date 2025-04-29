@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/treenq/treenq/pkg/vel"
+	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 var (
@@ -41,7 +42,7 @@ func (h *Handler) writeTokenCookie(w http.ResponseWriter, token string) {
 	expiration := time.Now().Add(h.authTtl)
 
 	state := uuid.NewString()
-	cookie := http.Cookie{Name: "accessToken", Value: state, Expires: expiration, HttpOnly: true, SameSite: http.SameSiteStrictMode}
+	cookie := http.Cookie{Name: auth.AuthKey, Value: state, Expires: expiration, HttpOnly: true, SameSite: http.SameSiteStrictMode}
 	http.SetCookie(w, &cookie)
 }
 
