@@ -1,34 +1,40 @@
+import { HttpClient, UserInfo } from '@/services/client'
+import { redirect } from '@solidjs/router'
+
 import { makePersisted } from '@solid-primitives/storage'
 import { createStore } from 'solid-js/store'
 
-export type User = {
-  id: string
-  email: string
-  displayName: string
-}
-
 type AuthState = {
-  isAuthenticated: boolean
-  token: string
-  user?: User | undefined
+  user?: UserInfo | undefined
 }
 
 const defaultAuthState: AuthState = {
-  isAuthenticated: false,
-  token: '',
   user: undefined,
 }
 
 export function createUserStore() {
-  const [store, setStore] = makePersisted(createStore<AuthState>(defaultAuthState), {
+  const client = new HttpClient(import.meta.env.APP_API_HOST)
+
+  const [store, setStore] = makePersisted(createStore(defaultAuthState), {
     name: 'tq-auth',
   })
 
+  const login = (user: UserInfo) => {
+    setStore({ user: user })
+  }
+
+  const getProfile = async () => {
+    if (store.user) return store.user
+
+    const res = await client.getProfile()
+    if ('error' in res) throw redirect('/auth')
+    login(res.data.userInfo)
+  }
+
   return {
-    store: store,
-    login: (token: string, user: User) => {
-      setStore({ token: token, user: user, isAuthenticated: true })
-    },
+    login: login,
     logout: () => setStore(defaultAuthState),
+    getProfile: getProfile,
+    ...store,
   }
 }

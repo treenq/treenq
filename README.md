@@ -63,16 +63,44 @@ Support the project by giving it a star on GitHub! Your support helps us grow!
 📢 **Want to contribute?**
 We welcome all contributions! Before submitting code, please open an issue to discuss your changes.
 
-### How to run
+### How to run locally
 
 - Install [Go](https://go.dev/doc/install)
 - Install Docker/Colima/Podman for running dev environment
 - Mac users only: install macFUSE: `brew install macfuse`
-- Run the dev environment: `docker compose up`
-- Run `go run cmd/server/main.go`
+- Run the dev environment: `make start-e2e-test-env`
+- Attach remote debugger, here is example for vscode launch.json:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "go",
+      "name": "debug remote service",
+      "mode": "remote",
+      "request": "attach",
+      "port": 40000,
+      "substitutePath": [
+        {
+          "from": "${env:HOME}/projects/treenq",
+          "to": "/app"
+        },
+        {
+          "from": "${env:HOME}/go/pkg/mod/",
+          "to": "/go/pkg/mod/"
+        }
+      ]
+    }
+  ]
+}
+```
 
 #### Run e2e tests
 
+Run `make run-e2e-tests` or if you already run local setup in docker-compose then `go test -v -count=1 -race ./e2e/...`.
+
+Alternatively you can run your dev setup for e2e tests manually.
 Running a dev container locally for e2e tests require additional security options.
 This tip will also help to run the service inside a container.
 
