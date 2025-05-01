@@ -21,8 +21,6 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY policy.json storage.conf registries.conf /etc/containers/
-
 RUN mkdir -p /etc/containers/ && touch /etc/containers/registries.conf && echo 'unqualified-search-registries=["docker.io"]' > /etc/containers/registries.conf
 
 COPY policy.json storage.conf registries.conf /etc/containers/
