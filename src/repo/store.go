@@ -316,7 +316,7 @@ func (s *Store) UpdateRepoPrivateFlagAndDefaultBranch(ctx context.Context, newDe
 	query, args, err := s.sq.Update("installedRepos").
 		Set("defaultBranch", newDefaultBranch).
 		Set("private", isPrivate).
-		Where(sq.Eq{"githubid": repoID}).
+		Where(sq.Eq{"githubId": repoID}).
 		Suffix("RETURNING id, githubId, fullName, private, defaultBranch,  status, connected").
 		ToSql()
 	if err != nil {

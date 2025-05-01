@@ -118,10 +118,10 @@ func clearDatabase() {
 
 func createUser(userInfo client.UserInfo) (string, error) {
 	_, err := db.Exec(`
-		INSERT INTO users (id, email, displayName, githubId)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (id, email, displayName)
+		VALUES ($1, $2, $3)
 		RETURNING id
-	`, userInfo.ID, userInfo.Email, userInfo.DisplayName, "42")
+	`, userInfo.ID, userInfo.Email, userInfo.DisplayName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
