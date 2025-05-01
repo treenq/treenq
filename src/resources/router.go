@@ -14,7 +14,7 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	// auth is an endpoint contain redirect, therefore it must be GET
 	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
 		Input:       struct{}{},
-		Output:      domain.TokenResponse{},
+		Output:      domain.GithubCallbackResponse{},
 		Method:      "GET",
 		OperationID: "auth",
 	}, handlers.GithubAuthHandler)

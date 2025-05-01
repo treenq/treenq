@@ -51,21 +51,23 @@ type CodeExchangeRequest struct {
 	Code  string `schema:"code"`
 }
 
+type GithubCallbackResponse struct{}
+
 // GithubCallbackHandler is the handler for the callback from Github
 // It exchanges the code for an access token and returns the given access and refresh tokens
-func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeRequest) *vel.Error {
+func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeRequest) (GithubCallbackResponse, *vel.Error) {
 	r := vel.RequestFromContext(ctx)
 	w := vel.WriterFromContext(ctx)
 	oauthState, _ := r.Cookie("authstate")
 	if oauthState == nil {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Code:    "COOKIE_IS_EMPTY",
 			Message: "cookie auth status is expected",
 		}
 	}
 
 	if req.State != oauthState.Value {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Code: "STATE_DOESNT_MATCH",
 			Err:  errors.New("state doesn't match"),
 		}
@@ -73,7 +75,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 
 	oauthToken, err := h.oauthProvider.ExchangeCode(ctx, req.Code)
 	if err != nil {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Message: "failed to exchange code to token",
 			Err:     err,
 		}
@@ -81,7 +83,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 
 	user, err := h.oauthProvider.FetchUser(r.Context(), oauthToken)
 	if err != nil {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Code:    "UNKNOWN",
 			Message: "failed to fetch user form oauth provider",
 			Err:     err,
@@ -91,7 +93,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 	// save user if doesn't exist
 	savedUser, err := h.db.GetOrCreateUser(r.Context(), user)
 	if err != nil {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Message: "failed get to create user",
 			Err:     err,
 		}
@@ -103,12 +105,12 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 		"displayName": savedUser.DisplayName,
 	})
 	if err != nil {
-		return &vel.Error{
+		return GithubCallbackResponse{}, &vel.Error{
 			Message: "failed ogenerate jwt token",
 			Err:     err,
 		}
 	}
 	h.writeTokenCookie(w, token)
 	http.Redirect(w, r, h.authRedirectUrl, http.StatusTemporaryRedirect)
-	return nil
+	return GithubCallbackResponse{}, nil
 }
