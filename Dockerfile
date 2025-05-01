@@ -21,6 +21,16 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /usr/libexec/podman /etc/containers/
+
+RUN curl -L -o /usr/libexec/podman/netavark.gz https://github.com/containers/netavark/releases/download/v1.14.1/netavark.gz && \
+    curl -L -o /usr/libexec/podman/aardvark-dns.gz https://github.com/containers/aardvark-dns/releases/download/v1.14.0/aardvark-dns.gz && \
+    cd /usr/libexec/podman && \
+    gunzip netavark.gz && \
+    gunzip aardvark-dns.gz && \
+    chmod +x netavark && \
+    chmod +x aardvark-dns
+
 RUN mkdir -p /etc/containers/ && touch /etc/containers/registries.conf && echo 'unqualified-search-registries=["docker.io"]' > /etc/containers/registries.conf
 
 COPY policy.json storage.conf registries.conf /etc/containers/
@@ -60,6 +70,14 @@ FROM alpine:3.13
 RUN addgroup -g 1001 appgroup && adduser -D -G appgroup -u 1001 appuser
 
 WORKDIR /app
+
+RUN mkdir -p /usr/libexec/podman
+
+COPY --from=builder /usr/libexec/podman/netavark /usr/libexec/podman/
+COPY --from=builder /usr/libexec/podman/aardvark-dns /usr/libexec/podman/
+
+RUN chmod +x /usr/libexec/podman/netavark && \
+    chmod +x /usr/libexec/podman/aardvark-dns
 
 USER 1001
 
