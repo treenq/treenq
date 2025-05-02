@@ -79,7 +79,7 @@ services:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
-    env_file: e2e.env
+    env_file: dev.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,7 +95,7 @@ services:
     depends_on:
       - server
     env_file:
-      - ./web/.env.dev
+      - ./web/dev.env
 volumes:
   pgdata:
     driver: local

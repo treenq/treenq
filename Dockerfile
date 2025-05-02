@@ -42,7 +42,7 @@ COPY policy.json storage.conf registries.conf /etc/containers/
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod/ go mod download -x
 
-FROM builder AS dev
+FROM builder AS debugger
 
 # Install Delve (debugger)
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go install github.com/go-delve/delve/cmd/dlv@v1.24.1
@@ -52,8 +52,11 @@ COPY . .
 
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -gcflags=all="-N -l" -o server ./cmd/server
 
-# Set the default command to run the app with dlv for debugging
+FROM debugger AS dev
 CMD ["dlv", "--listen=:40000", "--continue", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "server"]
+
+FROM debugger AS e2e
+CMD ["dlv", "--listen=:41000", "--continue", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "server"]
 
 FROM builder AS prod
 

@@ -3,3 +3,16 @@ services:
     volumes: !reset []
     tmpfs:
       - /var/lib/postgresql/data
+  server:
+    build:
+      target: e2e
+    env_file: e2e.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8100:8100"
+      - "41000:41000"
+  web:
+    profiles:
+      - donotstart
