@@ -177,16 +177,6 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		if repo.Private != req.Repository.Private || repo.Branch != req.Repository.Branch {
-			repo, err = h.db.UpdateRepoPrivateFlagAndBranch(ctx, req.Repository.Branch, req.Repository.Private, req.Repository.ID)
-			if err != nil {
-				return GithubWebhookResponse{}, &vel.Error{
-					Message: "failed to update treenq repo by github",
-					Err:     err,
-				}
-			}
-		}
-
 		req.Repository.InstallationID = req.Installation.ID
 		req.Repository.TreenqID = repo.TreenqID
 		req.Repository.Status = repo.Status

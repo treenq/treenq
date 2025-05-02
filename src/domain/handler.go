@@ -80,7 +80,6 @@ type Database interface {
 	GetRepoByGithub(ctx context.Context, githubRepoID int) (Repository, error)
 	GetRepoByID(ctx context.Context, userID, repoID string) (Repository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
-	UpdateRepoPrivateFlagAndBranch(ctx context.Context, newDefaultBranch string, blnPrivate bool, repoID int) (Repository, error)
 }
 
 type GithubCleint interface {

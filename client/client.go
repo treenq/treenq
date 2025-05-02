@@ -368,7 +368,6 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 
 type DeployRequest struct {
 	RepoID string
-	Branch string
 }
 
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) error {

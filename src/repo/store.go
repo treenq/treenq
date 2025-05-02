@@ -312,30 +312,6 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 	return repo, nil
 }
 
-func (s *Store) UpdateRepoPrivateFlagAndBranch(ctx context.Context, newBranch string, isPrivate bool, repoID int) (domain.Repository, error) {
-	query, args, err := s.sq.Update("installedRepos").
-		Set("branch", newBranch).
-		Set("private", isPrivate).
-		Where(sq.Eq{"githubId": repoID}).
-		Suffix("RETURNING id, githubId, fullName, private, branch,  status, connected").
-		ToSql()
-	if err != nil {
-		return domain.Repository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
-	}
-
-	row := s.db.QueryRowContext(ctx, query, args...)
-	if err != nil {
-		return domain.Repository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", err)
-	}
-	var repo domain.Repository
-	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Branch, &repo.Status, &repo.Connected); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return repo, domain.ErrRepoNotFound
-		}
-	}
-	return repo, nil
-}
-
 func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error) {
 	query, args, err := s.sq.Select("connected").
 		From("installedRepos").
