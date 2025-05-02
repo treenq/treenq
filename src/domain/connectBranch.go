@@ -31,7 +31,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		}
 
 		return ConnectBranchResponse{}, &vel.Error{
-			Code:    "INTERNAL_SERVER_ERROR",
+			Err:     err,
 			Message: "failed to do store call ConnectRepo",
 		}
 	}

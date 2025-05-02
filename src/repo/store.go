@@ -290,10 +290,6 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Rep
 }
 
 func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) (domain.Repository, error) {
-	if branch == "" {
-		return domain.Repository{}, fmt.Errorf("branch cannot be empty")
-	}
-
 	query, args, err := s.sq.Update("installedRepos").
 		Set("connected", true).
 		Set("branch", branch).
