@@ -3,24 +3,3 @@ services:
     volumes: !reset []
     tmpfs:
       - /var/lib/postgresql/data
-
-  server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: dev
-    ports:
-      - "8000:8000"
-      - "40000:40000"
-    privileged: true
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - SYS_PTRACE
-    env_file: e2e.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: always
-    volumes:
-      - ./certs:/certs

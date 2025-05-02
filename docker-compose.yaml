@@ -65,20 +65,37 @@ services:
       - 6443:6443
       - 8080:80
       - 8081:443
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8000:8000"
+      - "40000:40000"
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    env_file: e2e.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./certs:/certs
+
   web:
     build:
       context: ./web
-      args:
-        APP_API_HOST: "${APP_API_HOST:-http://localhost:8000}"
-        APP_GITHUB_APP_NAME: "${APP_GITHUB_APP_NAME:-treenq-app}"
     ports:
       - "9000:80"
     depends_on:
-      - kube
-      - registry
-      - postgres
-    environment:
-      - NODE_ENV=production
+      - server
+    env_file:
+      - ./web/.env.dev
 volumes:
   pgdata:
     driver: local
