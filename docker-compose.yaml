@@ -65,7 +65,20 @@ services:
       - 6443:6443
       - 8080:80
       - 8081:443
-
+  web:
+    build:
+      context: ./web
+      args:
+        APP_API_HOST: "${APP_API_HOST:-http://localhost:8000}"
+        APP_GITHUB_APP_NAME: "${APP_GITHUB_APP_NAME:-treenq-app}"
+    ports:
+      - "9000:80"
+    depends_on:
+      - kube
+      - registry
+      - postgres
+    environment:
+      - NODE_ENV=production
 volumes:
   pgdata:
     driver: local
