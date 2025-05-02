@@ -290,10 +290,15 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Rep
 }
 
 func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) (domain.Repository, error) {
+	if branch == "" {
+		return domain.Repository{}, fmt.Errorf("branch cannot be empty")
+	}
+
 	query, args, err := s.sq.Update("installedRepos").
 		Set("connected", true).
-		Where(sq.Eq{"id": repoID, "userId": userID, "branch": branch}).
-		Suffix("RETURNING id, githubId, fullName, private, branch,  status, connected").
+		Set("branch", branch).
+		Where(sq.Eq{"id": repoID, "userId": userID}).
+		Suffix("RETURNING id, githubId, fullName, private, branch, status, connected").
 		ToSql()
 	if err != nil {
 		return domain.Repository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
@@ -308,6 +313,7 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 		if errors.Is(err, sql.ErrNoRows) {
 			return repo, domain.ErrRepoNotFound
 		}
+		return repo, fmt.Errorf("failed to scan repository: %w", err)
 	}
 	return repo, nil
 }
