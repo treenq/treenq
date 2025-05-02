@@ -127,7 +127,7 @@ func createUser(userInfo client.UserInfo) (string, error) {
 	}
 
 	issuer := auth.NewJwtIssuer("treenq-api", []byte(privateKey), []byte(publicKey), 24*time.Hour)
-	token, err := issuer.GenerateJwtToken(map[string]interface{}{
+	token, err := issuer.GenerateJwtToken(map[string]any{
 		"id":          userInfo.ID,
 		"email":       userInfo.Email,
 		"displayName": userInfo.DisplayName,
