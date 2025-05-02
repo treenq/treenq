@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16.3
+    container_name: treenq-postgres
     restart: always
     environment:
       POSTGRES_HOST_AUTH_METHOD: "trust"
@@ -15,8 +16,19 @@ services:
       timeout: 3s
       retries: 10
 
+  postgres-ui:
+    image: sosedoff/pgweb:0.16.2
+    environment:
+      - PGWEB_DATABASE_URL=postgres://postgres@postgres:5432/tq?sslmode=disable
+    ports:
+      - 8082:8081
+    restart: on-failure
+    depends_on:
+      - postgres
+
   registry:
     image: registry:2.8.3
+    container_name: treenq-registry
     ports:
       - "5000:5000"
     environment:
@@ -31,6 +43,7 @@ services:
 
   kube:
     image: rancher/k3s:v1.31.1-k3s1
+    container_name: treenq-kube
     command:
       - server
       - --tls-san=kube
@@ -47,11 +60,7 @@ services:
         hard: 65535
     privileged: true
     restart: always
-    environment:
-      # - K3S_TOKEN=${K3S_PASSWORD_1} # Only required if we are running more than 1 node
-      # - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
-      - K3S_KUBECONFIG_MODE=666
-      - K3S_URL=https://kube:6443
+    env_file: dev.env
     volumes:
       - k3s:/var/lib/rancher/k3s
       # - ./k3s_data/kubeconfig:/output
@@ -65,6 +74,28 @@ services:
       - 6443:6443
       - 8080:80
       - 8081:443
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: treenq-server
+    ports:
+      - "8000:8000"
+      - "40000:40000"
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    env_file: dev.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./certs:/certs
 
 volumes:
   pgdata:

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,14 +20,14 @@ import (
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
-func New(conf Config) (http.Handler, error) {
+func New(ctx context.Context, conf Config) (http.Handler, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	l := vel.NewLogger(os.Stdout, slog.LevelDebug)
 
-	db, err := resources.OpenDB(conf.DbDsn, conf.MigrationsDir)
+	db, err := resources.OpenDB(ctx, conf.DbDsn, conf.MigrationsDir)
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,8 @@ import (
 	"github.com/treenq/treenq/client"
 )
 
+const backendAddress = "http://localhost:18000"
+
 func TestGetProfile(t *testing.T) {
 	clearDatabase()
 
@@ -19,7 +21,7 @@ func TestGetProfile(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	apiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+	apiClient := client.NewClient(backendAddress, http.DefaultClient, map[string]string{
 		"Authorization": "Bearer " + userToken,
 	})
 	profile, err := apiClient.GetProfile(ctx)
@@ -31,7 +33,7 @@ func TestGetProfile(t *testing.T) {
 
 func TestGetProfileNoToken(t *testing.T) {
 	ctx := context.Background()
-	_, err := client.NewClient("http://localhost:8000", http.DefaultClient, nil).GetProfile(ctx)
+	_, err := client.NewClient(backendAddress, http.DefaultClient, nil).GetProfile(ctx)
 	var e *client.Error
 	require.ErrorAs(t, err, &e)
 	assert.Equal(t, e.Code, "UNAUTHORIZED")
@@ -39,7 +41,7 @@ func TestGetProfileNoToken(t *testing.T) {
 
 func TestGetProfileInvalidToken(t *testing.T) {
 	ctx := context.Background()
-	_, err := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+	_, err := client.NewClient(backendAddress, http.DefaultClient, map[string]string{
 		"Authorization": "Bearer invalid",
 	}).GetProfile(ctx)
 	var e *client.Error

@@ -1,17 +1,85 @@
 services:
   postgres:
+    image: postgres:16.3
+    container_name: treenq-e2e-postgres
+    ports:
+      - "15432:5432"
     volumes: !reset []
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tq_e2e"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_DB: tq_e2e
     tmpfs:
       - /var/lib/postgresql/data
+    networks:
+      - treenq-e2e-network
+
+  registry:
+    image: registry:2.8.3
+    container_name: treenq-e2e-registry
+    ports:
+      - "15000:5000"
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/registry.key
+    volumes:
+      - ./auth:/auth
+      - ./certs:/certs
+    networks:
+      - treenq-e2e-network
+
+  kube:
+    image: rancher/k3s:v1.31.1-k3s1
+    container_name: treenq-e2e-kube
+    command:
+      - server
+      - --tls-san=kube
+      - "--kubelet-arg=eviction-hard=imagefs.available<5%,nodefs.available<10%"
+      - "--kubelet-arg=eviction-soft=imagefs.available<10%,nodefs.available<15%"
+      - "--kubelet-arg=eviction-soft-grace-period=imagefs.available=1m,nodefs.available=1m"
+    tmpfs:
+      - /run
+      - /var/run
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true
+    restart: always
+    env_file: e2e.env
+    volumes:
+      - k3s:/var/lib/rancher/k3s
+      # - ./k3s_data/kubeconfig:/output
+      - ./k3s_data/docker_images:/var/lib/rancher/k3s/agent/images
+      - ./k3s_data/k3s/:/etc/rancher/k3s/
+    expose:
+      - "6443" # Kubernetes API Server
+      - "80" # Ingress controller port 80
+      - "443" # Ingress controller port 443
+    ports:
+      - "16443:6443"
+      - "18080:80"
+      - "18081:443"
+    networks:
+      - treenq-e2e-network
 
   server:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
+      target: e2e
+    container_name: treenq-e2e-server
     ports:
-      - "8000:8000"
-      - "40000:40000"
+      - "18000:8000"
+      - "41000:40000"
     privileged: true
     security_opt:
       - seccomp:unconfined
@@ -24,3 +92,12 @@ services:
     restart: always
     volumes:
       - ./certs:/certs
+    networks:
+      - treenq-e2e-network
+
+networks:
+  treenq-e2e-network:
+    name: treenq-e2e-network
+volumes:
+  k3s:
+    driver: local

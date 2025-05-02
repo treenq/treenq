@@ -1,10 +1,12 @@
 package resources
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -14,12 +16,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func OpenDB(dbDsn, migrationsDirName string) (*sqlx.DB, error) {
+func OpenDB(ctx context.Context, dbDsn, migrationsDirName string) (*sqlx.DB, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	db, err := sqlx.Connect("pgx", dbDsn)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	db, err := sqlx.ConnectContext(ctx, "pgx", dbDsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}

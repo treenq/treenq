@@ -38,11 +38,11 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "user must be created")
 
 	ctx := context.Background()
-	githubHookClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{})
-	apiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+	githubHookClient := client.NewClient(backendAddress, http.DefaultClient, map[string]string{})
+	apiClient := client.NewClient(backendAddress, http.DefaultClient, map[string]string{
 		"Authorization": "Bearer " + userToken,
 	})
-	anotherApiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+	anotherApiClient := client.NewClient(backendAddress, http.DefaultClient, map[string]string{
 		"Authorization": "Bearer " + anotherToken,
 	})
 

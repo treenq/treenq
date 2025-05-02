@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/treenq/treenq/pkg/vel/auth"
 	"github.com/treenq/treenq/src/resources"
 )
+
+const DbsnE2e = "postgres://postgres@localhost:15432/tq_e2e?sslmode=disable"
 
 var (
 	db         *sqlx.DB
@@ -90,7 +93,7 @@ QcUxsLirFRIbYzTUu3Czn6vFCJhnHQC364//Y5mCcon3dbcs5ooB32v+Mlt2guBa
 
 func openDB() {
 	var err error
-	db, err = resources.OpenDB("postgres://postgres@localhost:5432/tq?sslmode=disable", "../migrations")
+	db, err = resources.OpenDB(context.Background(), DbsnE2e, "../migrations")
 	if err != nil {
 		panic(err)
 	}
