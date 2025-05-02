@@ -23,26 +23,16 @@ type UserInfo struct {
 }
 
 func (h *Handler) GithubAuthHandler(w http.ResponseWriter, r *http.Request) {
-	state := writeStateCookie(w)
+	state := uuid.NewString()
+	writeCookie(w, "authstate", state, time.Second*90)
 	authUrl := h.oauthProvider.AuthUrl(state)
 	http.Redirect(w, r, authUrl, http.StatusTemporaryRedirect)
 }
 
-func writeStateCookie(w http.ResponseWriter) string {
-	expiration := time.Now().Add(time.Second * 90)
+func writeCookie(w http.ResponseWriter, key, value string, exp time.Duration) {
+	expiration := time.Now().Add(exp)
 
-	state := uuid.NewString()
-	cookie := http.Cookie{Name: "authstate", Value: state, Expires: expiration, HttpOnly: true, SameSite: http.SameSiteStrictMode}
-	http.SetCookie(w, &cookie)
-
-	return state
-}
-
-func (h *Handler) writeTokenCookie(w http.ResponseWriter, _ string) {
-	expiration := time.Now().Add(h.authTtl)
-
-	state := uuid.NewString()
-	cookie := http.Cookie{Name: auth.AuthKey, Value: state, Expires: expiration, HttpOnly: true, SameSite: http.SameSiteStrictMode}
+	cookie := http.Cookie{Name: key, Value: value, Expires: expiration, HttpOnly: true, SameSite: http.SameSiteStrictMode}
 	http.SetCookie(w, &cookie)
 }
 
@@ -110,7 +100,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 			Err:     err,
 		}
 	}
-	h.writeTokenCookie(w, token)
+	writeCookie(w, auth.AuthKey, token, h.authTtl)
 	http.Redirect(w, r, h.authRedirectUrl, http.StatusTemporaryRedirect)
 	return GithubCallbackResponse{}, nil
 }

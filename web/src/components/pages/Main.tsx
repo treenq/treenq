@@ -1,5 +1,6 @@
 import { createUserStore } from '@/store/userStore'
 import { createAsync } from '@solidjs/router'
+import { GithubInstallation } from '../widgets/GithubInstallation'
 
 const userStore = createUserStore()
 
@@ -17,7 +18,7 @@ export default function Main() {
   return (
     <div class="bg-background flex min-h-screen items-center justify-center">
       <div class="flex flex-col items-start space-y-6">
-        <h1>Kuku!</h1>
+      <GithubInstallation />
       </div>
     </div>
   )
