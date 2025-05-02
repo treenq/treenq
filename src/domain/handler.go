@@ -76,11 +76,11 @@ type Database interface {
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
-	ConnectRepo(ctx context.Context, userID, repoID string) (Repository, error)
+	ConnectRepo(ctx context.Context, userID, repoID, branchName string) (Repository, error)
 	GetRepoByGithub(ctx context.Context, githubRepoID int) (Repository, error)
 	GetRepoByID(ctx context.Context, userID, repoID string) (Repository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
-	UpdateRepoPrivateFlagAndDefaultBranch(ctx context.Context, newDefaultBranch string, blnPrivate bool, repoID int) (Repository, error)
+	UpdateRepoPrivateFlagAndBranch(ctx context.Context, newDefaultBranch string, blnPrivate bool, repoID int) (Repository, error)
 }
 
 type GithubCleint interface {
@@ -112,5 +112,5 @@ type OauthProvider interface {
 }
 
 type JwtIssuer interface {
-	GenerateJwtToken(claims map[string]interface{}) (string, error)
+	GenerateJwtToken(claims map[string]any) (string, error)
 }

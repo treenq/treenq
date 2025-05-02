@@ -176,7 +176,7 @@ type Repository struct {
 	ID             int    `json:"id"`
 	FullName       string `json:"full_name"`
 	Private        bool   `json:"private"`
-	DefaultBranch  string `json:"default_branch"`
+	Branch         string `json:"branch"`
 	InstallationID int    `json:"installationID"`
 	TreenqID       string `json:"treenqID"`
 	Status         string `json:"status"`
@@ -324,6 +324,7 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 
 type ConnectBranchRequest struct {
 	RepoID string
+	Branch string
 }
 
 type ConnectBranchResponse struct {
@@ -367,6 +368,7 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 
 type DeployRequest struct {
 	RepoID string
+	Branch string
 }
 
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) error {

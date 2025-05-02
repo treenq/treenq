@@ -76,20 +76,20 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repos must be available after added repo")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:      reposResponse.Repos[0].TreenqID,
-			ID:            805585115,
-			FullName:      "treenq/useless",
-			Private:       false,
-			Status:        "active",
-			DefaultBranch: "",
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   "",
 		},
 		{
-			TreenqID:      reposResponse.Repos[1].TreenqID,
-			ID:            805584540,
-			FullName:      "treenq/useless-cli",
-			Private:       false,
-			Status:        "active",
-			DefaultBranch: "",
+			TreenqID: reposResponse.Repos[1].TreenqID,
+			ID:       805584540,
+			FullName: "treenq/useless-cli",
+			Private:  false,
+			Status:   "active",
+			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -103,20 +103,20 @@ func TestGithubAppInstallation(t *testing.T) {
 
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:      reposResponse.Repos[0].TreenqID,
-			ID:            805585115,
-			FullName:      "treenq/useless",
-			Private:       false,
-			Status:        "active",
-			DefaultBranch: "main",
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   "main",
 		},
 		{
-			TreenqID:      reposResponse.Repos[1].TreenqID,
-			ID:            805584540,
-			FullName:      "treenq/useless-cli",
-			Private:       false,
-			Status:        "active",
-			DefaultBranch: "",
+			TreenqID: reposResponse.Repos[1].TreenqID,
+			ID:       805584540,
+			FullName: "treenq/useless-cli",
+			Private:  false,
+			Status:   "active",
+			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -131,18 +131,19 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:      reposResponse.Repos[0].TreenqID,
-			ID:            805585115,
-			FullName:      "treenq/useless",
-			Private:       false,
-			Status:        "active",
-			DefaultBranch: "main",
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   "main",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
 	// test another user can't connect a branch
 	connectRepoResponse, err := anotherApiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
+		Branch: reposResponse.Repos[0].Branch,
 	})
 	assert.Equal(t, err, &client.Error{
 		Code: "REPO_NOT_FOUND",
@@ -151,17 +152,18 @@ func TestGithubAppInstallation(t *testing.T) {
 	// connect a Branch
 	connectRepoResponse, err = apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
+		Branch: reposResponse.Repos[0].Branch,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
 		Repo: client.Repository{
-			TreenqID:      reposResponse.Repos[0].TreenqID,
-			ID:            805585115,
-			FullName:      "treenq/useless",
-			Private:       false,
-			Status:        "active",
-			Connected:     true,
-			DefaultBranch: "main",
+			TreenqID:  reposResponse.Repos[0].TreenqID,
+			ID:        805585115,
+			FullName:  "treenq/useless",
+			Private:   false,
+			Status:    "active",
+			Connected: true,
+			Branch:    "main",
 		},
 	})
 	// get repos and make sure there is a connected one
@@ -169,13 +171,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:      reposResponse.Repos[0].TreenqID,
-			ID:            805585115,
-			FullName:      "treenq/useless",
-			Private:       false,
-			Status:        "active",
-			Connected:     true,
-			DefaultBranch: "main",
+			TreenqID:  reposResponse.Repos[0].TreenqID,
+			ID:        805585115,
+			FullName:  "treenq/useless",
+			Private:   false,
+			Status:    "active",
+			Connected: true,
+			Branch:    "main",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 

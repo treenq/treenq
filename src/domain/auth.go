@@ -38,7 +38,7 @@ func writeStateCookie(w http.ResponseWriter) string {
 	return state
 }
 
-func (h *Handler) writeTokenCookie(w http.ResponseWriter, token string) {
+func (h *Handler) writeTokenCookie(w http.ResponseWriter, _ string) {
 	expiration := time.Now().Add(h.authTtl)
 
 	state := uuid.NewString()
@@ -99,7 +99,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 		}
 	}
 
-	token, err := h.jwtIssuer.GenerateJwtToken(map[string]interface{}{
+	token, err := h.jwtIssuer.GenerateJwtToken(map[string]any{
 		"id":          savedUser.ID,
 		"email":       savedUser.Email,
 		"displayName": savedUser.DisplayName,

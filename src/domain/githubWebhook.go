@@ -54,13 +54,14 @@ type Repository struct {
 	// as a result we can't save it in a database on installing a github app,
 	// so currently for github repos we rely on building url from FullName
 	// CloneUrl      string `json:"clone_url"`
-	FullName      string `json:"full_name"`
-	Private       bool   `json:"private"`
-	DefaultBranch string `json:"default_branch"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
+	// DefaultBranch string `json:"default_branch"`
 
 	// fields managed by treenq
 
-	// InstallationID defiens a github app Installation id
+	Branch string `json:"branch"`
+	// InstallationID defines a github app Installation id
 	InstallationID int `json:"installationID"`
 	// TreenqID is an internal identifier
 	TreenqID string `json:"treenqID"`
@@ -167,7 +168,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	}
 
 	// new commit to the default branch
-	if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.DefaultBranch {
+	if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.Branch {
 		repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
@@ -176,8 +177,8 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 			}
 		}
 
-		if repo.Private != req.Repository.Private || repo.DefaultBranch != req.Repository.DefaultBranch {
-			repo, err = h.db.UpdateRepoPrivateFlagAndDefaultBranch(ctx, req.Repository.DefaultBranch, req.Repository.Private, req.Repository.ID)
+		if repo.Private != req.Repository.Private || repo.Branch != req.Repository.Branch {
+			repo, err = h.db.UpdateRepoPrivateFlagAndBranch(ctx, req.Repository.Branch, req.Repository.Private, req.Repository.ID)
 			if err != nil {
 				return GithubWebhookResponse{}, &vel.Error{
 					Message: "failed to update treenq repo by github",
