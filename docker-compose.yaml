@@ -66,6 +66,36 @@ services:
       - 8080:80
       - 8081:443
 
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8000:8000"
+      - "40000:40000"
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    env_file: dev.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./certs:/certs
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - "9000:80"
+    depends_on:
+      - server
+    env_file:
+      - ./web/dev.env
 volumes:
   pgdata:
     driver: local
