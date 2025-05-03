@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS installedRepos (
     userId uuid REFERENCES users(id) NOT NULL,
     status varchar(25) NOT NULL,
     connected boolean NOT NULL,
-    defaultBranch varchar(100) NOT NULL,
+    branch varchar(100) NOT NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

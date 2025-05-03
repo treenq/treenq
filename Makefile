@@ -62,5 +62,8 @@ run-e2e-tests: start-e2e-test-env
 	go test -v -count=1 -race ./e2e/...
 	make stop-e2e-test-env
 
+start-local-tools:
+	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.local.yaml up -d --build
+
 unit-tests:
 	go test $$(go list ./... | grep -v e2e)

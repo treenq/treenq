@@ -1,5 +1,5 @@
 import { GitHub } from '@/components/icons/Github'
-import { Button } from '@/ui/Button'
+import { Button } from '@/components/ui/Button'
 
 export default function Auth() {
   function handleAuth() {

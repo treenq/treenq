@@ -45,7 +45,7 @@ type Config struct {
 	AuthPrivateKey  StringBase64  `envconfig:"AUTH_PRIVATE_KEY" required:"true"`
 	AuthPublicKey   StringBase64  `envconfig:"AUTH_PUBLIC_KEY" required:"true"`
 	AuthTtl         time.Duration `envconfig:"AUTH_TTL" default:"24h"`
-	AuthRedirectUrl string        `envconfig"AUTH_REDIRECT_URL" required:"true"`
+	AuthRedirectUrl string        `envconfig:"AUTH_REDIRECT_URL" required:"true"`
 
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`

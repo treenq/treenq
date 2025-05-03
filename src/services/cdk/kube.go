@@ -77,7 +77,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 		                        "auth": "%s"
 		                    }
 		                }
-		            }`, k.dockerRegistry, base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", k.userName, k.userPassword))))),
+		            }`, k.dockerRegistry, base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", k.userName, k.userPassword)))),
 		},
 		Type: jsii.String("kubernetes.io/dockerconfigjson"),
 	})
