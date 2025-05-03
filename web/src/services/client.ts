@@ -67,11 +67,15 @@ export class HttpClient {
     })
 
     if (!res.ok) {
+      if (res.status >= 500) {
+        const errText = await res.text()
+        throw Error('http error: ' + errText)
+      }
       const jsonErr = await res.json()
       return { error: jsonErr as ApiErrorPayload }
     }
 
-    const response = res.json()
+    const response = await res.json()
     return { data: response as T }
   }
 

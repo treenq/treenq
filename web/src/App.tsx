@@ -9,13 +9,13 @@ import { userStore } from '@/store/userStore'
 
 type ProtectedRouterProps = {
   children: JSX.Element
-  satisfies: boolean
+  satisfies: () => void
   redirectTo: string
 }
 
 function ProtectedRouter(props: ProtectedRouterProps): JSX.Element {
   return (
-    <Show when={props.satisfies} fallback={<Navigate href={props.redirectTo} />}>
+    <Show when={props.satisfies()} fallback={<Navigate href={props.redirectTo} />}>
       {props.children}
     </Show>
   )
@@ -36,13 +36,23 @@ function App(): JSX.Element {
         <Route
           path="/"
           component={MakeProtectedComponent({
-            // satisfies: userStore.user ? true : false,
-            satisfies: profile() ? true : false,
+            satisfies: () => {
+              return profile() ? true : false
+            },
             redirectTo: '/auth',
             children: <Main />,
           })}
         />
-        <Route path="/auth" component={Auth} />
+        <Route
+          path="/auth"
+          component={MakeProtectedComponent({
+            satisfies: () => {
+              return profile() ? false : true
+            },
+            redirectTo: '/',
+            children: <Auth />,
+          })}
+        />
       </Router>
     </>
   )

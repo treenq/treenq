@@ -5,7 +5,7 @@ import { makePersisted } from '@solid-primitives/storage'
 import { createStore } from 'solid-js/store'
 
 type AuthState = {
-  user?: UserInfo | undefined
+  user?: UserInfo
 }
 
 const defaultAuthState: AuthState = {
@@ -19,20 +19,15 @@ export function createUserStore() {
     name: 'tq-auth',
   })
 
-  const login = (user: UserInfo) => {
-    setStore({ user: user })
-  }
-
   const getProfile = async () => {
     if (store.user) return store.user
 
     const res = await client.getProfile()
     if ('error' in res) throw redirect('/auth')
-    login(res.data.userInfo)
+    setStore({ user: res.data.userInfo })
   }
 
   return {
-    login: login,
     logout: () => setStore(defaultAuthState),
     getProfile: getProfile,
     ...store,
