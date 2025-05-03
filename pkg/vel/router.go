@@ -192,4 +192,6 @@ func RegisterHandler(r *Router, handler http.Handler, meta HandlerMeta, middlewa
 	r.handlersMeta = append(r.handlersMeta, meta)
 	pattern := meta.Method + " /" + meta.OperationID
 	r.mux.Handle(pattern, handler)
+	pattern = http.MethodOptions + " /" + meta.OperationID
+	r.mux.Handle(pattern, handler)
 }

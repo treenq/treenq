@@ -34,7 +34,7 @@ export type ApiErrorPayload = {
 export class HttpClient {
   constructor(
     private baseUrl: string,
-    private fetchFn: FetchFn = fetch,
+    private fetchFn: FetchFn = window.fetch.bind(window),
   ) {
     this.baseUrl = baseUrl
     this.fetchFn = fetchFn
@@ -58,6 +58,7 @@ export class HttpClient {
     const url = this.buildUrl(path, opts.query)
     const res = await this.fetchFn(url, {
       method,
+      credentials: 'include',
       ...opts,
       headers: {
         'Content-Type': 'application/json',

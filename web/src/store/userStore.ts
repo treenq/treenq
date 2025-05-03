@@ -38,3 +38,5 @@ export function createUserStore() {
     ...store,
   }
 }
+
+export const userStore = createUserStore()

@@ -1,9 +1,11 @@
-import { Navigate, Route, Router } from '@solidjs/router'
+import { createAsync, Navigate, Route, Router } from '@solidjs/router'
 import type { Component, JSX } from 'solid-js'
 
 import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
 import { Show } from 'solid-js'
+
+import { userStore } from '@/store/userStore'
 
 type ProtectedRouterProps = {
   children: JSX.Element
@@ -26,13 +28,16 @@ function MakeProtectedComponent(props: ProtectedRouterProps): Component {
 }
 
 function App(): JSX.Element {
+  const profile = createAsync(userStore.getProfile)
+
   return (
     <>
       <Router>
         <Route
           path="/"
           component={MakeProtectedComponent({
-            satisfies: false,
+            // satisfies: userStore.user ? true : false,
+            satisfies: profile() ? true : false,
             redirectTo: '/auth',
             children: <Main />,
           })}

@@ -102,7 +102,7 @@ func getToken(r *http.Request) string {
 	authHeader, err := r.Cookie(AuthKey)
 	if err != nil {
 		// if no cookies then look at the headers (CLI, e2e tests, etc.)
-		authHeader := r.Header.Get("Authorization")
+		authHeader := r.Header.Get(AuthKey)
 		if authHeader == "" {
 			return ""
 		}
@@ -113,10 +113,6 @@ func getToken(r *http.Request) string {
 		}
 
 		return token
-	}
-
-	if authHeader.Expires.Before(time.Now()) {
-		return ""
 	}
 
 	return authHeader.Value
