@@ -5,11 +5,12 @@ import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
 import { Show } from 'solid-js'
 
+import { Header } from '@/components/widgets/Header'
 import { userStore } from '@/store/userStore'
 
 type ProtectedRouterProps = {
   children: JSX.Element
-  satisfies: () => void
+  satisfies: () => boolean
   redirectTo: string
 }
 
@@ -32,6 +33,7 @@ function App(): JSX.Element {
 
   return (
     <>
+      <Header />
       <Router>
         <Route
           path="/"
