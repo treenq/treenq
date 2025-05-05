@@ -7,6 +7,7 @@ import { Show } from 'solid-js'
 
 import { Header } from '@/components/widgets/Header'
 import { userStore } from '@/store/userStore'
+import RedirectPage from './components/pages/RedirectPage'
 
 type ProtectedRouterProps = {
   children: JSX.Element
@@ -55,6 +56,7 @@ function App(): JSX.Element {
             children: <Auth />,
           })}
         />
+        <Route path="/githubPostInstall" component={RedirectPage} />
       </Router>
     </>
   )
