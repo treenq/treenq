@@ -13,12 +13,7 @@ export default function Auth() {
 
         <h2>Sign In to Treenq</h2>
 
-        <Button
-          onClick={handleAuth}
-          variant="outline"
-          size="xxl"
-          class="w-60 flex justify-end"
-        >
+        <Button onClick={handleAuth} variant="outline" size="xxl" class="flex w-60 justify-end">
           <GitHub />
           Sign In with GitHub
         </Button>

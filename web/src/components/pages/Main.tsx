@@ -1,4 +1,5 @@
-import { GithubInstallation } from '../widgets/GithubInstallation'
+import { ConnectRepos } from '@/components/widgets/ConnectRepos'
+import { GithubInstallation } from '@/components/widgets/GithubInstallation'
 
 export default function Main() {
   // get installation
@@ -8,10 +9,11 @@ export default function Main() {
   // show list of connected repositories
 
   return (
-    <div class="bg-background flex min-h-screen items-center justify-center">
-      <div class="flex flex-col items-start space-y-6">
+    <main class="bg-background min-h-screen flex flex-col items-center justify-center py-12">
+      <div class="w-full max-w-3xl flex flex-col gap-10 items-center">
         <GithubInstallation />
+        <ConnectRepos />
       </div>
-    </div>
+    </main>
   )
 }
