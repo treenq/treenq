@@ -5,9 +5,9 @@ import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
 import { Show } from 'solid-js'
 
+import RedirectPage from '@/components/pages/RedirectPage'
 import { Header } from '@/components/widgets/Header'
 import { userStore } from '@/store/userStore'
-import RedirectPage from './components/pages/RedirectPage'
 
 type ProtectedRouterProps = {
   children: JSX.Element

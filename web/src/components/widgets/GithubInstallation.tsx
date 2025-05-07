@@ -2,17 +2,14 @@ import { Button } from '@/components/ui/Button'
 
 const installationLink = `https://github.com/apps/${import.meta.env.APP_GITHUB_APP_NAME}/installations/select_target`
 
-const createPopup = ({
-  url,
-  title,
-  w,
-  h,
-}: {
+type PopupOptions = {
   url: string
   title: string
   w: number
   h: number
-}) => {
+}
+
+const createPopup = ({ url, title, w, h }: PopupOptions) => {
   const dualScreenLeft =
     window.screenLeft || // Most browsers
     window.screenX // Firefox

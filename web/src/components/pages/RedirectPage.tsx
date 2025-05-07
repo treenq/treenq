@@ -1,5 +1,7 @@
+import { onMount } from 'solid-js'
+
 const RedirectPage = () => {
-  window.close()
+  onMount(() => window.close())
 
   return (
     <div>
