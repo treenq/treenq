@@ -1,4 +1,4 @@
-import { onMount } from 'solid-js/types/server/reactive.js'
+import { onMount } from 'solid-js'
 
 const RedirectPage = () => {
   onMount(() => window.close())

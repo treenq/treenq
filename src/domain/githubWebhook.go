@@ -67,8 +67,6 @@ type Repository struct {
 	TreenqID string `json:"treenqID"`
 	// Status describes whether a repo is actively deployed or suspended
 	Status string `json:"status"`
-	// Connected describes whether the repo is used as an app
-	Connected bool `json:"connected"`
 }
 
 func (r Repository) CloneUrl() string {
@@ -180,7 +178,6 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		req.Repository.InstallationID = req.Installation.ID
 		req.Repository.TreenqID = repo.TreenqID
 		req.Repository.Status = repo.Status
-		req.Repository.Connected = repo.Connected
 
 		return GithubWebhookResponse{}, h.deployRepo(
 			ctx,
@@ -193,7 +190,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 }
 
 func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) *vel.Error {
-	if !repo.Connected {
+	if repo.Branch == "" {
 		return nil
 	}
 	if repo.Status != StatusRepoActive {

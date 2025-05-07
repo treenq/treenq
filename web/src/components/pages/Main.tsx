@@ -9,8 +9,8 @@ export default function Main() {
   // show list of connected repositories
 
   return (
-    <main class="bg-background min-h-screen flex flex-col items-center justify-center py-12">
-      <div class="w-full max-w-3xl flex flex-col gap-10 items-center">
+    <main class="bg-background flex min-h-screen flex-col items-center justify-center py-12">
+      <div class="flex w-full max-w-3xl flex-col items-center gap-10">
         <GithubInstallation />
         <ConnectRepos />
       </div>

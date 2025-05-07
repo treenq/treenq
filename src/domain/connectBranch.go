@@ -8,8 +8,8 @@ import (
 )
 
 type ConnectBranchRequest struct {
-	RepoID string
-	Branch string
+	RepoID string `json:"repoID"`
+	Branch string `json:"branch"`
 }
 
 type ConnectBranchResponse struct {
@@ -32,7 +32,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 
 		return ConnectBranchResponse{}, &vel.Error{
 			Err:     err,
-			Message: "failed to do store call ConnectRepo",
+			Message: "failed to connect repo",
 		}
 	}
 	return ConnectBranchResponse{Repo: repo}, nil

@@ -110,7 +110,6 @@ func TestGithubAppInstallation(t *testing.T) {
 			FullName:       reposResponse.Repos[0].FullName,
 			Private:        reposResponse.Repos[0].Private,
 			Status:         reposResponse.Repos[0].Status,
-			Connected:      true,
 		},
 	}, connectRepoRes, "connect repo branch response doesn't match")
 
@@ -124,22 +123,20 @@ func TestGithubAppInstallation(t *testing.T) {
 
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Branch:    branchName,
-			Connected: true,
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   branchName,
 		},
 		{
-			TreenqID:  reposResponse.Repos[1].TreenqID,
-			ID:        805584540,
-			FullName:  "treenq/useless-cli",
-			Private:   false,
-			Status:    "active",
-			Branch:    "",
-			Connected: false,
+			TreenqID: reposResponse.Repos[1].TreenqID,
+			ID:       805584540,
+			FullName: "treenq/useless-cli",
+			Private:  false,
+			Status:   "active",
+			Branch:   "",
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -154,13 +151,12 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Branch:    branchName,
-			Connected: true,
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   branchName,
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
@@ -181,13 +177,12 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
 		Repo: client.Repository{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Connected: true,
-			Branch:    branchName,
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   branchName,
 		},
 	})
 	// get repos and make sure there is a connected one
@@ -195,13 +190,12 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "repositores must be available after app installation")
 	assert.Equal(t, []client.Repository{
 		{
-			TreenqID:  reposResponse.Repos[0].TreenqID,
-			ID:        805585115,
-			FullName:  "treenq/useless",
-			Private:   false,
-			Status:    "active",
-			Connected: true,
-			Branch:    branchName,
+			TreenqID: reposResponse.Repos[0].TreenqID,
+			ID:       805585115,
+			FullName: "treenq/useless",
+			Private:  false,
+			Status:   "active",
+			Branch:   branchName,
 		},
 	}, reposResponse.Repos, "installed repositories don't match")
 
