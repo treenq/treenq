@@ -2,8 +2,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { TextField, TextFieldErrorMessage, TextFieldInput } from '@/components/ui/Input'
 import { reposStore } from '@/store/repoStore'
-import { createAsync } from '@solidjs/router'
-import { For, Show, createSignal, type JSX } from 'solid-js'
+import { For, Show, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
   id: string
@@ -55,10 +54,12 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
 
     reposStore.connectRepo(id, branch)
     setEditingStarted(false)
+    setIsEditing(false)
+    setBranch('')
   }
 
   function onDisconnect(id: string) {
-    console.log(id)
+    reposStore.connectRepo(id, '')
   }
 
   return (
@@ -98,7 +99,7 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
         </div>
       }
     >
-      <Button variant="destructive" onClick={() => onDisconnect(props.name)}>
+      <Button variant="destructive" onClick={() => onDisconnect(props.id)}>
         Disconnect
       </Button>
     </Show>
@@ -106,13 +107,16 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
 }
 
 export function ConnectRepos(): JSX.Element {
-  const repos = createAsync(reposStore.getRepos)
+  onMount(() => {
+    reposStore.getRepos()
+  })
+
   return (
     <section class="flex w-full flex-col items-center justify-center py-8">
       <div class="w-full max-w-2xl space-y-6 p-6">
         <h2 class="mb-2 text-2xl font-bold">Connected Repositories</h2>
-        <For each={repos()}>
-          {(repo) => <RepoItem id={repo.treenqID} name={repo.full_name} branch={repo.branch} />}
+        <For each={reposStore.repos}>
+          {(repo) => <RepoItem id={repo.treenqID} name={repo.fullName} branch={repo.branch} />}
         </For>
       </div>
     </section>
