@@ -1,8 +1,18 @@
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { TextField, TextFieldErrorMessage, TextFieldInput } from '@/components/ui/Input'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxControl,
+  ComboboxErrorMessage,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemLabel,
+  ComboboxTrigger,
+} from '@/components/ui/Combobox'
 import { reposStore } from '@/store/repoStore'
-import { For, Show, createSignal, onMount, type JSX } from 'solid-js'
+import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
   id: string
@@ -33,6 +43,7 @@ function RepoItem(props: ConnectReposItem) {
 
 function ConnectionAction(props: ConnectReposItem): JSX.Element {
   const [branch, setBranch] = createSignal('')
+  const [branches, setBranches] = createSignal<string[]>([])
   const [isEditing, setIsEditing] = createSignal(false)
   const [editingStarted, setEditingStarted] = createSignal(false)
 
@@ -47,7 +58,7 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
   }
 
   function onConnectConfirm(id: string, branch: string) {
-    if (branch === '') {
+    if (!branches().includes(branch)) {
       setEditingStarted(true)
       return
     }
@@ -61,6 +72,12 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
   function onDisconnect(id: string) {
     reposStore.connectRepo(id, '')
   }
+
+  createEffect(() => {
+    if (isEditing()) {
+      setBranches(['main', 'dev', 'feature-1'])
+    }
+  })
 
   return (
     <Show
@@ -76,21 +93,35 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
             }
           >
             <div class="flex items-center gap-2">
-              <TextField validationState={branch() === '' ? 'invalid' : 'valid'}>
-                <TextFieldInput
-                  placeholder="Branch name"
-                  value={branch()}
-                  onInput={(e) => onBranchInput(e.currentTarget.value)}
-                  class="w-40"
-                />
+              <Combobox
+                options={branches()}
+                value={branch()}
+                onChange={setBranch}
+                placeholder="Branch name"
+                validationState={branches().includes(branch()) ? 'valid' : 'invalid'}
+                itemComponent={(props) => (
+                  <ComboboxItem item={props.item}>
+                    <ComboboxItemLabel>{props.item.rawValue}</ComboboxItemLabel>
+                    <ComboboxItemIndicator />
+                  </ComboboxItem>
+                )}
+              >
+                <ComboboxControl aria-label="Branch">
+                  <ComboboxInput
+                    value={branch()}
+                    onInput={(e) => onBranchInput(e.currentTarget.value)}
+                  />
+                  <ComboboxTrigger />
+                </ComboboxControl>
                 <div class="relative">
                   <Show when={editingStarted()}>
-                    <TextFieldErrorMessage class="absolute">
+                    <ComboboxErrorMessage class="absolute">
                       Branch must not be empty
-                    </TextFieldErrorMessage>
+                    </ComboboxErrorMessage>
                   </Show>
                 </div>
-              </TextField>
+                <ComboboxContent />
+              </Combobox>
               <Button class="w-28" onClick={() => onConnectConfirm(props.id, branch())}>
                 Confirm
               </Button>
