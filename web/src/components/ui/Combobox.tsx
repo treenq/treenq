@@ -9,6 +9,7 @@ import { cn } from '@/components/ui/utils'
 const Combobox = ComboboxPrimitive.Root
 const ComboboxItemLabel = ComboboxPrimitive.ItemLabel
 const ComboboxHiddenSelect = ComboboxPrimitive.HiddenSelect
+const ComboboxErrorMessage = ComboboxPrimitive.ErrorMessage
 
 type ComboboxItemProps<T extends ValidComponent = 'li'> = ComboboxPrimitive.ComboboxItemProps<T> & {
   class?: string | undefined
@@ -182,6 +183,7 @@ export {
   Combobox,
   ComboboxContent,
   ComboboxControl,
+  ComboboxErrorMessage,
   ComboboxHiddenSelect,
   ComboboxInput,
   ComboboxItem,
