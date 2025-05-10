@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrRepoNotFound = errors.New("repo not found")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrRepoNotFound         = errors.New("repo not found")
+	ErrInstallationNotFound = errors.New("installation not found")
 )
 
 type UserInfo struct {

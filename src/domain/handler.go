@@ -10,7 +10,7 @@ import (
 
 type Handler struct {
 	db           Database
-	githubClient GithubCleint
+	githubClient GithubClient
 	git          Git
 	extractor    Extractor
 	docker       DockerArtifactory
@@ -28,7 +28,7 @@ type Handler struct {
 
 func NewHandler(
 	db Database,
-	githubClient GithubCleint,
+	githubClient GithubClient,
 	git Git,
 	extractor Extractor,
 	docker DockerArtifactory,
@@ -83,7 +83,7 @@ type Database interface {
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 }
 
-type GithubCleint interface {
+type GithubClient interface {
 	IssueAccessToken(installationID int) (string, error)
 }
 
