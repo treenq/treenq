@@ -152,8 +152,8 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	return nil
 }
 
+// getUserIDByDisplayName gets user ID by display name
 func (s *Store) getUserIDByDisplayName(ctx context.Context, senderLogin string, q Querier) (string, error) {
-	// Get user ID by display name
 	userQuery, userArgs, err := s.sq.Select("id").
 		From("users").
 		Where(sq.Eq{"displayName": senderLogin}).
@@ -256,7 +256,22 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 }
 
 func (s *Store) GetInstallationID(ctx context.Context, userID string) (string, error) {
-	return "", nil
+	q, args, err := s.sq.Select("id").
+		From("installations").
+		Where(sq.Eq{"userId": userID}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build instalaltions query: %w", err)
+	}
+
+	var installationID string
+	if err := s.db.QueryRowContext(ctx, q, args...).Scan(&installationID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", domain.ErrInstallationNotFound
+		}
+		return "", fmt.Errorf("failed to get installation ID: %w", err)
+	}
+	return installationID, nil
 }
 
 func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Repository, error) {
