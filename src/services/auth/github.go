@@ -106,7 +106,8 @@ func (p *GithubOauthProvider) FetchUser(ctx context.Context, token string) (doma
 			}
 		}
 	}
-	return user, err
+
+	return user, nil
 }
 
 type mail struct {

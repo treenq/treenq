@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/Button'
+import { reposStore } from '@/store/repoStore'
+import { Show } from 'solid-js'
 
 const installationLink = `https://github.com/apps/${import.meta.env.APP_GITHUB_APP_NAME}/installations/select_target`
 
@@ -43,7 +45,14 @@ export function GithubInstallation() {
   }
   return (
     <div class="flex items-center justify-center">
-      <Button onclick={onClick}>Integrate Github</Button>
+      <Show
+        when={reposStore.installation}
+        fallback={<Button onclick={onClick}>Integrate Github</Button>}
+      >
+        <Button variant="outline" onclick={onClick}>
+          Update Github Credentials
+        </Button>
+      </Show>
     </div>
   )
 }

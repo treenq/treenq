@@ -113,3 +113,12 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 	http.Redirect(w, r, h.authRedirectUrl, http.StatusTemporaryRedirect)
 	return GithubCallbackResponse{}, nil
 }
+
+func (h *Handler) Logout(ctx context.Context, req struct{}) (struct{}, *vel.Error) {
+	w := vel.WriterFromContext(ctx)
+
+	cookie := http.Cookie{Name: auth.AuthKey, Value: "", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode}
+	http.SetCookie(w, &cookie)
+
+	return struct{}{}, nil
+}

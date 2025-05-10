@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@kobalte/core": "^0.13.9",
-    "@solid-primitives/storage": "^4.3.2",
     "@solidjs/router": "^0.15.3",
     "@tailwindcss/vite": "^4.1.4",
     "@types/node": "^22.15.2",

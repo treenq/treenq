@@ -1,9 +1,9 @@
-import { createAsync, Navigate, Route, Router } from '@solidjs/router'
+import { Navigate, Route, Router } from '@solidjs/router'
 import type { Component, JSX } from 'solid-js'
 
 import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
-import { Show } from 'solid-js'
+import { onMount, Show } from 'solid-js'
 
 import RedirectPage from '@/components/pages/RedirectPage'
 import { Header } from '@/components/widgets/Header'
@@ -30,7 +30,9 @@ function MakeProtectedComponent(props: ProtectedRouterProps): Component {
 }
 
 function App(): JSX.Element {
-  const profile = createAsync(userStore.getProfile)
+  onMount(() => {
+    userStore.getProfile()
+  })
 
   return (
     <>
@@ -40,7 +42,7 @@ function App(): JSX.Element {
           path="/"
           component={MakeProtectedComponent({
             satisfies: () => {
-              return profile() ? true : false
+              return userStore.user ? true : false
             },
             redirectTo: '/auth',
             children: <Main />,
@@ -50,7 +52,7 @@ function App(): JSX.Element {
           path="/auth"
           component={MakeProtectedComponent({
             satisfies: () => {
-              return profile() ? false : true
+              return userStore.user ? false : true
             },
             redirectTo: '/',
             children: <Auth />,

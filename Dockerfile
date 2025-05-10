@@ -1,45 +1,30 @@
-FROM golang:1.24.2 AS builder
+FROM ubuntu:25.04 AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get -y install --no-install-recommends \
-    buildah \
-    gnupg \
-    btrfs-progs \
-    bats \
-    libapparmor-dev \
-    libglib2.0-dev \
-    libgpgme11-dev \
-    libseccomp-dev \
-    libselinux1-dev \
-    runc \
-    skopeo \
-    libbtrfs-dev \
-    fuse-overlayfs \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get -y install --no-install-recommends nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN apt-get -y install curl gnupg
+RUN curl -sL https://deb.nodesource.com/setup_23.x  | bash -
+RUN apt-get -y install nodejs buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc skopeo libbtrfs-dev wget fuse-overlayfs  && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/containers && \
+    mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers && \
+    touch /var/lib/shared/overlay-images/images.lock && \
+    touch /var/lib/shared/overlay-layers/layers.lock
+RUN wget -P /tmp https://go.dev/dl/go1.24.1.linux-arm64.tar.gz
+RUN tar -C /usr/local -xzf "/tmp/go1.24.1.linux-arm64.tar.gz"
+RUN rm "/tmp/go1.24.1.linux-arm64.tar.gz"
 
-RUN mkdir -p /usr/libexec/podman /etc/containers/
-
-RUN curl -L -o /usr/libexec/podman/netavark.gz https://github.com/containers/netavark/releases/download/v1.14.1/netavark.gz && \
-    curl -L -o /usr/libexec/podman/aardvark-dns.gz https://github.com/containers/aardvark-dns/releases/download/v1.14.0/aardvark-dns.gz && \
-    cd /usr/libexec/podman && \
-    gunzip netavark.gz && \
-    gunzip aardvark-dns.gz && \
-    chmod +x netavark && \
-    chmod +x aardvark-dns
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
 RUN mkdir -p /etc/containers/ && touch /etc/containers/registries.conf && echo 'unqualified-search-registries=["docker.io"]' > /etc/containers/registries.conf
+COPY policy.json /etc/containers/policy.json
+COPY storage.conf /etc/containers/storage.conf 
+COPY registries.conf /etc/containers/registries.conf 
 
-COPY policy.json storage.conf registries.conf /etc/containers/
-
-# # Disable CGO to ensure fully static binaries
-# ENV CGO_ENABLED=0
-# ENV GOOS=linux
-
-COPY go.mod go.sum ./
+COPY go.mod go.mod
+COPY go.sum go.sum
 RUN --mount=type=cache,target=/go/pkg/mod/ go mod download -x
 
 FROM builder AS dev
@@ -63,21 +48,13 @@ COPY . .
 # lsflags to strip debug info
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -ldflags "-s -w" -o server ./cmd/server
 
-FROM scratch
+FROM alpine:3.13
 
 # Create a non-root user and group for better security
 # RUN addgroup -S appgroup && adduser -S 1001 -G appgroup
 RUN addgroup -g 1001 appgroup && adduser -D -G appgroup -u 1001 appuser
 
 WORKDIR /app
-
-RUN mkdir -p /usr/libexec/podman
-
-COPY --from=builder /usr/libexec/podman/netavark /usr/libexec/podman/
-COPY --from=builder /usr/libexec/podman/aardvark-dns /usr/libexec/podman/
-
-RUN chmod +x /usr/libexec/podman/netavark && \
-    chmod +x /usr/libexec/podman/aardvark-dns
 
 USER 1001
 

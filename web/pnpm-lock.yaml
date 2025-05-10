@@ -11,9 +11,6 @@ importers:
       '@kobalte/core':
         specifier: ^0.13.9
         version: 0.13.9(solid-js@1.9.5)
-      '@solid-primitives/storage':
-        specifier: ^4.3.2
-        version: 4.3.2(solid-js@1.9.5)
       '@solidjs/router':
         specifier: ^0.15.3
         version: 0.15.3(solid-js@1.9.5)
@@ -638,18 +635,6 @@ packages:
     resolution: {integrity: sha512-daXWvpLjd+4hbYdGaaEJ2kKFuFhshvfIBFLveW7mfk2BWHl9lGQVwUuExp3qllkK9ONA9p+5D2cpwBQosv8odQ==}
     peerDependencies:
       solid-js: ^1.6.12
-
-  '@solid-primitives/storage@4.3.2':
-    resolution: {integrity: sha512-Vkuk/AqgUOjz6k7Mo5yDFQBQg8KMQcZfaac/bxLApaza3e5c/iNllNvxZWPM9Vf+Gf4m5SgRbvgsm6dSLJ27Jw==}
-    peerDependencies:
-      '@tauri-apps/plugin-store': '*'
-      solid-js: ^1.6.12
-      solid-start: '*'
-    peerDependenciesMeta:
-      '@tauri-apps/plugin-store':
-        optional: true
-      solid-start:
-        optional: true
 
   '@solid-primitives/styles@0.1.1':
     resolution: {integrity: sha512-eOf3GQjxEcYWxUU62CSpTIXOOzF5FBMdiJl/yBb20Dq6h/VVWCABHDPsh1KJ3SKc4AUAimSMbclDG+Co0EBpvQ==}
@@ -2141,11 +2126,6 @@ snapshots:
       solid-js: 1.9.5
 
   '@solid-primitives/static-store@0.1.1(solid-js@1.9.5)':
-    dependencies:
-      '@solid-primitives/utils': 6.3.1(solid-js@1.9.5)
-      solid-js: 1.9.5
-
-  '@solid-primitives/storage@4.3.2(solid-js@1.9.5)':
     dependencies:
       '@solid-primitives/utils': 6.3.1(solid-js@1.9.5)
       solid-js: 1.9.5

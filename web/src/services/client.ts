@@ -31,6 +31,22 @@ export type ApiErrorPayload = {
   meta: Record<string, string>
 }
 
+export type ConnectBranchRequest = {
+  repoID: string
+  branch: string
+}
+
+export type GetReposResponse = {
+  installation: string
+  repos: Repository[]
+}
+
+export type Repository = {
+  treenqID: string
+  full_name: string
+  branch: string
+}
+
 export class HttpClient {
   constructor(
     private baseUrl: string,
@@ -75,8 +91,12 @@ export class HttpClient {
       return { error: jsonErr as ApiErrorPayload }
     }
 
-    const response = await res.json()
-    return { data: response as T }
+    const response = await res.text()
+    if (response) {
+      const resp = JSON.parse(response)
+      return { data: resp as T }
+    }
+    return { data: {} as T }
   }
 
   private async get<T>(path: string, opts?: RequestOptions): Promise<Result<T>> {
@@ -89,5 +109,16 @@ export class HttpClient {
 
   async getProfile(): Promise<Result<GetProfileResponse>> {
     return await this.post('/getProfile')
+  }
+
+  async logout(): Promise<Result<undefined>> {
+    return await this.post('/logout')
+  }
+
+  async connectBranch(repo: ConnectBranchRequest): Promise<Result<undefined>> {
+    return await this.post('/connectRepoBranch', repo)
+  }
+  async getRepos(): Promise<Result<GetReposResponse>> {
+    return await this.post('/getRepos')
   }
 }

@@ -180,7 +180,6 @@ type Repository struct {
 	InstallationID int    `json:"installationID"`
 	TreenqID       string `json:"treenqID"`
 	Status         string `json:"status"`
-	Connected      bool   `json:"connected"`
 }
 
 func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) error {

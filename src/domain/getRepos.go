@@ -9,7 +9,8 @@ import (
 type GetReposRequest struct{}
 
 type GetReposResponse struct {
-	Repos []Repository `json:"repos"`
+	Installation string       `json:"installationID"`
+	Repos        []Repository `json:"repos"`
 }
 
 func (h *Handler) GetRepos(ctx context.Context, req GetReposRequest) (GetReposResponse, *vel.Error) {
@@ -17,6 +18,15 @@ func (h *Handler) GetRepos(ctx context.Context, req GetReposRequest) (GetReposRe
 	if rpcErr != nil {
 		return GetReposResponse{}, rpcErr
 	}
+
+	installation, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Code: "FAILED_GET_INSTALLATION",
+			Err:  err,
+		}
+	}
+
 	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
@@ -24,5 +34,5 @@ func (h *Handler) GetRepos(ctx context.Context, req GetReposRequest) (GetReposRe
 			Err:  err,
 		}
 	}
-	return GetReposResponse{Repos: repos}, nil
+	return GetReposResponse{Repos: repos, Installation: installation}, nil
 }
