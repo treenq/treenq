@@ -138,15 +138,29 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
 	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find a user :%w", err)
 	}
 
 	timestamp := now()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start link github transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// save a github app
+	if _, err := s.saveInstallation(ctx, tx, userID, installationID, timestamp); err != nil {
+		return fmt.Errorf("failed to save installation: %w", err)
+	}
 
 	// Insert repositories
-	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, s.db)
+	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, tx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save installed repos: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit github link transaction: %w", err)
 	}
 
 	return nil
@@ -271,6 +285,30 @@ func (s *Store) GetInstallationID(ctx context.Context, userID string) (string, e
 		}
 		return "", fmt.Errorf("failed to get installation ID: %w", err)
 	}
+	return installationID, nil
+}
+
+func (s *Store) SaveInstallation(ctx context.Context, userID string, githubID int) (string, error) {
+	timestamp := now()
+
+	return s.saveInstallation(ctx, s.db, userID, githubID, timestamp)
+}
+
+func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, githubID int, timestamp time.Time) (string, error) {
+	installationID := uuid.NewString()
+
+	query, args, err := s.sq.Insert("installations").
+		Columns("id", "userId", "githubId", "createdAt").
+		Values(installationID, userID, githubID, timestamp).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build save installation query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return "", fmt.Errorf("failed to save installation: %w", err)
+	}
+
 	return installationID, nil
 }
 

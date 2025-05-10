@@ -66,39 +66,28 @@ func HandleErr(resp *http.Response) error {
 	return nil
 }
 
-type TokenResponse struct {
-	AccessToken string `json:"accessToken"`
-}
-
-func (c *Client) Auth(ctx context.Context) (TokenResponse, error) {
-	var res TokenResponse
-
+func (c *Client) Auth(ctx context.Context) error {
 	q := make(url.Values)
 
 	r, err := http.NewRequest("GET", c.baseUrl+"/auth?"+q.Encode(), nil)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
 	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call auth: %w", err)
+		return fmt.Errorf("failed to call auth: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&res)
-	if err != nil {
-		return res, fmt.Errorf("failed to decode auth response: %w", err)
-	}
-
-	return res, nil
+	return nil
 }
 
 type CodeExchangeRequest struct {
@@ -106,37 +95,30 @@ type CodeExchangeRequest struct {
 	Code  string
 }
 
-func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) (TokenResponse, error) {
-	var res TokenResponse
-
+func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) error {
 	q := make(url.Values)
 	q.Set("state", req.State)
 	q.Set("code", req.Code)
 
 	r, err := http.NewRequest("GET", c.baseUrl+"/authCallback?"+q.Encode(), nil)
 	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
 	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call authCallback: %w", err)
+		return fmt.Errorf("failed to call authCallback: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&res)
-	if err != nil {
-		return res, fmt.Errorf("failed to decode authCallback response: %w", err)
-	}
-
-	return res, nil
+	return nil
 }
 
 type GithubWebhookRequest struct {
@@ -199,6 +181,30 @@ func (c *Client) GithubWebhook(ctx context.Context, req GithubWebhookRequest) er
 	resp, err := c.client.Do(r)
 	if err != nil {
 		return fmt.Errorf("failed to call githubWebhook: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) Logout(ctx context.Context) error {
+	body := bytes.NewBuffer(nil)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/logout", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call logout: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -287,7 +293,8 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Repos []Repository `json:"repos"`
+	Installation string       `json:"installationID"`
+	Repos        []Repository `json:"repos"`
 }
 
 func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
@@ -322,8 +329,8 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 }
 
 type ConnectBranchRequest struct {
-	RepoID string
-	Branch string
+	RepoID string `json:"repoID"`
+	Branch string `json:"branch"`
 }
 
 type ConnectBranchResponse struct {

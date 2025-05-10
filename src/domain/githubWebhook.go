@@ -166,25 +166,25 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	}
 
 	// new commit to the default branch
-	if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.Branch {
-		repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
-		if err != nil {
-			return GithubWebhookResponse{}, &vel.Error{
-				Message: "failed to get treenq repo by github",
-				Err:     err,
-			}
-		}
-
-		req.Repository.InstallationID = req.Installation.ID
-		req.Repository.TreenqID = repo.TreenqID
-		req.Repository.Status = repo.Status
-
-		return GithubWebhookResponse{}, h.deployRepo(
-			ctx,
-			req.Sender.Login,
-			req.Repository,
-		)
-	}
+	// if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.Branch {
+	// 	repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
+	// 	if err != nil {
+	// 		return GithubWebhookResponse{}, &vel.Error{
+	// 			Message: "failed to get treenq repo by github",
+	// 			Err:     err,
+	// 		}
+	// 	}
+	//
+	// 	req.Repository.InstallationID = req.Installation.ID
+	// 	req.Repository.TreenqID = repo.TreenqID
+	// 	req.Repository.Status = repo.Status
+	//
+	// 	return GithubWebhookResponse{}, h.deployRepo(
+	// 		ctx,
+	// 		req.Sender.Login,
+	// 		req.Repository,
+	// 	)
+	// }
 
 	return GithubWebhookResponse{}, nil
 }

@@ -55,15 +55,21 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the app has been installed and the repos are saved
 	reposResponse, err := apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.Repository{
-		{
-			TreenqID: reposResponse.Repos[0].TreenqID,
-			ID:       805585115,
-			FullName: "treenq/useless",
-			Private:  false,
-			Status:   "active",
+
+	treenqInstallationID := reposResponse.Installation
+	require.NotEmpty(t, treenqInstallationID)
+	assert.Equal(t, client.GetReposResponse{
+		Installation: treenqInstallationID,
+		Repos: []client.Repository{
+			{
+				TreenqID: reposResponse.Repos[0].TreenqID,
+				ID:       805585115,
+				FullName: "treenq/useless",
+				Private:  false,
+				Status:   "active",
+			},
 		},
-	}, reposResponse.Repos, "installed repositories don't match")
+	}, reposResponse, "installed repositories don't match")
 
 	// add repos
 	var addRepoReq client.GithubWebhookRequest
@@ -76,7 +82,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
 
-	assert.Equal(t, []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -93,7 +99,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			Status:   "active",
 			Branch:   "",
 		},
-	}, reposResponse.Repos, "installed repositories don't match")
+	}}, reposResponse, "installed repositories don't match")
 
 	branchName := "test-branch"
 	connectRepoRes, err := apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
@@ -121,7 +127,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after merge main")
 
-	assert.Equal(t, []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -138,7 +144,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			Status:   "active",
 			Branch:   "",
 		},
-	}, reposResponse.Repos, "installed repositories don't match")
+	}}, reposResponse, "installed repositories don't match")
 
 	// remove a repo
 	var removeRepoReq client.GithubWebhookRequest
@@ -149,7 +155,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -158,7 +164,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			Status:   "active",
 			Branch:   branchName,
 		},
-	}, reposResponse.Repos, "installed repositories don't match")
+	}}, reposResponse, "installed repositories don't match")
 
 	// test another user can't connect a branch
 	connectRepoResponse, err := anotherApiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
@@ -188,7 +194,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -197,7 +203,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			Status:   "active",
 			Branch:   branchName,
 		},
-	}, reposResponse.Repos, "installed repositories don't match")
+	}}, reposResponse, "installed repositories don't match")
 
 	err = apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
