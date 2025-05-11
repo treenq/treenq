@@ -115,7 +115,7 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
                 </ComboboxControl>
                 <div class="relative">
                   <Show when={editingStarted()}>
-                    <ComboboxErrorMessage class="absolute">
+                    <ComboboxErrorMessage class="text-destructive absolute">
                       Branch must not be empty
                     </ComboboxErrorMessage>
                   </Show>
