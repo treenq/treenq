@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { reposStore } from '@/store/repoStore'
 import { Show } from 'solid-js'
 
@@ -43,16 +44,55 @@ export function GithubInstallation() {
   function onClick() {
     createPopup({ url: installationLink, title: 'Install Treenq', w: 800, h: 600 })
   }
+
   return (
     <div class="flex items-center justify-center">
       <Show
-        when={reposStore.installation}
-        fallback={<Button onclick={onClick}>Integrate Github</Button>}
+        when={!reposStore.installation}
+        fallback={
+          <IntegrateGithubAction
+            text="Update Github Credentials"
+            variant="outline"
+            onClick={onClick}
+          />
+        }
       >
-        <Button variant="outline" onclick={onClick}>
-          Update Github Credentials
-        </Button>
+        <IntegrateGithubAction text="Integrate GitHub" variant="default" onClick={onClick} />
       </Show>
     </div>
+  )
+}
+
+type GithubAppActionProps = {
+  text: string
+  variant: 'default' | 'outline'
+  onClick: () => void
+}
+
+function IntegrateGithubAction(props: GithubAppActionProps) {
+  return (
+    <>
+      <Button variant={props.variant} onclick={props.onClick}>
+        {props.text}
+      </Button>
+      <SyncGithubAppAction />
+    </>
+  )
+}
+
+function SyncGithubAppAction() {
+  function syncGithubApp() {
+    reposStore.syncGithubApp()
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp}>
+        Sync Github Repos
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>App installation webhook may fail, you can sync it manually</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }

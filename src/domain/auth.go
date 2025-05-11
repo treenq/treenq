@@ -73,15 +73,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 		}
 	}
 
-	oauthToken, err := h.oauthProvider.ExchangeCode(ctx, req.Code)
-	if err != nil {
-		return GithubCallbackResponse{}, &vel.Error{
-			Message: "failed to exchange code to token",
-			Err:     err,
-		}
-	}
-
-	user, err := h.oauthProvider.FetchUser(r.Context(), oauthToken)
+	user, err := h.oauthProvider.ExchangeUser(r.Context(), req.Code)
 	if err != nil {
 		return GithubCallbackResponse{}, &vel.Error{
 			Code:    "UNKNOWN",

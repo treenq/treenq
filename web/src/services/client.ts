@@ -37,7 +37,7 @@ export type ConnectBranchRequest = {
 }
 
 export type GetReposResponse = {
-  installation: string
+  installationID: string
   repos: Repository[]
 }
 
@@ -120,5 +120,8 @@ export class HttpClient {
   }
   async getRepos(): Promise<Result<GetReposResponse>> {
     return await this.post('/getRepos')
+  }
+  async syncGithubApp(): Promise<Result<GetReposResponse>> {
+    return await this.post('/syncGithubApp')
   }
 }

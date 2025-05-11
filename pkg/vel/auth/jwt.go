@@ -31,7 +31,7 @@ func NewJwtIssuer(issuerId string, secretKey []byte, publicKey []byte, ttl time.
 	}
 }
 
-func (j *JwtIssuer) GenerateJwtToken(claims map[string]interface{}) (string, error) {
+func (j *JwtIssuer) GenerateJwtToken(claims map[string]any) (string, error) {
 	block, _ := pem.Decode(j.secret)
 	if block == nil {
 		return "", fmt.Errorf("failed to decode pem")
