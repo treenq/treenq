@@ -34,14 +34,20 @@ function createReposStore() {
 
       setStore(
         'repos',
-        res.data.repos.map((it) => ({
+        (res.data.repos || []).map((it) => ({
           treenqID: it.treenqID,
           fullName: it.full_name,
           branch: it.branch,
         })),
       )
-      setStore('installation', res.data.installation)
+      setStore('installation', res.data.installationID)
       return res.data.repos
+    },
+    syncGithubApp: async () => {
+      const res = await client.syncGithubApp()
+      if ('error' in res) return
+
+      setStore('installation', res.data.installationID)
     },
   })
 }

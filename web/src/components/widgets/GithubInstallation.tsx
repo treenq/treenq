@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { reposStore } from '@/store/repoStore'
 import { Show } from 'solid-js'
 
@@ -43,16 +44,56 @@ export function GithubInstallation() {
   function onClick() {
     createPopup({ url: installationLink, title: 'Install Treenq', w: 800, h: 600 })
   }
+
   return (
     <div class="flex items-center justify-center">
-      <Show
-        when={reposStore.installation}
-        fallback={<Button onclick={onClick}>Integrate Github</Button>}
-      >
-        <Button variant="outline" onclick={onClick}>
-          Update Github Credentials
-        </Button>
+      <Show when={!reposStore.installation} fallback={<UpdateGithubAction onClick={onClick} />}>
+        <IntegrateGithubAction onClick={onClick} />
       </Show>
     </div>
+  )
+}
+
+type GithubAppActionProps = {
+  onClick: () => void
+}
+
+function UpdateGithubAction(props: GithubAppActionProps) {
+  function syncGithubRepos() {}
+  return (
+    <>
+      <Button variant="outline" onclick={props.onClick}>
+        Update Github Credentials
+      </Button>
+      <Tooltip>
+        <TooltipTrigger as={Button} variant="outline" onClick={syncGithubRepos}>
+          Sync Github Repos
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>App installation webhook may fail, you can sync it manually</p>
+        </TooltipContent>
+      </Tooltip>
+    </>
+  )
+}
+
+function IntegrateGithubAction(props: GithubAppActionProps) {
+  function syncGithubApp() {
+    reposStore.syncGithubApp()
+  }
+  return (
+    <>
+      <Button variant="default" onclick={props.onClick}>
+        Integrate Github
+      </Button>
+      <Tooltip>
+        <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp}>
+          Sync Github App
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>App installation webhook may fail, you can sync it manually</p>
+        </TooltipContent>
+      </Tooltip>
+    </>
   )
 }

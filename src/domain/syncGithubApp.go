@@ -1,0 +1,41 @@
+package domain
+
+import (
+	"context"
+
+	"github.com/treenq/treenq/pkg/vel"
+)
+
+func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposResponse, *vel.Error) {
+	profile, rpcErr := h.GetProfile(ctx, struct{}{})
+	if rpcErr != nil {
+		return GetReposResponse{}, rpcErr
+	}
+	githubInstalaltion, err := h.githubClient.GetUserInstallation(ctx, profile.UserInfo.DisplayName)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Message: "failed to get a github installation",
+			Err:     err,
+		}
+	}
+	savedInstallation, err := h.db.SaveInstallation(ctx, profile.UserInfo.ID, githubInstalaltion)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Message: "failed to save a github installation",
+			Err:     err,
+		}
+	}
+
+	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Code: "FAILED_GET_GITHUB_REPOS",
+			Err:  err,
+		}
+	}
+
+	return GetReposResponse{
+		Installation: savedInstallation,
+		Repos:        repos,
+	}, nil
+}

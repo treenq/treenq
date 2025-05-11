@@ -25,7 +25,7 @@ var (
 var ErrNoVerifiedGitHubPrimaryEmail = errors.New("the user does not have a verified, primary email address on GitHub")
 
 // New creates a new Github provider, and sets up important connection details.
-func New(clientKey, secret, callbackURL string, scopes ...string) *GithubOauthProvider {
+func New(clientKey, secret, callbackURL string) *GithubOauthProvider {
 	return &GithubOauthProvider{
 		client: http.DefaultClient,
 		config: &oauth2.Config{
@@ -51,13 +51,13 @@ func (p *GithubOauthProvider) AuthUrl(state string) string {
 	return url
 }
 
-func (p *GithubOauthProvider) ExchangeCode(ctx context.Context, code string) (string, error) {
+func (p *GithubOauthProvider) ExchangeUser(ctx context.Context, code string) (domain.UserInfo, error) {
 	token, err := p.config.Exchange(ctx, code)
 	if err != nil {
-		return "", fmt.Errorf("failed to exchange github code to token: %w", err)
+		return domain.UserInfo{}, fmt.Errorf("failed to exchange github code to token: %w", err)
 	}
 
-	return token.AccessToken, nil
+	return p.FetchUser(ctx, token.AccessToken)
 }
 
 type githubUser struct {
@@ -90,6 +90,7 @@ func (p *GithubOauthProvider) FetchUser(ctx context.Context, token string) (doma
 	if err != nil {
 		return user, err
 	}
+
 	user = domain.UserInfo{
 		Email:       resp.Email,
 		DisplayName: resp.Login,

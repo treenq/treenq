@@ -86,6 +86,7 @@ type Database interface {
 
 type GithubClient interface {
 	IssueAccessToken(installationID int) (string, error)
+	GetUserInstallation(ctx context.Context, displayName string) (int, error)
 }
 
 type Git interface {
@@ -108,8 +109,7 @@ type Kube interface {
 
 type OauthProvider interface {
 	AuthUrl(string) string
-	ExchangeCode(ctx context.Context, code string) (string, error)
-	FetchUser(ctx context.Context, token string) (UserInfo, error)
+	ExchangeUser(ctx context.Context, code string) (UserInfo, error)
 }
 
 type JwtIssuer interface {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	cache "github.com/Code-Hex/go-generics-cache"
+	"github.com/treenq/treenq/src/domain"
 )
 
 type TokenIssuer interface {
@@ -19,6 +20,9 @@ type GithubClient struct {
 	tokenIssuer   TokenIssuer
 	appTokenCache *cache.Cache[int, string]
 	client        *http.Client
+
+	cachedToken   string
+	cachedTokenAt time.Time
 }
 
 func NewGithubClient(tokenIssuer TokenIssuer, client *http.Client) *GithubClient {
@@ -75,54 +79,111 @@ func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
 	return responseBody.Token, nil
 }
 
-type githubAppResponse struct {
-	ClientID    string               `json:"client_id"`
-	CreatedAt   string               `json:"created_at"`
-	Description string               `json:"description"`
-	Events      []string             `json:"events"`
-	ExternalURL string               `json:"external_url"`
-	HTMLURL     string               `json:"html_url"`
-	ID          int64                `json:"id"`
-	Name        string               `json:"name"`
-	NodeID      string               `json:"node_id"`
-	Owner       githubAppOwner       `json:"owner"`
-	Permissions githubAppPermissions `json:"permissions"`
-	Slug        string               `json:"slug"`
-	UpdatedAt   string               `json:"updated_at"`
-}
-type githubAppOwner struct {
-	AvatarURL         string `json:"avatar_url"`
-	EventsURL         string `json:"events_url"`
-	FollowersURL      string `json:"followers_url"`
-	FollowingURL      string `json:"following_url"`
-	GistsURL          string `json:"gists_url"`
-	GravatarID        string `json:"gravatar_id"`
-	HTMLURL           string `json:"html_url"`
-	ID                int64  `json:"id"`
-	Login             string `json:"login"`
-	NodeID            string `json:"node_id"`
-	OrganizationsURL  string `json:"organizations_url"`
-	ReceivedEventsURL string `json:"received_events_url"`
-	ReposURL          string `json:"repos_url"`
-	SiteAdmin         bool   `json:"site_admin"`
-	StarredURL        string `json:"starred_url"`
-	SubscriptionsURL  string `json:"subscriptions_url"`
-	Type              string `json:"type"`
-	URL               string `json:"url"`
-	UserViewType      string `json:"user_view_type"`
-}
-type githubAppPermissions struct {
-	Contents          string `json:"contents"`
-	Emails            string `json:"emails"`
-	Metadata          string `json:"metadata"`
-	OrganizationHooks string `json:"organization_hooks"`
-	PullRequests      string `json:"pull_requests"`
+type githubInstallation struct {
+	ID int `json:"id"`
+	// AppID   int64  `json:"app_id"`
+	// AppSlug string `json:"app_slug"`
+	// TargetID            int64                `json:"target_id"`
+	// TargetType          string               `json:"target_type"`
+	// SingleFileName      string               `json:"single_file_name"`
+	// RepositorySelection string               `json:"repository_selection"`
+	// AccessTokensURL     string               `json:"access_tokens_url"`
+	// HTMLURL             string               `json:"html_url"`
+	// RepositoriesURL     string               `json:"repositories_url"`
+	// Events              []string             `json:"events"`
+	// Account             *githubAccount       `json:"account"`
+	// Permissions         githubAppPermissions `json:"permissions"`
+	// CreatedAt          string               `json:"created_at"`
+	// UpdatedAt          string               `json:"updated_at"`
+	// SuspendedBy        *githubAccount       `json:"suspended_by"`
+	// SuspendedAt        *string              `json:"suspended_at"`
 }
 
-func (c *GithubClient) GetApp(ctx context.Context, token, slug string) (githubAppResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/apps/"+slug, nil)
+// type githubAccount struct {
+// 	Name              *string `json:"name"`
+// 	Email             *string `json:"email"`
+// 	Login             string  `json:"login"`
+// 	ID                int64   `json:"id"`
+// 	NodeID            string  `json:"node_id"`
+// 	AvatarURL         string  `json:"avatar_url"`
+// 	GravatarID        string  `json:"gravatar_id"`
+// 	URL               string  `json:"url"`
+// 	HTMLURL           string  `json:"html_url"`
+// 	FollowersURL      string  `json:"followers_url"`
+// 	FollowingURL      string  `json:"following_url"`
+// 	GistsURL          string  `json:"gists_url"`
+// 	StarredURL        string  `json:"starred_url"`
+// 	SubscriptionsURL  string  `json:"subscriptions_url"`
+// 	OrganizationsURL  string  `json:"organizations_url"`
+// 	ReposURL          string  `json:"repos_url"`
+// 	EventsURL         string  `json:"events_url"`
+// 	ReceivedEventsURL string  `json:"received_events_url"`
+// 	Type              string  `json:"type"`
+// 	SiteAdmin         bool    `json:"site_admin"`
+// }
+
+// type githubAppPermissions struct {
+// 	Actions                               string `json:"actions"`
+// 	Administration                        string `json:"administration"`
+// 	Checks                               string `json:"checks"`
+// 	Codespaces                           string `json:"codespaces"`
+// 	Contents                             string `json:"contents"`
+// 	DependabotSecrets                    string `json:"dependabot_secrets"`
+// 	Deployments                          string `json:"deployments"`
+// 	Environments                         string `json:"environments"`
+// 	Issues                               string `json:"issues"`
+// 	Metadata                             string `json:"metadata"`
+// 	Packages                             string `json:"packages"`
+// 	Pages                                string `json:"pages"`
+// 	PullRequests                         string `json:"pull_requests"`
+// 	RepositoryCustomProperties           string `json:"repository_custom_properties"`
+// 	RepositoryHooks                      string `json:"repository_hooks"`
+// 	RepositoryProjects                   string `json:"repository_projects"`
+// 	SecretScanningAlerts                 string `json:"secret_scanning_alerts"`
+// 	Secrets                              string `json:"secrets"`
+// 	SecurityEvents                       string `json:"security_events"`
+// 	SingleFile                           string `json:"single_file"`
+// 	Statuses                            string `json:"statuses"`
+// 	VulnerabilityAlerts                 string `json:"vulnerability_alerts"`
+// 	Workflows                           string `json:"workflows"`
+// 	Members                             string `json:"members"`
+// 	OrganizationAdministration          string `json:"organization_administration"`
+// 	OrganizationCustomRoles             string `json:"organization_custom_roles"`
+// 	OrganizationCustomOrgRoles          string `json:"organization_custom_org_roles"`
+// 	OrganizationCustomProperties        string `json:"organization_custom_properties"`
+// 	OrganizationCopilotSeatManagement   string `json:"organization_copilot_seat_management"`
+// 	OrganizationAnnouncementBanners     string `json:"organization_announcement_banners"`
+// 	OrganizationEvents                  string `json:"organization_events"`
+// 	OrganizationHooks                   string `json:"organization_hooks"`
+// 	OrganizationPersonalAccessTokens    string `json:"organization_personal_access_tokens"`
+// 	OrganizationPersonalAccessTokenRequests string `json:"organization_personal_access_token_requests"`
+// 	OrganizationPlan                    string `json:"organization_plan"`
+// 	OrganizationProjects                string `json:"organization_projects"`
+// 	OrganizationPackages                string `json:"organization_packages"`
+// 	OrganizationSecrets                 string `json:"organization_secrets"`
+// 	OrganizationSelfHostedRunners       string `json:"organization_self_hosted_runners"`
+// 	OrganizationUserBlocking            string `json:"organization_user_blocking"`
+// 	TeamDiscussions                     string `json:"team_discussions"`
+// 	EmailAddresses                      string `json:"email_addresses"`
+// 	Followers                           string `json:"followers"`
+// 	GitSSHKeys                          string `json:"git_ssh_keys"`
+// 	GPGKeys                             string `json:"gpg_keys"`
+// 	InteractionLimits                   string `json:"interaction_limits"`
+// 	Profile                             string `json:"profile"`
+// 	Starring                            string `json:"starring"`
+// }
+
+// GetUserInstallation gets a user's installation for the authenticated app
+// username is the handle for the GitHub user account
+func (c *GithubClient) GetUserInstallation(ctx context.Context, displayName string) (int, error) {
+	token, err := c.issueJwt()
 	if err != nil {
-		return githubAppResponse{}, err
+		return 0, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://api.github.com/users/%s/installation", displayName), nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -131,17 +192,37 @@ func (c *GithubClient) GetApp(ctx context.Context, token, slug string) (githubAp
 
 	response, err := c.client.Do(req)
 	if err != nil {
-		return githubAppResponse{}, err
+		return 0, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		return githubAppResponse{}, fmt.Errorf("GitHub API responded with a %d trying to fetch app information", response.StatusCode)
-	}
-	var githubApp githubAppResponse
-	if err := json.NewDecoder(response.Body).Decode(&githubApp); err != nil {
-		return githubApp, fmt.Errorf("failed to marshal github app response: %w", err)
+	if response.StatusCode == http.StatusNotFound {
+		return 0, domain.ErrInstallationNotFound
 	}
 
-	return githubApp, nil
+	if response.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("GitHub API responded with %d trying to get user installation for %s", response.StatusCode, displayName)
+	}
+
+	var installation githubInstallation
+	if err := json.NewDecoder(response.Body).Decode(&installation); err != nil {
+		return 0, fmt.Errorf("failed to decode installation response: %w", err)
+	}
+
+	return installation.ID, nil
+}
+
+func (c *GithubClient) issueJwt() (string, error) {
+	if c.cachedToken != "" && c.cachedTokenAt.Sub(time.Now()) > time.Minute {
+		return c.cachedToken, nil
+	}
+
+	token, err := c.tokenIssuer.GenerateJwtToken(nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to issue jwt: %w", err)
+	}
+
+	c.cachedToken = token
+	c.cachedTokenAt = time.Now()
+	return token, nil
 }
