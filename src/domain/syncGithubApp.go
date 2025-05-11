@@ -11,17 +11,25 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 	if rpcErr != nil {
 		return GetReposResponse{}, rpcErr
 	}
-	githubInstalaltion, err := h.githubClient.GetUserInstallation(ctx, profile.UserInfo.DisplayName)
+	githubInstallation, err := h.githubClient.GetUserInstallation(ctx, profile.UserInfo.DisplayName)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
 			Message: "failed to get a github installation",
 			Err:     err,
 		}
 	}
-	savedInstallation, err := h.db.SaveInstallation(ctx, profile.UserInfo.ID, githubInstalaltion)
+	installedRepos, err := h.githubClient.ListRepositories(ctx, githubInstallation)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
-			Message: "failed to save a github installation",
+			Message: "failed to get github repos",
+			Err:     err,
+		}
+	}
+
+	savedInstallation, err := h.db.LinkGithub(ctx, githubInstallation, profile.UserInfo.DisplayName, installedRepos)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Message: "failed to sync a github repos link",
 			Err:     err,
 		}
 	}

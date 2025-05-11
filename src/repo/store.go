@@ -135,35 +135,36 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	return deps, nil
 }
 
-func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
+func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) (string, error) {
 	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
 	if err != nil {
-		return fmt.Errorf("failed to find a user :%w", err)
+		return "", fmt.Errorf("failed to find a user :%w", err)
 	}
 
 	timestamp := now()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to start link github transaction: %w", err)
+		return "", fmt.Errorf("failed to start link github transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	// save a github app
-	if _, err := s.saveInstallation(ctx, tx, userID, installationID, timestamp); err != nil {
-		return fmt.Errorf("failed to save installation: %w", err)
+	treenqInstallationID, err := s.saveInstallation(ctx, tx, userID, installationID, timestamp)
+	if err != nil {
+		return "", fmt.Errorf("failed to save installation: %w", err)
 	}
 
 	// Insert repositories
 	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, tx)
 	if err != nil {
-		return fmt.Errorf("failed to save installed repos: %w", err)
+		return "", fmt.Errorf("failed to save installed repos: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit github link transaction: %w", err)
+		return "", fmt.Errorf("failed to commit github link transaction: %w", err)
 	}
 
-	return nil
+	return treenqInstallationID, nil
 }
 
 // getUserIDByDisplayName gets user ID by display name
@@ -215,6 +216,9 @@ func (s *Store) insertInstalledRepos(
 			createdAt,
 		)
 	}
+
+	// Add ON CONFLICT DO NOTHING clause
+	repoQuery = repoQuery.Suffix("ON CONFLICT (githubId) DO NOTHING")
 
 	sql, args, err := repoQuery.ToSql()
 	if err != nil {
@@ -295,9 +299,32 @@ func (s *Store) SaveInstallation(ctx context.Context, userID string, githubID in
 }
 
 func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, githubID int, timestamp time.Time) (string, error) {
-	installationID := uuid.NewString()
+	// First check if installation already exists
+	query, args, err := s.sq.Select("id").
+		From("installations").
+		Where(sq.Eq{
+			"userId":   userID,
+			"githubId": githubID,
+		}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build check installation query: %w", err)
+	}
 
-	query, args, err := s.sq.Insert("installations").
+	var installationID string
+	err = q.QueryRowContext(ctx, query, args...).Scan(&installationID)
+	if err == nil {
+		// Installation found, return existing ID
+		return installationID, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("failed to check existing installation: %w", err)
+	}
+
+	// No existing installation found, create new one
+	installationID = uuid.NewString()
+
+	query, args, err = s.sq.Insert("installations").
 		Columns("id", "userId", "githubId", "createdAt").
 		Values(installationID, userID, githubID, timestamp).
 		ToSql()
@@ -305,7 +332,7 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 		return "", fmt.Errorf("failed to build save installation query: %w", err)
 	}
 
-	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+	if _, err := q.ExecContext(ctx, query, args...); err != nil {
 		return "", fmt.Errorf("failed to save installation: %w", err)
 	}
 

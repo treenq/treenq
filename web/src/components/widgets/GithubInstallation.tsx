@@ -47,53 +47,52 @@ export function GithubInstallation() {
 
   return (
     <div class="flex items-center justify-center">
-      <Show when={!reposStore.installation} fallback={<UpdateGithubAction onClick={onClick} />}>
-        <IntegrateGithubAction onClick={onClick} />
+      <Show
+        when={!reposStore.installation}
+        fallback={
+          <IntegrateGithubAction
+            text="Update Github Credentials"
+            variant="outline"
+            onClick={onClick}
+          />
+        }
+      >
+        <IntegrateGithubAction text="Integrate GitHub" variant="default" onClick={onClick} />
       </Show>
     </div>
   )
 }
 
 type GithubAppActionProps = {
+  text: string
+  variant: 'default' | 'outline'
   onClick: () => void
 }
 
-function UpdateGithubAction(props: GithubAppActionProps) {
-  function syncGithubRepos() {}
+function IntegrateGithubAction(props: GithubAppActionProps) {
   return (
     <>
-      <Button variant="outline" onclick={props.onClick}>
-        Update Github Credentials
+      <Button variant={props.variant} onclick={props.onClick}>
+        {props.text}
       </Button>
-      <Tooltip>
-        <TooltipTrigger as={Button} variant="outline" onClick={syncGithubRepos}>
-          Sync Github Repos
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>App installation webhook may fail, you can sync it manually</p>
-        </TooltipContent>
-      </Tooltip>
+      <SyncGithubAppAction />
     </>
   )
 }
 
-function IntegrateGithubAction(props: GithubAppActionProps) {
+function SyncGithubAppAction() {
   function syncGithubApp() {
     reposStore.syncGithubApp()
   }
+
   return (
-    <>
-      <Button variant="default" onclick={props.onClick}>
-        Integrate Github
-      </Button>
-      <Tooltip>
-        <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp}>
-          Sync Github App
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>App installation webhook may fail, you can sync it manually</p>
-        </TooltipContent>
-      </Tooltip>
-    </>
+    <Tooltip>
+      <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp}>
+        Sync Github Repos
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>App installation webhook may fail, you can sync it manually</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }

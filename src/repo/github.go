@@ -213,7 +213,7 @@ func (c *GithubClient) GetUserInstallation(ctx context.Context, displayName stri
 }
 
 func (c *GithubClient) issueJwt() (string, error) {
-	if c.cachedToken != "" && c.cachedTokenAt.Sub(time.Now()) > time.Minute {
+	if c.cachedToken != "" && time.Until(c.cachedTokenAt) > time.Minute {
 		return c.cachedToken, nil
 	}
 
@@ -225,4 +225,46 @@ func (c *GithubClient) issueJwt() (string, error) {
 	c.cachedToken = token
 	c.cachedTokenAt = time.Now()
 	return token, nil
+}
+
+type githubRepositoriesResponse struct {
+	TotalCount   int                          `json:"total_count"`
+	Repositories []domain.InstalledRepository `json:"repositories"`
+}
+
+func (c *GithubClient) ListRepositories(ctx context.Context, installationID int) ([]domain.Repository, error) {
+	token, err := c.IssueAccessToken(installationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue an installation token: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/installation/repositories", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Accept", "application/vnd.github+json")
+	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("installation %d not found", installationID)
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API responded with %d trying to list repositories for installation %d", response.StatusCode, installationID)
+	}
+
+	var repoResponse githubRepositoriesResponse
+	if err := json.NewDecoder(response.Body).Decode(&repoResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode repositories response: %w", err)
+	}
+
+	return repoResponse.Repositories, nil
 }

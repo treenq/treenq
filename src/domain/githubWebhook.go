@@ -46,6 +46,8 @@ type InstallationAccount struct {
 	Login string `json:"login"`
 }
 
+type InstalledRepository = Repository
+
 type Repository struct {
 	// Fields come from github api
 
@@ -77,12 +79,6 @@ const (
 	StatusRepoActive    = "active"
 	StatusRepoSuspended = "suspended"
 )
-
-type InstalledRepository struct {
-	ID       int    `json:"id"`
-	FullName string `json:"full_name"`
-	Private  bool   `json:"private"`
-}
 
 type BuildArtifactRequest struct {
 	Name       string
@@ -134,7 +130,7 @@ type AppDeployment struct {
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
 	// Save installation id link to a profile
 	if req.Action == "created" {
-		err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
+		_, err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to link github",

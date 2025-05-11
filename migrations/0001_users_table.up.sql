@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS installations (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
     userId uuid REFERENCES users(id) NOT NULL,
-    githubId integer NOT NULL,
+    githubId integer NOT NULL UNIQUE,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS installedRepos (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
-    githubId integer NOT NULL,
+    githubId integer NOT NULL UNIQUE,
     fullName varchar(255) NOT NULL,
     private boolean NOT NULL,
     installationId integer NOT NULL,

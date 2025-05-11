@@ -72,7 +72,7 @@ type Database interface {
 
 	// Github repos domain
 	// //////////////////////
-	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
+	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) (string, error)
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
@@ -87,6 +87,7 @@ type Database interface {
 type GithubClient interface {
 	IssueAccessToken(installationID int) (string, error)
 	GetUserInstallation(ctx context.Context, displayName string) (int, error)
+	ListRepositories(ctx context.Context, installationID int) ([]Repository, error)
 }
 
 type Git interface {
