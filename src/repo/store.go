@@ -81,8 +81,8 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 	}
 
 	query, args, err := s.sq.Insert("deployments").
-		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
-		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.CreatedAt).
+		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
+		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.Status, def.CreatedAt).
 		ToSql()
 	if err != nil {
 		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
@@ -93,6 +93,51 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 	}
 
 	return def, nil
+}
+
+func (s *Store) UpdateDeploymentStatus(ctx context.Context, deploymentID string, status string) error {
+	query, args, err := s.sq.Update("deployments").
+		Set("status", status).
+		Where(sq.Eq{"id": deploymentID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build UpdateDeploymentStatus query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec UpdateDeploymentStatus: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.AppDeployment, error) {
+	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
+		From("deployments").
+		Where(sq.Eq{"id": deploymentID}).
+		ToSql()
+	if err != nil {
+		return domain.AppDeployment{}, fmt.Errorf("failed to build GetDeployment query: %w", err)
+	}
+
+	var dep domain.AppDeployment
+	var spacePayload string
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(
+		&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dep, domain.ErrDeploymentNotFound
+		}
+		return dep, fmt.Errorf("failed to scan GetDeployment: %w", err)
+	}
+
+	var space tqsdk.Space
+	if err := json.Unmarshal([]byte(spacePayload), &space); err != nil {
+		return dep, fmt.Errorf("failed to unmarshal space in GetDeployment: %w", err)
+	}
+	dep.Space = space
+
+	return dep, nil
 }
 
 func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {

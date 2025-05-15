@@ -112,20 +112,30 @@ type GitRepo struct {
 }
 
 type AppDeployment struct {
-	ID string
+	ID string `json:"id"`
 	// RepoID is a reference to a repository id
-	RepoID string
+	RepoID string `json:"repoID"`
 	// Space is a treenq space definition
-	Space tqsdk.Space
+	Space tqsdk.Space `json:"space"`
 	// Sha is a commit sha a user requested to deploy or given from a github webhook
-	Sha string
+	Sha string `json:"sha"`
 	// BuildTag is a docker build image or an image created using buildpacks
-	BuildTag string
+	BuildTag string `json:"buildTag"`
 	// UserDisplayName is a user loging, comes from a user token or github hook Sender
-	UserDisplayName string
+	UserDisplayName string `json:"userDisplayName"`
 	// CreatedAt marks the start of the deployment (might not fit the exact start of the execution)
-	CreatedAt time.Time
+	CreatedAt time.Time `json:"createdAt"`
+	// Status describes the status of the deployment
+	Status DeployStatus `json:"status"`
 }
+
+type DeployStatus string
+
+const (
+	DeployStatusInit   DeployStatus = "init"
+	DeployStatusDone   DeployStatus = "done"
+	DeployStatusFailed DeployStatus = "failed"
+)
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
 	// Save installation id link to a profile
@@ -185,16 +195,57 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	return GithubWebhookResponse{}, nil
 }
 
-func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) *vel.Error {
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) (string, *vel.Error) {
+	// validate the repo must run
 	if repo.Branch == "" {
-		return nil
+		return "", nil
 	}
 	if repo.Status != StatusRepoActive {
 		// not expected case, suspended repos won't send any events,
 		// but in case we introduce a new status it must handle it
-		return nil
+		return "", nil
 	}
 
+	// Create initial deployment with "init" status
+	deployment := AppDeployment{
+		RepoID:          repo.TreenqID,
+		UserDisplayName: userDisplayName,
+		Status:          DeployStatusInit,
+		Space:           tqsdk.Space{},
+	}
+
+	deployment, err := h.db.SaveDeployment(ctx, deployment)
+	if err != nil {
+		return "", &vel.Error{
+			Code: "FAILED_CREATE_DEPLOYMENT",
+			Err:  err,
+		}
+	}
+
+	// Start the build process
+	if err := h.buildApp(ctx, userDisplayName, repo); err != nil {
+		// Update deployment status to failed
+		if updateErr := h.db.UpdateDeploymentStatus(ctx, deployment.ID, DeployStatusFailed); updateErr != nil {
+			return "", &vel.Error{
+				Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
+				Err:  updateErr,
+			}
+		}
+		return deployment.ID, err
+	}
+
+	// Update deployment status to done
+	if err := h.db.UpdateDeploymentStatus(ctx, deployment.ID, DeployStatusDone); err != nil {
+		return "", &vel.Error{
+			Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
+			Err:  err,
+		}
+	}
+
+	return deployment.ID, nil
+}
+
+func (h *Handler) buildApp(ctx context.Context, userDisplayName string, repo Repository) *vel.Error {
 	token := ""
 	if repo.Private {
 		var err error
@@ -235,7 +286,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 		Name:       appSpace.Service.Name,
 		Path:       gitRepo.Dir,
 		Dockerfile: dockerFilePath,
-		Tag:        "latest",
+		Tag:        gitRepo.Sha,
 	}
 	image, err := h.docker.Build(ctx, buildRequest)
 	if err != nil {
@@ -249,7 +300,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 		RepoID:          repo.TreenqID,
 		Space:           appSpace,
 		Sha:             gitRepo.Sha,
-		BuildTag:        buildRequest.Tag,
+		BuildTag:        image.Tag,
 		UserDisplayName: userDisplayName,
 	})
 	if err != nil {
@@ -266,5 +317,6 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 			Err:     err,
 		}
 	}
+
 	return nil
 }
