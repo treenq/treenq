@@ -15,7 +15,10 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-var ErrStructRequired = errors.New("api input/output must be only struct")
+var (
+	ErrStructRequired          = errors.New("api input/output must be only struct")
+	ErrorInlineStructForbidden = errors.New("inlined structs are forbidden to use, declare an explicit type")
+)
 
 // ClientGen defines api client generator
 // it doesn't support the following:
@@ -110,6 +113,10 @@ func collectTypes(field Field, dataTypeSet map[string]struct{}) ([]DataType, err
 		dataTypeSet[name] = struct{}{}
 
 		for _, subField := range subType.Fields {
+			// don't need to generate this type.
+			if subField.IsBuilting {
+				continue
+			}
 			if subField.Type.Kind() == reflect.Struct {
 				subTypes, err := collectTypes(subField, dataTypeSet)
 				if err != nil {
@@ -166,31 +173,45 @@ func extractDataType(t reflect.Type) (DataType, error) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		typeName := field.Type.String()
-		if field.Type.Kind() == reflect.Struct {
-			typeName = field.Type.Name()
-		}
-		if field.Type.Kind() == reflect.Pointer && field.Type.Elem().Kind() == reflect.Struct {
-			typeName = "*" + field.Type.Elem().Name()
-		}
-		if field.Type.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
-			typeName = "[]" + field.Type.Elem().Name()
-		}
-		if field.Type.Kind() == reflect.Map && field.Type.Elem().Kind() == reflect.Struct {
-			typeName = "map[" + field.Type.Key().Name() + "]" + field.Type.Elem().Name()
+		isBuiltin := false
+
+		if _, ok := builtinTypes[typeName]; ok {
+			isBuiltin = true
+		} else {
+			if field.Type.Kind() == reflect.Struct {
+				typeName = field.Type.Name()
+			}
+			if field.Type.Kind() == reflect.Pointer && field.Type.Elem().Kind() == reflect.Struct {
+				typeName = "*" + field.Type.Elem().Name()
+			}
+			if field.Type.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+				typeName = "[]" + field.Type.Elem().Name()
+			}
+			if field.Type.Kind() == reflect.Map && field.Type.Elem().Kind() == reflect.Struct {
+				typeName = "map[" + field.Type.Key().Name() + "]" + field.Type.Elem().Name()
+			}
+			if field.Type.Kind() == reflect.String && typeName != reflect.String.String() {
+				typeName = reflect.String.String()
+			}
 		}
 
 		fields = append(fields, Field{
-			Name:      field.Name,
-			Type:      field.Type,
-			TypeName:  typeName,
-			JsonTag:   field.Tag.Get("json"),
-			SchemaTag: field.Tag.Get("schema"),
+			Name:       field.Name,
+			Type:       field.Type,
+			TypeName:   typeName,
+			JsonTag:    field.Tag.Get("json"),
+			SchemaTag:  field.Tag.Get("schema"),
+			IsBuilting: isBuiltin,
 		})
 	}
 
 	name := t.Name()
 	if len(fields) == 0 {
 		name = ""
+	}
+
+	if name == "" && len(fields) > 0 {
+		return DataType{}, ErrorInlineStructForbidden
 	}
 	return DataType{
 		Name:   name,
@@ -230,6 +251,9 @@ type Field struct {
 	TypeName  string
 	JsonTag   string
 	SchemaTag string
+	// IsBuiltin defines a flag that a field exists in std lib, therefore must not be broken down further
+	// e.g. time.Time
+	IsBuilting bool
 }
 
 func (g *ClientGen) Generate(w io.Writer) error {
@@ -265,7 +289,7 @@ func (g *ClientGen) Generate(w io.Writer) error {
 
 	formatted, err := exec.Command("sh", "-c", cmdStr).Output()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to format output: %w", err)
 	}
 
 	if _, err := w.Write(formatted); err != nil {
@@ -280,4 +304,9 @@ func Capitalize(s string) string {
 	r[0] = unicode.ToUpper(r[0])
 	s = string(r)
 	return s
+}
+
+var builtinTypes = map[string]struct{}{
+	"time.Time":     {},
+	"time.Duration": {},
 }

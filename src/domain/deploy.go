@@ -7,11 +7,11 @@ import (
 )
 
 type DeployRequest struct {
-	RepoID string
+	RepoID string `json:"repoID"`
 }
 
 type DeployResponse struct {
-	DeploymentID string
+	DeploymentID string `json:"deploymentID"`
 }
 
 func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, *vel.Error) {
@@ -33,7 +33,7 @@ func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse
 		profile.UserInfo.DisplayName,
 		repo,
 	)
-	if err != nil {
+	if apiErr != nil {
 		return DeployResponse{}, apiErr
 	}
 	return DeployResponse{

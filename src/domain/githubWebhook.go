@@ -125,6 +125,7 @@ type AppDeployment struct {
 	UserDisplayName string `json:"userDisplayName"`
 	// CreatedAt marks the start of the deployment (might not fit the exact start of the execution)
 	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 	// Status describes the status of the deployment
 	Status DeployStatus `json:"status"`
 }
@@ -223,9 +224,10 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 	}
 
 	// Start the build process
-	if err := h.buildApp(ctx, userDisplayName, repo); err != nil {
+	if err := h.buildApp(ctx, deployment, repo); err != nil {
 		// Update deployment status to failed
-		if updateErr := h.db.UpdateDeploymentStatus(ctx, deployment.ID, DeployStatusFailed); updateErr != nil {
+		deployment.Status = DeployStatusFailed
+		if updateErr := h.db.UpdateDeployment(ctx, deployment); updateErr != nil {
 			return "", &vel.Error{
 				Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
 				Err:  updateErr,
@@ -235,7 +237,8 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 	}
 
 	// Update deployment status to done
-	if err := h.db.UpdateDeploymentStatus(ctx, deployment.ID, DeployStatusDone); err != nil {
+	deployment.Status = DeployStatusDone
+	if err := h.db.UpdateDeployment(ctx, deployment); err != nil {
 		return "", &vel.Error{
 			Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
 			Err:  err,
@@ -245,7 +248,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 	return deployment.ID, nil
 }
 
-func (h *Handler) buildApp(ctx context.Context, userDisplayName string, repo Repository) *vel.Error {
+func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) *vel.Error {
 	token := ""
 	if repo.Private {
 		var err error
@@ -296,13 +299,10 @@ func (h *Handler) buildApp(ctx context.Context, userDisplayName string, repo Rep
 		}
 	}
 
-	_, err = h.db.SaveDeployment(ctx, AppDeployment{
-		RepoID:          repo.TreenqID,
-		Space:           appSpace,
-		Sha:             gitRepo.Sha,
-		BuildTag:        image.Tag,
-		UserDisplayName: userDisplayName,
-	})
+	deployment.Space = appSpace
+	deployment.BuildTag = image.Tag
+	deployment.Sha = gitRepo.Sha
+	err = h.db.UpdateDeployment(ctx, deployment)
 	if err != nil {
 		return &vel.Error{
 			Message: "failed to save deployment",

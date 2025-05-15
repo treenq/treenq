@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Client struct {
@@ -122,15 +123,15 @@ func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) erro
 }
 
 type GithubWebhookRequest struct {
-	After               string                `json:"after"`
-	Installation        Installation          `json:"installation"`
-	Sender              Sender                `json:"sender"`
-	Action              string                `json:"action"`
-	Repositories        []InstalledRepository `json:"repositories"`
-	RepositoriesAdded   []InstalledRepository `json:"repositories_added"`
-	RepositoriesRemoved []InstalledRepository `json:"repositories_removed"`
-	Ref                 string                `json:"ref"`
-	Repository          Repository            `json:"repository"`
+	After               string       `json:"after"`
+	Installation        Installation `json:"installation"`
+	Sender              Sender       `json:"sender"`
+	Action              string       `json:"action"`
+	Repositories        []Repository `json:"repositories"`
+	RepositoriesAdded   []Repository `json:"repositories_added"`
+	RepositoriesRemoved []Repository `json:"repositories_removed"`
+	Ref                 string       `json:"ref"`
+	Repository          Repository   `json:"repository"`
 }
 
 type Installation struct {
@@ -146,12 +147,6 @@ type InstallationAccount struct {
 
 type Sender struct {
 	Login string `json:"login"`
-}
-
-type InstalledRepository struct {
-	ID       int    `json:"id"`
-	FullName string `json:"full_name"`
-	Private  bool   `json:"private"`
 }
 
 type Repository struct {
@@ -328,6 +323,37 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 	return res, nil
 }
 
+func (c *Client) SyncGithubApp(ctx context.Context) (GetReposResponse, error) {
+	var res GetReposResponse
+
+	body := bytes.NewBuffer(nil)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/syncGithubApp", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call syncGithubApp: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode syncGithubApp response: %w", err)
+	}
+
+	return res, nil
+}
+
 type ConnectBranchRequest struct {
 	RepoID string `json:"repoID"`
 	Branch string `json:"branch"`
@@ -373,33 +399,124 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 }
 
 type DeployRequest struct {
-	RepoID string
+	RepoID string `json:"repoID"`
 }
 
-func (c *Client) Deploy(ctx context.Context, req DeployRequest) error {
+type DeployResponse struct {
+	DeploymentID string `json:"deploymentID"`
+}
+
+func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
+	var res DeployResponse
+
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return fmt.Errorf("failed to marshal request: %w", err)
+		return res, fmt.Errorf("failed to marshal request: %w", err)
 	}
 	body := bytes.NewBuffer(bodyBytes)
 
 	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return res, fmt.Errorf("failed to create request: %w", err)
 	}
 	r = r.WithContext(ctx)
 	r.Header = c.headers
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return fmt.Errorf("failed to call deploy: %w", err)
+		return res, fmt.Errorf("failed to call deploy: %w", err)
 	}
 	defer resp.Body.Close()
 
 	err = HandleErr(resp)
 	if err != nil {
-		return err
+		return res, err
 	}
 
-	return nil
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode deploy response: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetDeploymentRequest struct {
+	DeploymentID string `json:"deploymentID"`
+}
+
+type GetDeploymentResponse struct {
+	Deployment AppDeployment `json:"deployment"`
+}
+
+type AppDeployment struct {
+	ID              string    `json:"id"`
+	RepoID          string    `json:"repoID"`
+	Space           Space     `json:"space"`
+	Sha             string    `json:"sha"`
+	BuildTag        string    `json:"buildTag"`
+	UserDisplayName string    `json:"userDisplayName"`
+	CreatedAt       time.Time `json:"createdAt"`
+	Status          string    `json:"status"`
+}
+
+type Space struct {
+	Key     string
+	Region  string
+	Service Service
+}
+
+type Service struct {
+	Key                 string
+	DockerfilePath      string
+	BuildEnvs           map[string]string
+	RuntimeEnvs         map[string]string
+	BuildSecrets        []string
+	RuntimeSecrets      []string
+	HttpPort            int
+	Replicas            int
+	Name                string
+	SizeSlug            string
+	ComputationResource ComputationResource
+}
+
+type ComputationResource struct {
+	CpuUnits   int
+	MemoryMibs int
+	DiskGibs   int
+}
+
+func (c *Client) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, error) {
+	var res GetDeploymentResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeployment", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getDeployment: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getDeployment response: %w", err)
+	}
+
+	return res, nil
 }

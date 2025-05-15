@@ -95,10 +95,18 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 	return def, nil
 }
 
-func (s *Store) UpdateDeploymentStatus(ctx context.Context, deploymentID string, status string) error {
+func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeployment) error {
+	appPayload, err := json.Marshal(deployment.Space)
+	if err != nil {
+		return fmt.Errorf("failed to marshal app definition to json: %w", err)
+	}
+	deployment.UpdatedAt = now()
 	query, args, err := s.sq.Update("deployments").
-		Set("status", status).
-		Where(sq.Eq{"id": deploymentID}).
+		Set("space", appPayload).
+		Set("sha", deployment.Sha).
+		Set("buildTag", deployment.BuildTag).
+		Set("status", deployment.Status).
+		Where(sq.Eq{"id": deployment.ID}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build UpdateDeploymentStatus query: %w", err)

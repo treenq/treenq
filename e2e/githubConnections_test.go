@@ -205,8 +205,9 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
-	err = apiClient.Deploy(ctx, client.DeployRequest{
+	deployID, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
+	require.NotEmpty(t, deployID)
 	require.NoError(t, err, "failed to deploys app")
 }

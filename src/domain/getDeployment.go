@@ -7,17 +7,17 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-var (
-	ErrDeploymentNotFound = errors.New("deployment not found")
-)
+var ErrDeploymentNotFound = errors.New("deployment not found")
+
+type GetDeploymentRequest struct {
+	DeploymentID string `json:"deploymentID"`
+}
 
 type GetDeploymentResponse struct {
 	Deployment AppDeployment `json:"deployment"`
 }
 
-func (h *Handler) GetDeployment(ctx context.Context, req struct {
-	DeploymentID string `json:"deploymentID"`
-}) (GetDeploymentResponse, *vel.Error) {
+func (h *Handler) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, *vel.Error) {
 	deployment, err := h.db.GetDeployment(ctx, req.DeploymentID)
 	if err != nil {
 		if errors.Is(err, ErrDeploymentNotFound) {
