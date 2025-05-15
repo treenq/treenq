@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -223,27 +224,28 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 		}
 	}
 
-	// Start the build process
-	if err := h.buildApp(ctx, deployment, repo); err != nil {
-		// Update deployment status to failed
-		deployment.Status = DeployStatusFailed
-		if updateErr := h.db.UpdateDeployment(ctx, deployment); updateErr != nil {
-			return "", &vel.Error{
-				Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
-				Err:  updateErr,
+	go func() {
+		ctx := context.WithoutCancel(ctx)
+		ctx, cancel := context.WithTimeout(ctx, time.Second*300)
+		defer cancel()
+		// Start the build process
+		if err := h.buildApp(ctx, deployment, repo); err != nil {
+			// Update deployment status to failed
+			deployment.Status = DeployStatusFailed
+			if updateErr := h.db.UpdateDeployment(ctx, deployment); updateErr != nil {
+				// TODO: log error
+				log.Println("[ERROR] failed update deployment", updateErr)
 			}
+			log.Println("[ERROR] failed to build app", err)
 		}
-		return deployment.ID, err
-	}
 
-	// Update deployment status to done
-	deployment.Status = DeployStatusDone
-	if err := h.db.UpdateDeployment(ctx, deployment); err != nil {
-		return "", &vel.Error{
-			Code: "FAILED_UPDATE_DEPLOYMENT_STATUS",
-			Err:  err,
+		// Update deployment status to done
+		deployment.Status = DeployStatusDone
+		if err := h.db.UpdateDeployment(ctx, deployment); err != nil {
+			// TODO: log error
+			log.Println("[ERROR] failed mark deployment as done", err)
 		}
-	}
+	}()
 
 	return deployment.ID, nil
 }

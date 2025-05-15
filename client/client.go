@@ -457,6 +457,7 @@ type AppDeployment struct {
 	BuildTag        string    `json:"buildTag"`
 	UserDisplayName string    `json:"userDisplayName"`
 	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 	Status          string    `json:"status"`
 }
 

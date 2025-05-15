@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -205,9 +206,26 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
-	deployID, err := apiClient.Deploy(ctx, client.DeployRequest{
+	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.NotEmpty(t, deployID)
+	require.NotEmpty(t, createdDeployment.DeploymentID)
 	require.NoError(t, err, "failed to deploys app")
+
+	// wait for deployment done
+	for range 20 {
+		time.Sleep(time.Second * 2)
+		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
+			DeploymentID: createdDeployment.DeploymentID,
+		})
+		require.NoError(t, err)
+		if deployment.Deployment.Status != "done" {
+			continue
+		}
+
+		return
+	}
+
+	t.Log("status must be done to this moment")
+	t.FailNow()
 }
