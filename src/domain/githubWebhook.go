@@ -1,16 +1,19 @@
 package domain
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/pkg/vel"
+	"golang.org/x/exp/maps"
 )
 
 var ErrNoConfigFileFound = errors.New("no config file found")
@@ -249,6 +252,38 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 
 	return deployment.ID, nil
 }
+
+type ProgressBuf struct {
+	Bufs map[string]buf
+
+	mx sync.RWMutex
+}
+
+type buf struct {
+	WriteAt time.Time
+	Content bytes.Buffer
+}
+
+func (b *ProgressBuf) Append(deploymentID string, content []byte) {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+	if len(b.Bufs) >= 100 {
+		b.clean()
+	}
+
+	buf := b.Bufs[deploymentID]
+	buf.WriteAt = time.Now()
+	buf.Content.Write(content)
+	b.Bufs[deploymentID] = buf
+}
+
+func (b *ProgressBuf) clean() {
+	maps.DeleteFunc(b.Bufs, func(k string, v buf) bool {
+		return time.Since(v.WriteAt) > (time.Minute * 20)
+	})
+}
+
+var progress = ProgressBuf{Bufs: make(map[string]buf)}
 
 func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) *vel.Error {
 	token := ""
