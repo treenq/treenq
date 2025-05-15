@@ -219,6 +219,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			DeploymentID: createdDeployment.DeploymentID,
 		})
 		require.NoError(t, err)
+		require.NotEqual(t, "failed", deployment.Deployment.Status)
 		if deployment.Deployment.Status != "done" {
 			continue
 		}
