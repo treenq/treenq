@@ -1,11 +1,12 @@
 package domain
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -85,10 +86,11 @@ const (
 )
 
 type BuildArtifactRequest struct {
-	Name       string
-	Path       string
-	Dockerfile string
-	Tag        string
+	Name         string
+	Path         string
+	Dockerfile   string
+	Tag          string
+	DeploymentID string
 }
 
 type Image struct {
@@ -261,20 +263,48 @@ type ProgressBuf struct {
 
 type buf struct {
 	WriteAt time.Time
-	Content bytes.Buffer
+	Content []message
 }
 
-func (b *ProgressBuf) Append(deploymentID string, content []byte) {
+type message struct {
+	Payload []byte
+	Level   slog.Level
+}
+
+func (b *ProgressBuf) Append(deploymentID string, content []byte, level slog.Level) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
-	if len(b.Bufs) >= 100 {
-		b.clean()
-	}
 
 	buf := b.Bufs[deploymentID]
 	buf.WriteAt = time.Now()
-	buf.Content.Write(content)
+	buf.Content = append(buf.Content, message{
+		Payload: content,
+		Level:   level,
+	})
 	b.Bufs[deploymentID] = buf
+
+	if len(b.Bufs) >= 100 {
+		b.clean()
+	}
+}
+
+func (b *ProgressBuf) AsWriter(deploymentID string, level slog.Level) io.Writer {
+	return &progressWriter{
+		deploymentID: deploymentID,
+		level:        level,
+		buf:          b,
+	}
+}
+
+type progressWriter struct {
+	deploymentID string
+	level        slog.Level
+	buf          *ProgressBuf
+}
+
+func (w *progressWriter) Write(buf []byte) (int, error) {
+	w.buf.Append(w.deploymentID, buf, w.level)
+	return len(buf), nil
 }
 
 func (b *ProgressBuf) clean() {
@@ -283,32 +313,41 @@ func (b *ProgressBuf) clean() {
 	})
 }
 
-var progress = ProgressBuf{Bufs: make(map[string]buf)}
+var progress = &ProgressBuf{Bufs: make(map[string]buf)}
 
 func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) *vel.Error {
 	token := ""
 	if repo.Private {
 		var err error
+		progress.Append(deployment.ID, []byte("private repository detected, issuing github access token"), slog.LevelDebug)
 		token, err = h.githubClient.IssueAccessToken(repo.InstallationID)
 		if err != nil {
+			progress.Append(deployment.ID, []byte("failed to issue a github access token: "+err.Error()), slog.LevelError)
 			return &vel.Error{
 				Message: "failed to issue github access token",
 				Err:     err,
 			}
 		}
+		progress.Append(deployment.ID, []byte("issued github access token"), slog.LevelInfo)
 	}
 
+	progress.Append(deployment.ID, []byte("cloning github repository"), slog.LevelDebug)
 	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token)
 	if err != nil {
+		progress.Append(deployment.ID, []byte("failed to clone github repository: "+err.Error()), slog.LevelError)
 		return &vel.Error{
 			Message: "failed to clone git repo",
 			Err:     err,
 		}
 	}
+	progress.Append(deployment.ID, []byte("cloned github repository"), slog.LevelInfo)
+
 	defer os.RemoveAll(gitRepo.Dir)
 
+	progress.Append(deployment.ID, []byte("extracting treenq config"), slog.LevelDebug)
 	appSpace, err := h.extractor.ExtractConfig(gitRepo.Dir)
 	if err != nil {
+		progress.Append(deployment.ID, []byte("failed to extract treenq config: "+err.Error()), slog.LevelError)
 		if errors.Is(err, ErrNoConfigFileFound) {
 			return &vel.Error{
 				Message: "failed to extract config",
@@ -320,40 +359,54 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Err:     err,
 		}
 	}
+	progress.Append(deployment.ID, []byte("extracted treenq config"), slog.LevelInfo)
 
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
 	buildRequest := BuildArtifactRequest{
-		Name:       appSpace.Service.Name,
-		Path:       gitRepo.Dir,
-		Dockerfile: dockerFilePath,
-		Tag:        gitRepo.Sha,
+		Name:         appSpace.Service.Name,
+		Path:         gitRepo.Dir,
+		Dockerfile:   dockerFilePath,
+		Tag:          gitRepo.Sha,
+		DeploymentID: deployment.ID,
 	}
-	image, err := h.docker.Build(ctx, buildRequest)
+	progress.Append(deployment.ID, []byte("build image"), slog.LevelDebug)
+	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", buildRequest)), slog.LevelDebug)
+	image, err := h.docker.Build(ctx, buildRequest, progress)
 	if err != nil {
+		progress.Append(deployment.ID, []byte("failed to build image: "+err.Error()), slog.LevelError)
 		return &vel.Error{
 			Message: "failed to build an image",
 			Err:     err,
 		}
 	}
+	progress.Append(deployment.ID, []byte("built image"), slog.LevelInfo)
 
 	deployment.Space = appSpace
 	deployment.BuildTag = image.Tag
 	deployment.Sha = gitRepo.Sha
+	progress.Append(deployment.ID, []byte("updating deployment state"), slog.LevelDebug)
+	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", deployment)), slog.LevelDebug)
 	err = h.db.UpdateDeployment(ctx, deployment)
 	if err != nil {
+		progress.Append(deployment.ID, []byte("failed to update deployment state"+err.Error()), slog.LevelError)
 		return &vel.Error{
 			Message: "failed to save deployment",
 			Err:     err,
 		}
 	}
+	progress.Append(deployment.ID, []byte("updated deployment state"), slog.LevelInfo)
 
+	progress.Append(deployment.ID, []byte("apply new image"), slog.LevelDebug)
+	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", image)), slog.LevelDebug)
 	appKubeDef := h.kube.DefineApp(ctx, repo.TreenqID, appSpace, image)
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
+		progress.Append(deployment.ID, []byte("failed to apply new image"+err.Error()), slog.LevelError)
 		return &vel.Error{
 			Message: "failed to apply kube definition",
 			Err:     err,
 		}
 	}
+	progress.Append(deployment.ID, []byte("applied new image"), slog.LevelInfo)
 
 	return nil
 }

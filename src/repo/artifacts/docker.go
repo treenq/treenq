@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/define"
@@ -15,9 +15,7 @@ import (
 	"github.com/treenq/treenq/src/domain"
 )
 
-var (
-	ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
-)
+var ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
 
 type DockerArtifact struct {
 	registry string
@@ -38,7 +36,8 @@ func NewDockerArtifactory(
 	registryAuthType,
 	registryUsername,
 	registryPassword,
-	registryToken string) (*DockerArtifact, error) {
+	registryToken string,
+) (*DockerArtifact, error) {
 	buildStoreOptions, err := storage.DefaultStoreOptions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build buildah storage option: %w", err)
@@ -62,7 +61,7 @@ func NewDockerArtifactory(
 }
 
 func (a *DockerArtifact) getAuth() (*types.DockerAuthConfig, error) {
-	// TODO: reuse api.Oci constant values isntead of hardcoding auth type constants 
+	// TODO: reuse api.Oci constant values isntead of hardcoding auth type constants
 	switch a.registryAuthType {
 	case "basic":
 		return &types.DockerAuthConfig{
@@ -100,19 +99,22 @@ func (a *DockerArtifact) Image(args domain.BuildArtifactRequest) domain.Image {
 	}
 }
 
-func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest) (domain.Image, error) {
+func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest, progress *domain.ProgressBuf) (domain.Image, error) {
 	image := a.Image(args)
+	out := progress.AsWriter(args.DeploymentID, slog.LevelInfo)
+	errOut := progress.AsWriter(args.DeploymentID, slog.LevelError)
+	reportOut := progress.AsWriter(args.DeploymentID, slog.LevelDebug)
 
 	id, _, err := imagebuildah.BuildDockerfiles(ctx, a.store, define.BuildOptions{
 		ContextDirectory: args.Path,
 		Registry:         a.registry,
 		Output:           args.Name,
-		Out:              os.Stdout,
-		Err:              os.Stderr,
-		ReportWriter:     os.Stdout,
+		Out:              out,
+		Err:              errOut,
+		ReportWriter:     reportOut,
 		// TODO: fixme, the dockerignore must come from config
-		IgnoreFile:       "./.dockerignore",
-		AdditionalTags:   []string{image.FullPath()},
+		IgnoreFile:     "./.dockerignore",
+		AdditionalTags: []string{image.FullPath()},
 	}, args.Dockerfile)
 	if err != nil {
 		return image, fmt.Errorf("failed to build a docker container: %w", err)
