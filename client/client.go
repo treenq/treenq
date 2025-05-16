@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -517,6 +518,52 @@ func (c *Client) GetDeployment(ctx context.Context, req GetDeploymentRequest) (G
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return res, fmt.Errorf("failed to decode getDeployment response: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetBuildProgressRequest struct {
+	DeploymentID string
+}
+
+type GetBuildProgressResponse struct {
+	Message ProgressMessage `json:"message"`
+}
+
+type ProgressMessage struct {
+	Payload string     `json:"payload"`
+	Level   slog.Level `json:"level"`
+	Final   bool       `json:"-"`
+}
+
+func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {
+	var res GetBuildProgressResponse
+
+	q := make(url.Values)
+	q.Set("deploymentID", req.DeploymentID)
+
+	r, err := http.NewRequest("GET", c.baseUrl+"/getBuildProgress?"+q.Encode(), nil)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getBuildProgress: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getBuildProgress response: %w", err)
 	}
 
 	return res, nil

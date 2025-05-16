@@ -263,29 +263,97 @@ type ProgressBuf struct {
 
 type buf struct {
 	WriteAt time.Time
-	Content []message
+	Content []ProgressMessage
+	Subs    []Subscriber
 }
 
-type message struct {
-	Payload []byte
-	Level   slog.Level
+type ProgressMessage struct {
+	Payload string     `json:"payload"`
+	Level   slog.Level `json:"level"`
+	Final   bool       `json:"-"`
 }
 
-func (b *ProgressBuf) Append(deploymentID string, content []byte, level slog.Level) {
+type Subscriber struct {
+	out    chan ProgressMessage
+	done   <-chan struct{}
+	closed bool
+}
+
+func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan ProgressMessage {
+	b.mx.Lock()
+
+	out := make(chan ProgressMessage)
+
+	go func() {
+		defer b.mx.Unlock()
+
+		buf := b.Bufs[deploymentID]
+		for _, m := range buf.Content {
+			select {
+			case out <- m:
+				if m.Final {
+					close(out)
+					return
+				}
+			case <-ctx.Done():
+				close(out)
+			}
+		}
+		buf.Subs = append(buf.Subs, Subscriber{
+			out:  out,
+			done: ctx.Done(),
+		})
+		b.Bufs[deploymentID] = buf
+	}()
+
+	return out
+}
+
+func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
 	buf := b.Bufs[deploymentID]
 	buf.WriteAt = time.Now()
-	buf.Content = append(buf.Content, message{
-		Payload: content,
-		Level:   level,
-	})
+	buf.Content = append(buf.Content, m)
+	for _, sub := range buf.Subs {
+		select {
+		case <-sub.done:
+			close(sub.out)
+			sub.closed = true
+		case <-time.After(time.Second):
+			close(sub.out)
+			sub.closed = true
+		case sub.out <- m:
+
+		}
+
+		if m.Final {
+			close(sub.out)
+			sub.closed = true
+		}
+	}
+
+	copiedSubs := make([]Subscriber, 0, len(buf.Subs))
+	for i := range buf.Subs {
+		if buf.Subs[i].closed {
+			continue
+		}
+
+		copiedSubs = append(copiedSubs, buf.Subs[i])
+	}
+	buf.Subs = copiedSubs
 	b.Bufs[deploymentID] = buf
 
 	if len(b.Bufs) >= 100 {
 		b.clean()
 	}
+}
+
+func (b *ProgressBuf) clean() {
+	maps.DeleteFunc(b.Bufs, func(k string, v buf) bool {
+		return time.Since(v.WriteAt) > (time.Minute * 5)
+	})
 }
 
 func (b *ProgressBuf) AsWriter(deploymentID string, level slog.Level) io.Writer {
@@ -303,14 +371,11 @@ type progressWriter struct {
 }
 
 func (w *progressWriter) Write(buf []byte) (int, error) {
-	w.buf.Append(w.deploymentID, buf, w.level)
-	return len(buf), nil
-}
-
-func (b *ProgressBuf) clean() {
-	maps.DeleteFunc(b.Bufs, func(k string, v buf) bool {
-		return time.Since(v.WriteAt) > (time.Minute * 20)
+	w.buf.Append(w.deploymentID, ProgressMessage{
+		Payload: string(buf),
+		Level:   w.level,
 	})
+	return len(buf), nil
 }
 
 var progress = &ProgressBuf{Bufs: make(map[string]buf)}
@@ -319,35 +384,59 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 	token := ""
 	if repo.Private {
 		var err error
-		progress.Append(deployment.ID, []byte("private repository detected, issuing github access token"), slog.LevelDebug)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "private repository detected, issuing github access token",
+			Level:   slog.LevelDebug,
+		})
 		token, err = h.githubClient.IssueAccessToken(repo.InstallationID)
 		if err != nil {
-			progress.Append(deployment.ID, []byte("failed to issue a github access token: "+err.Error()), slog.LevelError)
+			progress.Append(deployment.ID, ProgressMessage{
+				Payload: "failed to issue a github access token: " + err.Error(),
+				Level:   slog.LevelError,
+			})
 			return &vel.Error{
 				Message: "failed to issue github access token",
 				Err:     err,
 			}
 		}
-		progress.Append(deployment.ID, []byte("issued github access token"), slog.LevelInfo)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "issued github access token",
+			Level:   slog.LevelInfo,
+		})
 	}
 
-	progress.Append(deployment.ID, []byte("cloning github repository"), slog.LevelDebug)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "cloning github repository",
+		Level:   slog.LevelDebug,
+	})
 	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token)
 	if err != nil {
-		progress.Append(deployment.ID, []byte("failed to clone github repository: "+err.Error()), slog.LevelError)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to clone github repository: " + err.Error(),
+			Level:   slog.LevelError,
+		})
 		return &vel.Error{
 			Message: "failed to clone git repo",
 			Err:     err,
 		}
 	}
-	progress.Append(deployment.ID, []byte("cloned github repository"), slog.LevelInfo)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "cloned github repository",
+		Level:   slog.LevelInfo,
+	})
 
 	defer os.RemoveAll(gitRepo.Dir)
 
-	progress.Append(deployment.ID, []byte("extracting treenq config"), slog.LevelDebug)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "extracting treenq config",
+		Level:   slog.LevelDebug,
+	})
 	appSpace, err := h.extractor.ExtractConfig(gitRepo.Dir)
 	if err != nil {
-		progress.Append(deployment.ID, []byte("failed to extract treenq config: "+err.Error()), slog.LevelError)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to extract treenq config: " + err.Error(),
+			Level:   slog.LevelError,
+		})
 		if errors.Is(err, ErrNoConfigFileFound) {
 			return &vel.Error{
 				Message: "failed to extract config",
@@ -359,7 +448,10 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Err:     err,
 		}
 	}
-	progress.Append(deployment.ID, []byte("extracted treenq config"), slog.LevelInfo)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "extracted treenq config",
+		Level:   slog.LevelInfo,
+	})
 
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
 	buildRequest := BuildArtifactRequest{
@@ -369,44 +461,81 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Tag:          gitRepo.Sha,
 		DeploymentID: deployment.ID,
 	}
-	progress.Append(deployment.ID, []byte("build image"), slog.LevelDebug)
-	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", buildRequest)), slog.LevelDebug)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "build image",
+		Level:   slog.LevelDebug,
+	})
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: fmt.Sprintf("%+v", buildRequest),
+		Level:   slog.LevelDebug,
+	})
 	image, err := h.docker.Build(ctx, buildRequest, progress)
 	if err != nil {
-		progress.Append(deployment.ID, []byte("failed to build image: "+err.Error()), slog.LevelError)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to build image: " + err.Error(),
+			Level:   slog.LevelError,
+		})
 		return &vel.Error{
 			Message: "failed to build an image",
 			Err:     err,
 		}
 	}
-	progress.Append(deployment.ID, []byte("built image"), slog.LevelInfo)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "built image",
+		Level:   slog.LevelInfo,
+	})
 
 	deployment.Space = appSpace
 	deployment.BuildTag = image.Tag
 	deployment.Sha = gitRepo.Sha
-	progress.Append(deployment.ID, []byte("updating deployment state"), slog.LevelDebug)
-	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", deployment)), slog.LevelDebug)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "updating deployment state",
+		Level:   slog.LevelDebug,
+	})
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: fmt.Sprintf("%+v", deployment),
+		Level:   slog.LevelDebug,
+	})
 	err = h.db.UpdateDeployment(ctx, deployment)
 	if err != nil {
-		progress.Append(deployment.ID, []byte("failed to update deployment state"+err.Error()), slog.LevelError)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to update deployment state" + err.Error(),
+			Level:   slog.LevelError,
+		})
 		return &vel.Error{
 			Message: "failed to save deployment",
 			Err:     err,
 		}
 	}
-	progress.Append(deployment.ID, []byte("updated deployment state"), slog.LevelInfo)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "updated deployment state",
+		Level:   slog.LevelInfo,
+	})
 
-	progress.Append(deployment.ID, []byte("apply new image"), slog.LevelDebug)
-	progress.Append(deployment.ID, []byte(fmt.Appendf(nil, "%+v", image)), slog.LevelDebug)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "apply new image",
+		Level:   slog.LevelDebug,
+	})
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: fmt.Sprintf("%+v", image),
+		Level:   slog.LevelDebug,
+	})
 	appKubeDef := h.kube.DefineApp(ctx, repo.TreenqID, appSpace, image)
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
-		progress.Append(deployment.ID, []byte("failed to apply new image"+err.Error()), slog.LevelError)
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to apply new image" + err.Error(),
+			Level:   slog.LevelError,
+		})
 		return &vel.Error{
 			Message: "failed to apply kube definition",
 			Err:     err,
 		}
 	}
-	progress.Append(deployment.ID, []byte("applied new image"), slog.LevelInfo)
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "applied new image",
+		Level:   slog.LevelInfo,
+		Final:   true,
+	})
 
 	return nil
 }

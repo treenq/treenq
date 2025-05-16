@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bufio"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -224,7 +225,25 @@ func TestGithubAppInstallation(t *testing.T) {
 			continue
 		}
 
+		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.DeploymentID, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Bytes()
+			var progressMessage client.GetBuildProgressResponse
+			err = json.Unmarshal(line, &progressMessage)
+			require.NoError(t, err)
+
+			t.Logf("%+v", progressMessage)
+			// t.Log(string(line))
+		}
+
 		return
+
 	}
 
 	t.Log("status must be done to this moment")

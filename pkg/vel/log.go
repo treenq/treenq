@@ -34,6 +34,15 @@ func (w *responseWriter) WriteHeader(statusCode int) {
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
+func (w *responseWriter) Flush() {
+	flusher, ok := w.ResponseWriter.(http.Flusher)
+	if !ok {
+		return
+	}
+
+	flusher.Flush()
+}
+
 type logContextKey struct{}
 
 var DefaultLogWriter = os.Stderr
