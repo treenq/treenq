@@ -9,12 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-brands-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@kobalte/core": "^0.13.9",
     "@solidjs/router": "^0.15.3",
     "@tailwindcss/vite": "^4.1.4",
     "@types/node": "^22.15.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "solid-fontawesome": "^0.2.1",
     "solid-js": "^1.9.5",
     "tailwind-merge": "^3.2.0",
     "tailwindcss": "^4.1.4"

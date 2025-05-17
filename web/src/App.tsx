@@ -6,9 +6,15 @@ import Main from '@/components/pages/Main'
 import { onMount, Show } from 'solid-js'
 
 import RedirectPage from '@/components/pages/RedirectPage'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/Sidebar'
+import { AppSidebar } from '@/components/widgets/AppSidebar'
 import { Header } from '@/components/widgets/Header'
-import Sidebar from '@/components/widgets/Sidebar'
 import { userStore } from '@/store/userStore'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faGithub } from '@fortawesome/free-brands-svg-icons'
+import { faHome } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faHome, faGithub)
 
 type ProtectedRouterProps = {
   children: JSX.Element
@@ -30,6 +36,23 @@ function MakeProtectedComponent(props: ProtectedRouterProps): Component {
   }
 }
 
+type LayoutProps = { children: JSX.Element }
+
+const Layout = ({ children }: LayoutProps) => (
+  <>
+    <SidebarProvider>
+      <AppSidebar />
+      <div class="w-full">
+        <Header />
+        <main>
+          <SidebarTrigger />
+          {children}
+        </main>
+      </div>
+    </SidebarProvider>
+  </>
+)
+
 function App(): JSX.Element {
   onMount(() => {
     userStore.getProfile()
@@ -37,9 +60,7 @@ function App(): JSX.Element {
 
   return (
     <>
-      <Header />
-      <Sidebar />
-      <Router>
+      <Router root={({ children }) => <Layout>{children}</Layout>}>
         <Route
           path="/"
           component={MakeProtectedComponent({
