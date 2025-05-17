@@ -1,11 +1,13 @@
 package e2e
 
 import (
+	"bufio"
 	"context"
 	_ "embed"
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -205,8 +207,45 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
-	err = apiClient.Deploy(ctx, client.DeployRequest{
+	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
+	require.NotEmpty(t, createdDeployment.DeploymentID)
 	require.NoError(t, err, "failed to deploys app")
+
+	// wait for deployment done
+	for range 20 {
+		time.Sleep(time.Second * 2)
+		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
+			DeploymentID: createdDeployment.DeploymentID,
+		})
+		require.NoError(t, err)
+		require.NotEqual(t, "failed", deployment.Deployment.Status)
+		if deployment.Deployment.Status != "done" {
+			continue
+		}
+
+		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.DeploymentID, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Bytes()
+			var progressMessage client.GetBuildProgressResponse
+			err = json.Unmarshal(line, &progressMessage)
+			require.NoError(t, err)
+
+			t.Logf("%+v", progressMessage)
+			// t.Log(string(line))
+		}
+
+		return
+
+	}
+
+	t.Log("status must be done to this moment")
+	t.FailNow()
 }

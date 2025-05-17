@@ -68,6 +68,8 @@ type Database interface {
 	// Deployment domain
 	// ////////////////
 	SaveDeployment(ctx context.Context, def AppDeployment) (AppDeployment, error)
+	UpdateDeployment(ctx context.Context, def AppDeployment) error
+	GetDeployment(ctx context.Context, deploymentID string) (AppDeployment, error)
 	GetDeploymentHistory(ctx context.Context, appID string) ([]AppDeployment, error)
 
 	// Github repos domain
@@ -100,7 +102,7 @@ type Extractor interface {
 
 type DockerArtifactory interface {
 	Image(args BuildArtifactRequest) Image
-	Build(ctx context.Context, args BuildArtifactRequest) (Image, error)
+	Build(ctx context.Context, args BuildArtifactRequest, progress *ProgressBuf) (Image, error)
 }
 
 type Kube interface {
