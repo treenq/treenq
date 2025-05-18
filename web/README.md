@@ -12,3 +12,4 @@
 ### icons
 
 - https://docs.tabler.io/icons/libraries/solidjs
+- https://tabler.io/icons

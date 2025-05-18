@@ -112,3 +112,19 @@ This tip will also help to run the service inside a container.
 
 Docker is able running only a privileged container:
 `docker run --privileged  -it treenq`
+
+#### Docker setup explained
+
+Dockerfile contains 4 staging:
+
+- build stage, to actually gather all the dependencies
+- build dev stage, it installs delve to be able to debug the app, compile without optimizations and starts
+- build prod builds with compiler optimizations
+- last stage runs it from prod build
+
+TBD a diagram
+
+docker-compose represents a base setup, directly isn't used.
+docker-compose.local might be used if a database web ui require
+docker-compose.e2e is used to run e2e tests
+docker-compose.staging is used to run a staging environment, doesn't include a database

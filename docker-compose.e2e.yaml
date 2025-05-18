@@ -24,3 +24,8 @@ services:
     restart: always
     volumes:
       - ./certs:/certs
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+          cpus: 0.3

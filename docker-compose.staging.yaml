@@ -1,20 +1,4 @@
 services:
-  postgres:
-    image: postgres:16.3
-    restart: always
-    environment:
-      POSTGRES_HOST_AUTH_METHOD: "trust"
-      POSTGRES_DB: tq
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tq"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
-
   registry:
     image: registry:2.8.3
     ports:
@@ -76,8 +60,32 @@ services:
           memory: 1000m
           cpus: 0.5
 
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8000:8000"
+      - "40000:40000"
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    env_file: staging.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./certs:/certs
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+          cpus: 0.3
+
 volumes:
-  pgdata:
-    driver: local
   k3s:
     driver: local

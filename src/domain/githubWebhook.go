@@ -17,7 +17,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var ErrNoConfigFileFound = errors.New("no config file found")
+var (
+	ErrNoConfigFileFound        = errors.New("no config file found")
+	ErrDeployStatusMustBeString = errors.New("deploy status must be string")
+)
 
 type GithubWebhookRequest struct {
 	// After holds a latest commit SHA
@@ -137,6 +140,16 @@ type AppDeployment struct {
 }
 
 type DeployStatus string
+
+func (s *DeployStatus) Scan(src any) error {
+	str, ok := src.(string)
+	if !ok {
+		return ErrDeployStatusMustBeString
+	}
+
+	*s = DeployStatus(str)
+	return nil
+}
 
 const (
 	DeployStatusInit   DeployStatus = "init"
