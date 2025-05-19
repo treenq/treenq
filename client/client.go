@@ -324,6 +324,49 @@ func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
 	return res, nil
 }
 
+type GetBranchesRequest struct {
+	RepoName string `json:"repoName"`
+}
+
+type GetBranchesResopnse struct {
+	Branches []string `json:"branches"`
+}
+
+func (c *Client) GetBranches(ctx context.Context, req GetBranchesRequest) (GetBranchesResopnse, error) {
+	var res GetBranchesResopnse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getBranches", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getBranches: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getBranches response: %w", err)
+	}
+
+	return res, nil
+}
+
 func (c *Client) SyncGithubApp(ctx context.Context) (GetReposResponse, error) {
 	var res GetReposResponse
 

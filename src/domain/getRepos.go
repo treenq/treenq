@@ -18,11 +18,16 @@ func (h *Handler) GetRepos(ctx context.Context, _ struct{}) (GetReposResponse, *
 		return GetReposResponse{}, rpcErr
 	}
 
-	installation, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID)
-	if err != nil && !errors.Is(err, ErrInstallationNotFound) {
+	installation, _, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID)
+	if err != nil {
+		if errors.Is(err, ErrInstallationNotFound) {
+			return GetReposResponse{}, &vel.Error{
+				Code: "INSTALLATION_NOT_FOUND",
+			}
+		}
 		return GetReposResponse{}, &vel.Error{
-			Code: "FAILED_GET_INSTALLATION",
-			Err:  err,
+			Message: "failed to get installation",
+			Err:     err,
 		}
 	}
 

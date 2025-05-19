@@ -57,6 +57,11 @@ function createReposStore() {
       )
       setStore('installation', res.data.installationID)
     },
+    getBranches: async (repoName: string) => {
+      const res = await client.getBranches({repoName: repoName})
+      if ('error' in res) return []
+      return res.data.branches as string[] || []
+    },
   })
 }
 

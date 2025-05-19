@@ -47,6 +47,14 @@ export type Repository = {
   branch: string
 }
 
+export type GetBranchesRequest = {
+  repoName: string
+}
+
+export type GetBranchesResponse = {
+  branches: string[]
+}
+
 export class HttpClient {
   constructor(
     private baseUrl: string,
@@ -123,5 +131,9 @@ export class HttpClient {
   }
   async syncGithubApp(): Promise<Result<GetReposResponse>> {
     return await this.post('/syncGithubApp')
+  }
+
+  async getBranches(req: GetBranchesRequest): Promise<Result<GetBranchesResponse>> {
+    return await this.post('/getBranches', req)
   }
 }

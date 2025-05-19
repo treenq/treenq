@@ -326,23 +326,24 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 	return nil
 }
 
-func (s *Store) GetInstallationID(ctx context.Context, userID string) (string, error) {
-	q, args, err := s.sq.Select("id").
+func (s *Store) GetInstallationID(ctx context.Context, userID string) (string, int, error) {
+	q, args, err := s.sq.Select("id", "githubId").
 		From("installations").
 		Where(sq.Eq{"userId": userID}).
 		ToSql()
 	if err != nil {
-		return "", fmt.Errorf("failed to build instalaltions query: %w", err)
+		return "", 0, fmt.Errorf("failed to build instalaltions query: %w", err)
 	}
 
 	var installationID string
-	if err := s.db.QueryRowContext(ctx, q, args...).Scan(&installationID); err != nil {
+	var installationGithubID int
+	if err := s.db.QueryRowContext(ctx, q, args...).Scan(&installationID, &installationGithubID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", domain.ErrInstallationNotFound
+			return "", 0, domain.ErrInstallationNotFound
 		}
-		return "", fmt.Errorf("failed to get installation ID: %w", err)
+		return "", 0, fmt.Errorf("failed to get installation ID: %w", err)
 	}
-	return installationID, nil
+	return installationID, installationGithubID, nil
 }
 
 func (s *Store) SaveInstallation(ctx context.Context, userID string, githubID int) (string, error) {
