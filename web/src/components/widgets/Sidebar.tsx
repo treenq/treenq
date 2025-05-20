@@ -2,10 +2,15 @@
 import { For, Show } from 'solid-js'
 
 import { ChevronRight } from '@/components/icons/ChevronRight'
-import { CreditCard } from '@/components/icons/CreditCard'
+// import { CreditCard } from '@/components/icons/CreditCard'
 import { LayoutGrid } from '@/components/icons/LayoutGrid'
-import { Settings } from '@/components/icons/Settings'
+// import { Settings } from '@/components/icons/Settings'
 
+/*
+1) fix style (text, colors, position)
+2) add A link on href elements
+
+*/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible'
 import {
   Sidebar,
