@@ -8,6 +8,7 @@ import { onMount, Show } from 'solid-js'
 import RedirectPage from '@/components/pages/RedirectPage'
 import { Header } from '@/components/widgets/Header'
 import { userStore } from '@/store/userStore'
+import { AppSidebar } from './components/widgets/Sidebar'
 
 type ProtectedRouterProps = {
   children: JSX.Element
@@ -37,6 +38,7 @@ function App(): JSX.Element {
   return (
     <>
       <Header />
+      <AppSidebar />
       <Router>
         <Route
           path="/"
