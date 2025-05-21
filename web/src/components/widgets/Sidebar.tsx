@@ -1,10 +1,7 @@
 // File: web/src/components/widgets/Sidebar.tsx
-import { For, Show } from 'solid-js'
+import { createEffect, createSignal, For, Show } from 'solid-js'
 
-import { ChevronRight } from '@/components/icons'
-// import { CreditCard } from '@/components/icons/CreditCard'
-import { LayoutGrid } from '@/components/icons'
-// import { Settings } from '@/components/icons/Settings'
+import { ChevronRight, LayoutGrid, Settings } from '@/components/icons'
 
 /*
 1) fix style (text, colors, position)
@@ -21,6 +18,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/Sidebar'
 import { cn } from '@/components/ui/utils'
+import { reposStore } from '@/store/repoStore'
 
 interface SidebarChild {
   label: string
@@ -35,45 +33,48 @@ interface SidebarItemProps {
   children?: SidebarChild[]
 }
 
-const sidebarItems: (SidebarItemProps | { type: 'divider'; label: string })[] = [
-  {
-    type: 'divider',
-    label: 'workspace',
-  },
-  {
-    icon: LayoutGrid,
-    label: 'Projects',
-    isActive: true,
-    href: '/projects',
-    children: [
-      { label: 'Frontend', href: '/blueprints/frontend' },
-      { label: 'Backend', href: '/blueprints/backend' },
-      { label: 'Full Stack', href: '/blueprints/full-stack' },
-    ],
-  },
-  // {
-  //   type: 'divider',
-  //   label: 'account',
-  // },
-  // {
-  //   icon: CreditCard,
-  //   label: 'Billing',
-  //   href: '/billing',
-  // },
-  // {
-  //   icon: Settings,
-  //   label: 'Settings',
-  //   href: '/settings',
-  // },
-]
-
 export function AppSidebar() {
+  const sidebarItemsSkeleton: (SidebarItemProps | { type: 'divider'; label: string })[] = [
+    {
+      type: 'divider',
+      label: 'workspace',
+    },
+    {
+      icon: LayoutGrid,
+      label: 'Projects',
+      isActive: true,
+      href: '/projects',
+      children: [],
+    },
+    {
+      type: 'divider',
+      label: 'account',
+    },
+    {
+      icon: Settings,
+      label: 'Settings',
+      href: '#',
+    },
+  ]
+  const [sidebarItems, setSidebarItems] = createSignal(sidebarItemsSkeleton)
+
+  createEffect(() => {
+    const reposList = reposStore.repos.map((it) => ({ label: it.fullName, href: '#' }))
+    const updated = sidebarItemsSkeleton.map((item) => {
+      if (item.label === 'Projects' && 'children' in item) {
+        return { ...item, children: reposList }
+      }
+      return item
+    })
+    setSidebarItems(updated)
+  })
+
   return (
     <SidebarProvider>
       <Sidebar class="text-sidebar-foreground bg-sidebar border-r">
         <SidebarContent>
           <SidebarMenu>
-            <For each={sidebarItems}>
+            <For each={sidebarItems()}>
               {(item) =>
                 'type' in item && item.type === 'divider' ? (
                   <div class="text-muted-foreground px-4 py-2 text-sm font-medium">
@@ -86,7 +87,7 @@ export function AppSidebar() {
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           class={cn(
-                            'hover:bg-sidebar-accent',
+                            'hover:bg-sidebar-primary',
                             (item as SidebarItemProps).isActive &&
                               'text-sidebar-primary-foreground bg-sidebar-primary',
                           )}

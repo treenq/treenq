@@ -12,6 +12,7 @@ import {
   ComboboxTrigger,
 } from '@/components/ui/Combobox'
 import { reposStore } from '@/store/repoStore'
+import { A } from '@solidjs/router'
 import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
@@ -22,11 +23,17 @@ type ConnectReposItem = {
 }
 
 function RepoItem(props: ConnectReposItem) {
+  const repoHref = `/repos/${props.id}`
+
   return (
     <Card class="mx-auto w-full max-w-2xl">
       <CardHeader class="flex-row items-center justify-between gap-4 p-6 pb-2">
         <div class="min-w-0 flex-1">
-          <CardTitle class="truncate">{props.fullName}</CardTitle>
+          <CardTitle class="truncate">
+            <A class="hover:text-accent" href={repoHref}>
+              {props.fullName}
+            </A>
+          </CardTitle>
           <CardDescription>
             <span class="inline-flex items-center gap-1">
               {' '}
@@ -148,7 +155,14 @@ export function ConnectRepos(): JSX.Element {
       <div class="w-full max-w-2xl space-y-6 p-6">
         <h2 class="mb-2 text-2xl font-bold">Connected Repositories</h2>
         <For each={reposStore.repos}>
-          {(repo) => <RepoItem id={repo.treenqID} name={repo.fullName.split('/')[1]} fullName={repo.fullName} branch={repo.branch} />}
+          {(repo) => (
+            <RepoItem
+              id={repo.treenqID}
+              name={repo.fullName.split('/')[1]}
+              fullName={repo.fullName}
+              branch={repo.branch}
+            />
+          )}
         </For>
       </div>
     </section>
