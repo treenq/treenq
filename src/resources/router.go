@@ -35,5 +35,13 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth)
 	vel.RegisterGet(router, "getBuildProgress", handlers.GetBuildProgress, auth)
 
+	// Repository Secrets Management
+	// POST /repositories/{repoID}/secrets - Create/Update a secret
+	vel.RegisterPost(router, "repositories/{repoID}/secrets", handlers.HandleSetSecret, auth)
+	// GET /repositories/{repoID}/secrets - List secret keys
+	vel.RegisterGet(router, "repositories/{repoID}/secrets", handlers.HandleGetSecrets, auth)
+	// GET /repositories/{repoID}/secrets/{secretKey} - View a specific secret value
+	vel.RegisterGet(router, "repositories/{repoID}/secrets/{secretKey}", handlers.HandleViewSecret, auth)
+
 	return router
 }
