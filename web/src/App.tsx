@@ -38,7 +38,9 @@ function App(): JSX.Element {
   return (
     <>
       <Header />
-      <AppSidebar />
+      <Show when={userStore.user}>
+        <AppSidebar />
+      </Show>
       <Router>
         <Route
           path="/"

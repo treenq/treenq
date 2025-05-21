@@ -1,4 +1,4 @@
-import { GitHub } from '@/components/icons/Github'
+import { GitHub } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 
 export default function Auth() {

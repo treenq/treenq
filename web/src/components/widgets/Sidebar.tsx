@@ -1,9 +1,9 @@
 // File: web/src/components/widgets/Sidebar.tsx
 import { For, Show } from 'solid-js'
 
-import { ChevronRight } from '@/components/icons/ChevronRight'
+import { ChevronRight } from '@/components/icons'
 // import { CreditCard } from '@/components/icons/CreditCard'
-import { LayoutGrid } from '@/components/icons/LayoutGrid'
+import { LayoutGrid } from '@/components/icons'
 // import { Settings } from '@/components/icons/Settings'
 
 /*
@@ -101,19 +101,19 @@ export function AppSidebar() {
                   >
                     <Collapsible class="w-full">
                       <SidebarMenuItem>
-                        <CollapsibleTrigger class="flex w-full">
+                        <CollapsibleTrigger class="group flex w-full">
                           <SidebarMenuButton
                             class={cn(
                               'hover:bg-sidebar-accent w-full justify-between',
                               (item as SidebarItemProps).isActive &&
-                                'bg-sidebar-primary text-sidebar-primary-foreground',
+                                'hover:bg-sidebar-primary text-sidebar-primary-foreground',
                             )}
                           >
                             <div class="flex items-center">
                               {(item as SidebarItemProps).icon({})}
                               <span>{(item as SidebarItemProps).label}</span>
                             </div>
-                            <ChevronRight />
+                            <ChevronRight class="group-data-expanded:rotate-90" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -121,7 +121,7 @@ export function AppSidebar() {
                             <For each={(item as SidebarItemProps).children}>
                               {(child) => (
                                 <SidebarMenuItem>
-                                  <SidebarMenuButton class="hover:bg-sidebar-accent">
+                                  <SidebarMenuButton class="hover:bg-sidebar-primary">
                                     <a href={child.href}>{child.label}</a>
                                   </SidebarMenuButton>
                                 </SidebarMenuItem>
