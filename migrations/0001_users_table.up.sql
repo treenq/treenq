@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS deployments (
     buildTag varchar(80),
     userDisplayName varchar(255) NOT NULL,
     status status NOT NULL,
+    rolledBackFromID uuid NULL,
 
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL

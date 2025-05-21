@@ -81,8 +81,8 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 	}
 
 	query, args, err := s.sq.Insert("deployments").
-		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
-		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.Status, def.CreatedAt).
+		Columns("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt", "rolledBackFromID").
+		Values(def.ID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.Status, def.CreatedAt, def.RolledBackFromID).
 		ToSql()
 	if err != nil {
 		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
@@ -120,7 +120,7 @@ func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeplo
 }
 
 func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
+	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt", "rolledBackFromID").
 		From("deployments").
 		Where(sq.Eq{"id": deploymentID}).
 		ToSql()
@@ -129,9 +129,10 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 	}
 
 	var dep domain.AppDeployment
-	var spacePayload string
+	var spacePayload []byte // Keep as []byte to scan raw JSON/JSONB data
+	var rolledBackFromID sql.NullString
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt,
+		&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt, &dep.UpdatedAt, &rolledBackFromID,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dep, domain.ErrDeploymentNotFound
@@ -139,19 +140,22 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 		return dep, fmt.Errorf("failed to scan GetDeployment: %w", err)
 	}
 
-	var space tqsdk.Space
-	if err := json.Unmarshal([]byte(spacePayload), &space); err != nil {
+	// Unmarshal spacePayload into dep.Space (which is tqsdk.Space)
+	if err := json.Unmarshal(spacePayload, &dep.Space); err != nil {
 		return dep, fmt.Errorf("failed to unmarshal space in GetDeployment: %w", err)
 	}
-	dep.Space = space
+
+	if rolledBackFromID.Valid {
+		dep.RolledBackFromID = &rolledBackFromID.String
+	}
 
 	return dep, nil
 }
 
 func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
+	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt", "rolledBackFromID").
 		From("deployments").
-		Where(sq.Eq{"id": repoID}).
+		Where(sq.Eq{"repoId": repoID}). // Corrected from {"id": repoID} to {"repoId": repoID}
 		OrderBy("createdAt DESC").
 		Limit(20).
 		ToSql()
@@ -168,16 +172,22 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	var deps []domain.AppDeployment
 	for rows.Next() {
 		var dep domain.AppDeployment
-		var spacePayload string
-		if err := rows.Scan(&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.CreatedAt); err != nil {
+		var spacePayload []byte // Keep as []byte to scan raw JSON/JSONB data
+		var rolledBackFromID sql.NullString
+		if err := rows.Scan(
+			&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt, &dep.UpdatedAt, &rolledBackFromID,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan GetDeploymentHistory row: %w", err)
 		}
 
-		var a tqsdk.Space
-		if err := json.Unmarshal([]byte(spacePayload), &spacePayload); err != nil {
-			return nil, fmt.Errorf("failed to decode app payload in GetDeploymentHistory: %w", err)
+		// Unmarshal spacePayload into dep.Space (which is tqsdk.Space)
+		if err := json.Unmarshal(spacePayload, &dep.Space); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal space in GetDeploymentHistory row: %w", err)
 		}
-		dep.Space = a
+
+		if rolledBackFromID.Valid {
+			dep.RolledBackFromID = &rolledBackFromID.String
+		}
 		deps = append(deps, dep)
 	}
 
