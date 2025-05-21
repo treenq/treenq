@@ -59,6 +59,10 @@ type Config struct {
 
 	// HTTP settings
 	CorsAllowOrigin string `envconfig:"CORS_ALLOW_ORIGIN" required:"true"`
+
+	// PATEncryptionKey is the secret key for encrypting Personal Access Tokens.
+	// It must be a 64-character hex-encoded string (representing 32 bytes).
+	PATEncryptionKey string `envconfig:"PAT_ENCRYPTION_KEY" required:"true"`
 }
 
 type StringBase64 string
