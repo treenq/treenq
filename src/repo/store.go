@@ -21,6 +21,15 @@ type Store struct {
 	sq sq.StatementBuilderType
 }
 
+// RepositorySecret defines the structure for repository secrets.
+type RepositorySecret struct {
+	ID           string    `db:"id"`
+	RepositoryID string    `db:"repository_id"`
+	SecretKey    string    `db:"secret_key"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
+}
+
 func NewStore(db *sqlx.DB) (*Store, error) {
 	sq := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
@@ -448,6 +457,84 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 		return repo, fmt.Errorf("failed to scan repository: %w", err)
 	}
 	return repo, nil
+}
+
+// CreateRepositorySecretKey creates a new secret key for a repository.
+func (s *Store) CreateRepositorySecretKey(ctx context.Context, repoID string, key string) error {
+	query, args, err := s.sq.Insert("repository_secrets").
+		Columns("repository_id", "secret_key").
+		Values(repoID, key).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build CreateRepositorySecretKey query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		// TODO: Consider checking for specific unique constraint violation error
+		// and returning a custom error type if needed.
+		return fmt.Errorf("failed to exec CreateRepositorySecretKey: %w", err)
+	}
+
+	return nil
+}
+
+// GetRepositorySecretKeys retrieves all secret keys for a given repository.
+func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID string) ([]string, error) {
+	query, args, err := s.sq.Select("secret_key").
+		From("repository_secrets").
+		Where(sq.Eq{"repository_id": repoID}).
+		OrderBy("created_at ASC"). // Optional: order by creation time
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GetRepositorySecretKeys query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query GetRepositorySecretKeys: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, fmt.Errorf("failed to scan GetRepositorySecretKeys row: %w", err)
+		}
+		keys = append(keys, key)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("an error occurred while iterating GetRepositorySecretKeys rows: %w", err)
+	}
+
+	return keys, nil
+}
+
+// RepositorySecretKeyExists checks if a specific secret key exists for the given repository.
+func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID string, key string) (bool, error) {
+	query, args, err := s.sq.Select("1").
+		From("repository_secrets").
+		Where(sq.Eq{"repository_id": repoID, "secret_key": key}).
+		Limit(1). // We only need to know if at least one exists
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to build RepositorySecretKeyExists query: %w", err)
+	}
+
+	var exists int
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Key does not exist
+			return false, nil
+		}
+		// Another error occurred
+		return false, fmt.Errorf("failed to query RepositorySecretKeyExists: %w", err)
+	}
+
+	// Key exists
+	return true, nil
 }
 
 func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error) {

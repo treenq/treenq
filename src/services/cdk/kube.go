@@ -18,9 +18,106 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+// StoreSecretValue creates or updates a Kubernetes Secret object with the given key-value pair.
+// The secretValue is stored base64 encoded.
+func (k *Kube) StoreSecretValue(ctx context.Context, rawKubeConfig string, namespace string, secretObjectName string, secretKey string, secretValue string) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawKubeConfig))
+	if err != nil {
+		return fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	secretClient := clientset.CoreV1().Secrets(namespace)
+
+	// Encode the secret value to base64
+	encodedValue := base64.StdEncoding.EncodeToString([]byte(secretValue))
+
+	// Try to get the existing secret
+	existingSecret, err := secretClient.Get(ctx, secretObjectName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Secret does not exist, create a new one
+			newSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretObjectName,
+					Namespace: namespace,
+				},
+				Data: map[string][]byte{
+					secretKey: []byte(encodedValue),
+				},
+			}
+			_, err = secretClient.Create(ctx, newSecret, metav1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create secret %s in namespace %s: %w", secretObjectName, namespace, err)
+			}
+			return nil
+		}
+		// Another error occurred while trying to get the secret
+		return fmt.Errorf("failed to get secret %s in namespace %s: %w", secretObjectName, namespace, err)
+	}
+
+	// Secret exists, update it
+	if existingSecret.Data == nil {
+		existingSecret.Data = make(map[string][]byte)
+	}
+	existingSecret.Data[secretKey] = []byte(encodedValue)
+
+	_, err = secretClient.Update(ctx, existingSecret, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update secret %s in namespace %s: %w", secretObjectName, namespace, err)
+	}
+
+	return nil
+}
+
+// GetSecretValue retrieves and decodes a specific key's value from a Kubernetes Secret object.
+func (k *Kube) GetSecretValue(ctx context.Context, rawKubeConfig string, namespace string, secretObjectName string, secretKey string) (string, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawKubeConfig))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	secretClient := clientset.CoreV1().Secrets(namespace)
+
+	// Get the secret
+	secret, err := secretClient.Get(ctx, secretObjectName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return "", fmt.Errorf("secret %s not found in namespace %s: %w", secretObjectName, namespace, err)
+		}
+		return "", fmt.Errorf("failed to get secret %s in namespace %s: %w", secretObjectName, namespace, err)
+	}
+
+	// Check if the key exists in the secret's data
+	encodedValue, ok := secret.Data[secretKey]
+	if !ok {
+		return "", fmt.Errorf("secret key %s not found in secret %s in namespace %s", secretKey, secretObjectName, namespace)
+	}
+
+	// Decode the value
+	decodedValue, err := base64.StdEncoding.DecodeString(string(encodedValue))
+	if err != nil {
+		return "", fmt.Errorf("failed to decode secret value for key %s in secret %s: %w", secretKey, secretObjectName, err)
+	}
+
+	return string(decodedValue), nil
+}
 
 type Kube struct {
 	// host holds a main app host, used to create sub hosts for a quick app preview
@@ -36,17 +133,21 @@ func NewKube(
 	return &Kube{host: host, dockerRegistry: dockerRegistry, userName: userName, userPassword: userPassword}
 }
 
-func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image domain.Image) string {
+// DefineApp generates the Kubernetes YAML manifest for an application.
+// It now includes logic to inject secrets as environment variables.
+func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image domain.Image, secretKeysToInject []string, secretObjectName string) string {
 	a := cdk8s.NewApp(nil)
-	k.newAppChart(a, id, app, image)
+	k.newAppChart(a, id, app, image, secretKeysToInject, secretObjectName)
 	out := a.SynthYaml()
 	return *out
 }
 
-func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Space, image domain.Image) []cdk8s.Chart {
-	ns := jsii.String(app.Key + "-" + id)
+// newAppChart constructs the cdk8s chart for the application.
+// It now takes secretKeysToInject and secretObjectName to configure environment variables from Kubernetes secrets.
+func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Space, image domain.Image, secretKeysToInject []string, secretObjectName string) []cdk8s.Chart {
+	ns := jsii.String(app.Key + "-" + id) // This is the namespace for the app's resources
 	chart := cdk8s.NewChart(scope, jsii.String(app.Key), &cdk8s.ChartProps{
-		Namespace: ns,
+		Namespace: ns, // All resources in this chart will default to this namespace
 	})
 	ingressChart := cdk8s.NewChart(scope, jsii.String(app.Key+"-ingress"), &cdk8s.ChartProps{})
 
@@ -61,6 +162,19 @@ func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Spac
 	for k, v := range app.Service.RuntimeEnvs {
 		envs[k] = cdk8splus.EnvValue_FromValue(jsii.String(v))
 	}
+
+	// Inject secrets as environment variables
+	// The secretObjectName is the name of the K8s Secret resource (e.g., "my-app-secrets")
+	// The namespace `ns` is where the secret is expected to be.
+	if secretObjectName != "" && len(secretKeysToInject) > 0 {
+		for _, secretKey := range secretKeysToInject {
+			envs[secretKey] = cdk8splus.EnvValue_FromSecretValue(&cdk8splus.SecretValueSelector{
+				Name: jsii.String(secretObjectName), // Name of the Kubernetes Secret object
+				Key:  jsii.String(secretKey),        // Key within the Secret's Data
+			})
+		}
+	}
+
 	computeRes := app.Service.ComputationResource
 
 	// tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
