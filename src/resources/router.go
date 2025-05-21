@@ -35,5 +35,15 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth)
 	vel.RegisterGet(router, "getBuildProgress", handlers.GetBuildProgress, auth)
 
+	// Rollback deployment
+	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
+		Path:        "/deployments/{deploymentID}/rollback", // Path with parameter
+		Input:       domain.RollbackDeploymentRequest{},   // Input struct for vel to populate
+		Output:      domain.RollbackDeploymentResponse{},  // Expected output struct
+		Method:      "POST",
+		OperationID: "rollbackDeployment", // Unique operation ID
+		Middlewares: []vel.Middleware{auth}, // Apply auth middleware
+	}, handlers.RollbackDeployment)
+
 	return router
 }
