@@ -35,5 +35,25 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth)
 	vel.RegisterGet(router, "getBuildProgress", handlers.GetBuildProgress, auth)
 
+	// PAT routes
+	// GET /hook?key=... (ValidatePAT - public)
+	// Assuming ValidatePAT doesn't require specific input/output structs for vel.RegisterGet
+	// If it does, vel.RegisterHandlerFunc would be more appropriate.
+	// For now, let's assume it fits the simple GET pattern or vel.RegisterGet is flexible.
+	vel.RegisterGet(router, "hook", handlers.ValidatePAT) // No 'auth' middleware
+
+	// POST /hook (IssuePAT - authenticated)
+	vel.RegisterPost(router, "hook", handlers.IssuePAT, auth)
+
+	// DELETE /hook (DeletePAT - authenticated)
+	// Using RegisterHandlerFunc as there's no specific RegisterDelete
+	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
+		Input:       struct{}{}, // Define input struct if DeletePAT expects a body
+		Output:      struct{}{}, // Define output struct if DeletePAT returns a body
+		Method:      "DELETE",
+		OperationID: "deletePat", // Or an appropriate operation ID
+		Path:        "hook",      // The path for this route
+	}, handlers.DeletePAT, auth)
+
 	return router
 }

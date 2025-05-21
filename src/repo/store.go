@@ -450,6 +450,105 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 	return repo, nil
 }
 
+// CreateUserPAT stores a new encrypted Personal Access Token for a user.
+func (s *Store) CreateUserPAT(ctx context.Context, userID string, encryptedPAT string) error {
+	query, args, err := s.sq.Insert("user_pats").
+		Columns("user_id", "encrypted_pat").
+		Values(userID, encryptedPAT).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build CreateUserPAT query: %w", err)
+	}
+
+	_, err = s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		// TODO: Check for specific duplicate user_id errors if the DB driver allows,
+		// e.g., using pq.Error.Code if it's PostgreSQL.
+		return fmt.Errorf("failed to execute CreateUserPAT query: %w", err)
+	}
+	return nil
+}
+
+// GetUserPATByUserID retrieves an encrypted PAT for a given user ID.
+// It returns sql.ErrNoRows if no PAT is found for the user.
+func (s *Store) GetUserPATByUserID(ctx context.Context, userID string) (string, error) {
+	query, args, err := s.sq.Select("encrypted_pat").
+		From("user_pats").
+		Where(sq.Eq{"user_id": userID}).
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build GetUserPATByUserID query: %w", err)
+	}
+
+	var encryptedPAT string
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&encryptedPAT)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", sql.ErrNoRows // Or a custom domain.ErrPATNotFound
+		}
+		return "", fmt.Errorf("failed to scan GetUserPATByUserID: %w", err)
+	}
+	return encryptedPAT, nil
+}
+
+// DeleteUserPAT removes a PAT for a given user ID.
+// It returns an error (e.g., a custom domain.ErrPATNotFound) if no PAT was found to delete.
+func (s *Store) DeleteUserPAT(ctx context.Context, userID string) error {
+	query, args, err := s.sq.Delete("user_pats").
+		Where(sq.Eq{"user_id": userID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build DeleteUserPAT query: %w", err)
+	}
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute DeleteUserPAT query: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for DeleteUserPAT: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows // Or a custom domain.ErrPATNotFound, indicating PAT not found to delete
+	}
+	return nil
+}
+
+// GetAllUserPATs retrieves all encrypted PATs from the database.
+// Returns an empty slice and nil error if no PATs are found.
+func (s *Store) GetAllUserPATs(ctx context.Context) ([]string, error) {
+	query, args, err := s.sq.Select("encrypted_pat").
+		From("user_pats").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GetAllUserPATs query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute GetAllUserPATs query: %w", err)
+	}
+	defer rows.Close()
+
+	var pats []string
+	for rows.Next() {
+		var pat string
+		if err := rows.Scan(&pat); err != nil {
+			return nil, fmt.Errorf("failed to scan PAT in GetAllUserPATs: %w", err)
+		}
+		pats = append(pats, pat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration in GetAllUserPATs: %w", err)
+	}
+
+	return pats, nil
+}
+
 func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error) {
 	query, args, err := s.sq.Select("branch").
 		From("installedRepos").
