@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
+import { deployStore } from '@/store/deployStore'
 import { createSignal, For } from 'solid-js'
 
 interface DeploymentProps {
@@ -13,7 +14,11 @@ interface DeploymentProps {
   canRollback?: boolean
 }
 
-export default function Deploy() {
+type DeployProps = {
+  repoID: string
+}
+
+export default function Deploy(props: DeployProps) {
   const [deployments] = createSignal<DeploymentProps[]>([
     {
       id: '1',
@@ -66,6 +71,10 @@ export default function Deploy() {
     },
   ])
 
+  const deploy = async () => {
+    const deployID = await deployStore.deploy(props.repoID)
+  }
+
   return (
     <div class="mx-auto flex w-full max-w-5xl flex-col">
       <div class="bg-background text-foreground p-6">
@@ -74,13 +83,13 @@ export default function Deploy() {
             <div class="text-muted-foreground mb-1 flex items-center gap-2 text-sm">
               <span class="inline-flex items-center gap-1">
                 <div class="bg-muted h-4 w-4 rounded" />
-                STATIC SITE
+                SERVICE
               </span>
             </div>
             <h1 class="text-3xl font-bold">treenq</h1>
           </div>
-          <Button variant="outline" class="hover:bg-muted">
-            Manual Deploy
+          <Button variant="outline" class="hover:bg-primary" onclick={deploy}>
+            Deploy Now
             <div class="bg-muted ml-2 h-4 w-4 rounded" />
           </Button>
         </div>

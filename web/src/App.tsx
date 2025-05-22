@@ -5,6 +5,7 @@ import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
 import { onMount, Show } from 'solid-js'
 
+import DeployPage from '@/components/pages/DeployPage'
 import RedirectPage from '@/components/pages/RedirectPage'
 import RepoPage from '@/components/pages/RepoPage'
 import { Header } from '@/components/widgets/Header'
@@ -37,6 +38,16 @@ function App(): JSX.Element {
     userStore.getProfile()
   })
 
+  const isAuthenticated = () => !!userStore.user
+  const isNotAuthenticated = () => !userStore.user
+
+  const requiresAuth = (component: () => JSX.Element) =>
+    MakeProtectedComponent({
+      satisfies: isAuthenticated,
+      redirectTo: '/auth',
+      component: component,
+    })
+
   return (
     <>
       <Header />
@@ -47,33 +58,14 @@ function App(): JSX.Element {
         <div class="min-h-screen flex-1">
           <Router>
             <Route path="/">
-              <Route
-                path="/"
-                component={MakeProtectedComponent({
-                  satisfies: () => {
-                    return userStore.user ? true : false
-                  },
-                  redirectTo: '/auth',
-                  component: Main,
-                })}
-              />
-              <Route
-                path="/repos/:id"
-                component={MakeProtectedComponent({
-                  satisfies: () => {
-                    return userStore.user ? true : false
-                  },
-                  redirectTo: '/auth',
-                  component: RepoPage,
-                })}
-              />
+              <Route path="/" component={requiresAuth(Main)} />
+              <Route path="/repos/:id" component={requiresAuth(RepoPage)} />
+              <Route path="/deploy/:id" component={requiresAuth(DeployPage)} />
             </Route>
             <Route
               path="/auth"
               component={MakeProtectedComponent({
-                satisfies: () => {
-                  return userStore.user ? false : true
-                },
+                satisfies: isNotAuthenticated,
                 redirectTo: '/',
                 component: Auth,
               })}
