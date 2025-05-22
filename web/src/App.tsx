@@ -40,45 +40,49 @@ function App(): JSX.Element {
   return (
     <>
       <Header />
-      <Show when={userStore.user}>
-        <AppSidebar />
-      </Show>
-      <Router>
-        <Route path="/">
-          <Route
-            path="/"
-            component={MakeProtectedComponent({
-              satisfies: () => {
-                return userStore.user ? true : false
-              },
-              redirectTo: '/auth',
-              component: Main,
-            })}
-          />
-          <Route
-            path="/repos/:id"
-            component={MakeProtectedComponent({
-              satisfies: () => {
-                return userStore.user ? true : false
-              },
-              redirectTo: '/auth',
-              component: RepoPage,
-            })}
-          />
-        </Route>
-        <Route
-          path="/auth"
-          component={MakeProtectedComponent({
-            satisfies: () => {
-              return userStore.user ? false : true
-            },
-            redirectTo: '/',
-            component: Auth,
-          })}
-        />
-        <Route path="/githubPostInstall" component={RedirectPage} />
-        <Route path="*404" component={NotFound} />
-      </Router>
+      <div class="flex min-h-screen w-full">
+        <Show when={userStore.user}>
+          <AppSidebar />
+        </Show>
+        <div class="min-h-screen flex-1">
+          <Router>
+            <Route path="/">
+              <Route
+                path="/"
+                component={MakeProtectedComponent({
+                  satisfies: () => {
+                    return userStore.user ? true : false
+                  },
+                  redirectTo: '/auth',
+                  component: Main,
+                })}
+              />
+              <Route
+                path="/repos/:id"
+                component={MakeProtectedComponent({
+                  satisfies: () => {
+                    return userStore.user ? true : false
+                  },
+                  redirectTo: '/auth',
+                  component: RepoPage,
+                })}
+              />
+            </Route>
+            <Route
+              path="/auth"
+              component={MakeProtectedComponent({
+                satisfies: () => {
+                  return userStore.user ? false : true
+                },
+                redirectTo: '/',
+                component: Auth,
+              })}
+            />
+            <Route path="/githubPostInstall" component={RedirectPage} />
+            <Route path="*404" component={NotFound} />
+          </Router>
+        </div>
+      </div>
     </>
   )
 }
