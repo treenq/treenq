@@ -10,7 +10,7 @@ import (
 var ErrDeploymentNotFound = errors.New("deployment not found")
 
 type GetDeploymentRequest struct {
-	DeploymentID string `json:"deploymentID"`
+	DeploymentID string `path:"deploymentID"` // Changed from json: to path:
 }
 
 type GetDeploymentResponse struct {
