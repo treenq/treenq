@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { deployStore } from '@/store/deployStore'
-import { createSignal, For } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js' // Added Show
+import { useNavigate } from '@solidjs/router';
 
 interface DeploymentProps {
   id: string
@@ -69,11 +70,33 @@ export default function Deploy(props: DeployProps) {
       status: 'first',
       timestamp: 'March 26, 2025 at 11:17 PM',
     },
-  ])
+  ]);
+  const [isLoadingDeployment, setIsLoadingDeployment] = createSignal(false); // Added back
+  const navigate = useNavigate();
 
   const deploy = async () => {
-    const deployID = await deployStore.deploy(props.repoID)
-  }
+    setIsLoadingDeployment(true); // Set loading true
+    try {
+      const deployID = await deployStore.deploy(props.repoID);
+      if (deployID && deployStore.recentDeploy) {
+        navigate(`/deployment-view/${deployStore.recentDeploy.id}`, { // Use specified path
+          state: {
+            id: deployStore.recentDeploy.id,
+            status: deployStore.recentDeploy.status,
+            createdAt: deployStore.recentDeploy.createdAt, // This is a string from deployStore
+          },
+        });
+      } else {
+        console.error("Deployment failed or data not available from store.");
+        // Consider user feedback for failure, e.g., a toast notification
+      }
+    } catch (error) {
+      console.error("Deployment failed:", error);
+      // User feedback
+    } finally {
+      setIsLoadingDeployment(false); // Set loading false
+    }
+  };
 
   return (
     <div class="mx-auto flex w-full max-w-5xl flex-col">
@@ -113,6 +136,27 @@ export default function Deploy(props: DeployProps) {
 
       <Card class="rounded-none border-0">
         <CardContent class="p-0">
+          {/* Skeleton Loader ADDED BACK */}
+          <Show when={isLoadingDeployment()}>
+            <div class="flex items-start gap-4 p-6 animate-pulse">
+              <div class="bg-muted flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full">
+                <div class="bg-muted-foreground h-4 w-4" />
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="bg-muted-foreground mb-2 h-4 w-1/2 rounded"></div> {/* Title */}
+                    <div class="bg-muted-foreground mb-2 h-3 w-1/3 rounded"></div> {/* Sub-info */}
+                    <div class="bg-muted-foreground h-3 w-1/4 rounded"></div>      {/* Timestamp */}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Separator is optional, but often good for consistency if items have separators */}
+            <Separator /> 
+          </Show>
+          
+          {/* Existing Deployments List */}
           <For each={deployments()}>
             {(deployment, index) => (
               <div>

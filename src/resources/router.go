@@ -32,7 +32,17 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "syncGithubApp", handlers.SyncGithubApp, auth)
 	vel.RegisterPost(router, "connectRepoBranch", handlers.ConnectBranch, auth)
 	vel.RegisterPost(router, "deploy", handlers.Deploy, auth)
-	vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth)
+	// vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth) // Removed old POST route
+
+	// New GET route for fetching specific deployment details
+	vel.RegisterHandlerFunc(router, vel.HandlerMeta{
+		Path:        "/api/deployments/{deploymentID}",
+		Method:      "GET", // Using string "GET" as per vel examples if http.MethodGet is not standard in this vel version
+		Input:       domain.GetDeploymentRequest{},
+		Output:      domain.GetDeploymentResponse{},
+		OperationID: "getDeploymentDetails", // New operation ID
+	}, handlers.GetDeployment, auth)
+
 	vel.RegisterGet(router, "getBuildProgress", handlers.GetBuildProgress, auth)
 
 	return router
