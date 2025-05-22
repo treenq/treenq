@@ -16,7 +16,7 @@ export default function RepoPage() {
   return (
     <main class="bg-background flex min-h-screen flex-col items-center justify-center py-12">
       <div class="flex w-full max-w-3xl flex-col items-center gap-10">
-        <Deploy />
+        <Deploy repoID={params.id} />
       </div>
     </main>
   )

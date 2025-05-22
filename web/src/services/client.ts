@@ -55,7 +55,15 @@ export type GetBranchesResponse = {
   branches: string[]
 }
 
-export class HttpClient {
+export type DeployRequest = {
+  repoID: string
+}
+
+export type DeployResponse = {
+  deploymentID: string
+}
+
+class HttpClient {
   constructor(
     private baseUrl: string,
     private fetchFn: FetchFn = window.fetch.bind(window),
@@ -136,4 +144,10 @@ export class HttpClient {
   async getBranches(req: GetBranchesRequest): Promise<Result<GetBranchesResponse>> {
     return await this.post('/getBranches', req)
   }
+
+  async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
+    return await this.post<DeployResponse>('/deploy', req)
+  }
 }
+
+export const httpClient = new HttpClient(import.meta.env.APP_API_HOST)

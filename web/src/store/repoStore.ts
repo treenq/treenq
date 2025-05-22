@@ -1,4 +1,4 @@
-import { HttpClient } from '@/services/client'
+import { httpClient } from '@/services/client'
 import { mergeProps } from 'solid-js'
 import { createStore } from 'solid-js/store'
 
@@ -13,21 +13,19 @@ type Repo = {
   branch: string
 }
 
-const newDefaultAuthState = (): ReposState => ({ installation: '', repos: [] })
+const newDefaultRepoState = (): ReposState => ({ installation: '', repos: [] })
 
 function createReposStore() {
-  const client = new HttpClient(import.meta.env.APP_API_HOST)
-
-  const [store, setStore] = createStore(newDefaultAuthState())
+  const [store, setStore] = createStore(newDefaultRepoState())
 
   return mergeProps(store, {
     connectRepo: async (id: string, branch: string) => {
-      await client.connectBranch({ repoID: id, branch: branch })
+      await httpClient.connectBranch({ repoID: id, branch: branch })
 
       setStore('repos', (it) => it.treenqID === id, 'branch', branch)
     },
     getRepos: async () => {
-      const res = await client.getRepos()
+      const res = await httpClient.getRepos()
       if ('error' in res) {
         return []
       }
@@ -44,7 +42,7 @@ function createReposStore() {
       return res.data.repos
     },
     syncGithubApp: async () => {
-      const res = await client.syncGithubApp()
+      const res = await httpClient.syncGithubApp()
       if ('error' in res) return
 
       setStore(
@@ -58,9 +56,9 @@ function createReposStore() {
       setStore('installation', res.data.installationID)
     },
     getBranches: async (repoName: string) => {
-      const res = await client.getBranches({repoName: repoName})
+      const res = await httpClient.getBranches({ repoName: repoName })
       if ('error' in res) return []
-      return res.data.branches as string[] || []
+      return (res.data.branches as string[]) || []
     },
   })
 }
