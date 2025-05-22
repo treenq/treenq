@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { deployStore } from '@/store/deployStore'
 import { createSignal, For } from 'solid-js'
+import { useNavigate } from 'solid-js/router'
 
 interface DeploymentProps {
   id: string
@@ -18,7 +19,11 @@ type DeployProps = {
   repoID: string
 }
 
+const SkeletonLoading = () => <div class="text-center p-4">Loading deployment details...</div>
+
 export default function Deploy(props: DeployProps) {
+  const navigate = useNavigate()
+  const [isLoading, setIsLoading] = createSignal(false)
   const [deployments] = createSignal<DeploymentProps[]>([
     {
       id: '1',
@@ -72,7 +77,22 @@ export default function Deploy(props: DeployProps) {
   ])
 
   const deploy = async () => {
-    const deployID = await deployStore.deploy(props.repoID)
+    setIsLoading(true)
+    try {
+      // Assume deployStore.deploy returns { deploymentID: string, status: string, createdAt: string }
+      const { deploymentID, status, createdAt } = await deployStore.deploy(props.repoID)
+      if (deploymentID) {
+        navigate(`/deploy/${deploymentID}`, { state: { status, createdAt, deployID: deploymentID } })
+      } else {
+        // Handle the case where deploymentID might be missing, though the task assumes it's returned
+        console.error('Deployment failed or did not return a deployment ID.')
+      }
+    } catch (error) {
+      console.error('Error deploying:', error)
+      // Potentially show an error message to the user
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -88,10 +108,14 @@ export default function Deploy(props: DeployProps) {
             </div>
             <h1 class="text-3xl font-bold">treenq</h1>
           </div>
-          <Button variant="outline" class="hover:bg-primary" onclick={deploy}>
-            Deploy Now
-            <div class="bg-muted ml-2 h-4 w-4 rounded" />
-          </Button>
+          {isLoading() ? (
+            <SkeletonLoading />
+          ) : (
+            <Button variant="outline" class="hover:bg-primary" onclick={deploy}>
+              Deploy Now
+              <div class="bg-muted ml-2 h-4 w-4 rounded" />
+            </Button>
+          )}
         </div>
 
         <div class="mb-2 flex items-center gap-4">

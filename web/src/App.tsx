@@ -60,7 +60,7 @@ function App(): JSX.Element {
             <Route path="/">
               <Route path="/" component={requiresAuth(Main)} />
               <Route path="/repos/:id" component={requiresAuth(RepoPage)} />
-              <Route path="/deploy/:id" component={requiresAuth(DeployPage)} />
+              <Route path="/deploy/:deployID" component={requiresAuth(DeployPage)} />
             </Route>
             <Route
               path="/auth"

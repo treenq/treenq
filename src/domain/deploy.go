@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/treenq/treenq/pkg/vel"
 )
@@ -11,7 +12,9 @@ type DeployRequest struct {
 }
 
 type DeployResponse struct {
-	DeploymentID string `json:"deploymentID"`
+	DeploymentID string    `json:"deploymentID"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"createdAt"`
 }
 
 func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, *vel.Error) {
@@ -36,7 +39,18 @@ func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse
 	if apiErr != nil {
 		return DeployResponse{}, apiErr
 	}
+
+	deployment, err := h.db.GetDeployment(ctx, deploymentID)
+	if err != nil {
+		return DeployResponse{}, &vel.Error{
+			Message: "failed to get deployment details",
+			Err:     err,
+		}
+	}
+
 	return DeployResponse{
-		DeploymentID: deploymentID,
+		DeploymentID: deployment.ID,
+		Status:       deployment.Status,
+		CreatedAt:    deployment.CreatedAt,
 	}, nil
 }
