@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 9000",
+    "local": "vite --port 9000",
+    "dev": "USE_VITE_PROXY=true vite --port 9000",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

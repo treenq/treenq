@@ -129,6 +129,13 @@ docker-compose.local might be used if a database web ui require
 docker-compose.e2e is used to run e2e tests
 docker-compose.staging is used to run a staging environment, doesn't include a database
 
+### Run web locally
+
+There are 2 commands to run web locally
+
+- `npm run local` allows running a local web, it's supposed to have a backend locally as well
+- `npm run dev` allows running a web only, it requires additional configuration described below
+
 ### Run locally web only
 
 If you want to develop locally only frontend and not interested in running treenq backend locally it requires to use vite proxy server in order to support same site cookies.
