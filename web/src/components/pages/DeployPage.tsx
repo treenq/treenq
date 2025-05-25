@@ -26,7 +26,7 @@ export default function DeploymentDetailsPage() {
               <strong>Status:</strong> {d().status}
             </p>
             <p>
-              <strong>Created At:</strong> {d().createdAt.toString()}
+              <strong>Created At:</strong> {d().createdAt}
             </p>
             <p>
               <em>This page displays details for the deployment just initiated.</em>

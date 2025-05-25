@@ -76,7 +76,7 @@ export default function Deploy(props: DeployProps) {
   const deploy = async () => {
     const deployment = await deployStore.deploy(props.repoID)
     if (deployment) {
-      navigate(`/deployment/${deployment.deploymentID}`, {
+      navigate(`/deploy/${deployment.deploymentID}`, {
         state: {
           deployment: deployment,
         },
