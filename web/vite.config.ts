@@ -15,7 +15,6 @@ if (useProxy) {
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
-        cookieDomainRewrite: 'localhost',
         configure: (proxy, options) => {
           proxy.on('proxyRes', (proxyRes, req, res) => {
             const cookies = proxyRes.headers['set-cookie']
