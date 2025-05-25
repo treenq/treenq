@@ -64,7 +64,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
+      target: prod
     ports:
       - "8000:8000"
       - "40000:40000"
@@ -74,9 +74,6 @@ services:
     cap_add:
       - SYS_PTRACE
     env_file: staging.env
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: always
     volumes:
       - ./certs:/certs

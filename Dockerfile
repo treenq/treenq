@@ -48,6 +48,8 @@ COPY . .
 # lsflags to strip debug info
 RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -ldflags "-s -w" -o server ./cmd/server
 
+CMD ["/app/server"]
+
 FROM alpine:3.13
 
 # Create a non-root user and group for better security
