@@ -34,7 +34,7 @@ func writeState(w http.ResponseWriter) string {
 	exp := time.Second * 300
 	expiration := time.Now().Add(exp)
 
-	cookie := http.Cookie{Name: "authstate", Value: state, Expires: expiration, MaxAge: int(exp.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode}
+	cookie := http.Cookie{Name: "authstate", Value: state, Expires: expiration, MaxAge: int(exp.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: true}
 	http.SetCookie(w, &cookie)
 	return state
 }
@@ -42,7 +42,7 @@ func writeState(w http.ResponseWriter) string {
 func writeToken(w http.ResponseWriter, token string, exp time.Duration) {
 	expiration := time.Now().Add(exp)
 
-	cookie := http.Cookie{Name: auth.AuthKey, Value: token, Expires: expiration, MaxAge: int(exp.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode}
+	cookie := http.Cookie{Name: auth.AuthKey, Value: token, Expires: expiration, MaxAge: int(exp.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: true}
 	http.SetCookie(w, &cookie)
 }
 

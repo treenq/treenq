@@ -128,3 +128,14 @@ docker-compose represents a base setup, directly isn't used.
 docker-compose.local might be used if a database web ui require
 docker-compose.e2e is used to run e2e tests
 docker-compose.staging is used to run a staging environment, doesn't include a database
+
+### Run locally web only
+
+If you want to develop locally only frontend and not interested in running treenq backend locally it requires to use vite proxy server in order to support same site cookies.
+Add web/.env.local file with the following content:
+
+```sh
+APP_API_HOST=http://localhost:9000/api
+APP_GITHUB_APP_NAME=treenq-staging
+USE_VITE_PROXY=true
+```

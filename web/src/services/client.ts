@@ -68,11 +68,19 @@ class HttpClient {
     private baseUrl: string,
     private fetchFn: FetchFn = window.fetch.bind(window),
   ) {
+    if (!baseUrl.endsWith('/')) {
+      // required in order to fix URL joining without overriding a path after host
+      baseUrl = baseUrl + '/'
+    }
     this.baseUrl = baseUrl
     this.fetchFn = fetchFn
   }
 
   private buildUrl(path: string, query?: Record<string, string | number | boolean>): string {
+    if (path.startsWith('/')) {
+      // required to fix URL joining
+      path = path.slice(1)
+    }
     const url = new URL(path, this.baseUrl)
     if (query) {
       for (const [key, val] of Object.entries(query)) {
@@ -124,29 +132,29 @@ class HttpClient {
   }
 
   async getProfile(): Promise<Result<GetProfileResponse>> {
-    return await this.post('/getProfile')
+    return await this.post('getProfile')
   }
 
   async logout(): Promise<Result<undefined>> {
-    return await this.post('/logout')
+    return await this.post('logout')
   }
 
   async connectBranch(repo: ConnectBranchRequest): Promise<Result<undefined>> {
-    return await this.post('/connectRepoBranch', repo)
+    return await this.post('connectRepoBranch', repo)
   }
   async getRepos(): Promise<Result<GetReposResponse>> {
-    return await this.post('/getRepos')
+    return await this.post('getRepos')
   }
   async syncGithubApp(): Promise<Result<GetReposResponse>> {
-    return await this.post('/syncGithubApp')
+    return await this.post('syncGithubApp')
   }
 
   async getBranches(req: GetBranchesRequest): Promise<Result<GetBranchesResponse>> {
-    return await this.post('/getBranches', req)
+    return await this.post('getBranches', req)
   }
 
   async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
-    return await this.post<DeployResponse>('/deploy', req)
+    return await this.post('deploy', req)
   }
 }
 
