@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/treenq/treenq/pkg/vel"
@@ -49,7 +50,7 @@ func (h *Handler) GetBuildProgress(ctx context.Context, req GetBuildProgressRequ
 					Message: "failed to write a progress message",
 				}
 			}
-			b = append(b, '\n')
+			fmt.Fprintf(w, "data: %s\n\n", b)
 			w.Write(b)
 			flusher.Flush()
 		case <-ctx.Done():
