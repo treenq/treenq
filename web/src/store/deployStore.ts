@@ -13,7 +13,7 @@ function createDeployStore() {
     deploy: async (repoID: string) => {
       const res = await httpClient.deploy({ repoID })
       if ('error' in res) return ''
-      return res.data.deploymentID
+      return res.data
     },
   })
 }

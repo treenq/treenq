@@ -447,7 +447,11 @@ type DeployRequest struct {
 }
 
 type DeployResponse struct {
-	DeploymentID string `json:"deploymentID"`
+	DeploymentID string    `json:"deploymentID"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
 }
 
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {

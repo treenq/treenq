@@ -51,7 +51,6 @@ func (h *Handler) GetBuildProgress(ctx context.Context, req GetBuildProgressRequ
 				}
 			}
 			fmt.Fprintf(w, "data: %s\n\n", b)
-			w.Write(b)
 			flusher.Flush()
 		case <-ctx.Done():
 			return GetBuildProgressResponse{}, nil

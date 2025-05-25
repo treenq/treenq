@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -211,6 +212,8 @@ func TestGithubAppInstallation(t *testing.T) {
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
 	require.NotEmpty(t, createdDeployment.DeploymentID)
+	require.Equal(t, createdDeployment.Status, "init")
+	require.NotEmpty(t, createdDeployment.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 
 	// wait for deployment done
@@ -233,13 +236,18 @@ func TestGithubAppInstallation(t *testing.T) {
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
-			line := scanner.Bytes()
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+
 			var progressMessage client.GetBuildProgressResponse
-			err = json.Unmarshal(line, &progressMessage)
+			t.Log(line)
+			line = strings.TrimPrefix(line, "data: ")
+			err = json.Unmarshal([]byte(line), &progressMessage)
 			require.NoError(t, err)
 
 			t.Logf("%+v", progressMessage)
-			// t.Log(string(line))
 		}
 
 		return

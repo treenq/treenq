@@ -215,15 +215,15 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	return GithubWebhookResponse{}, nil
 }
 
-func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) (string, *vel.Error) {
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) (AppDeployment, *vel.Error) {
 	// validate the repo must run
 	if repo.Branch == "" {
-		return "", nil
+		return AppDeployment{}, nil
 	}
 	if repo.Status != StatusRepoActive {
 		// not expected case, suspended repos won't send any events,
 		// but in case we introduce a new status it must handle it
-		return "", nil
+		return AppDeployment{}, nil
 	}
 
 	// Create initial deployment with "init" status
@@ -236,7 +236,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 
 	deployment, err := h.db.SaveDeployment(ctx, deployment)
 	if err != nil {
-		return "", &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Code: "FAILED_CREATE_DEPLOYMENT",
 			Err:  err,
 		}
@@ -265,7 +265,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 		}
 	}()
 
-	return deployment.ID, nil
+	return deployment, nil
 }
 
 type ProgressBuf struct {

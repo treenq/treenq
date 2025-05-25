@@ -61,6 +61,8 @@ export type DeployRequest = {
 
 export type DeployResponse = {
   deploymentID: string
+  status: string
+  createdAt: Date
 }
 
 class HttpClient {

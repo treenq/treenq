@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { deployStore } from '@/store/deployStore'
-import { createSignal, For } from 'solid-js'
+import { useNavigate } from '@solidjs/router'
+import { createSignal, For, Show } from 'solid-js' // Added Show
 
 interface DeploymentProps {
   id: string
@@ -70,9 +71,19 @@ export default function Deploy(props: DeployProps) {
       timestamp: 'March 26, 2025 at 11:17 PM',
     },
   ])
+  const navigate = useNavigate()
 
   const deploy = async () => {
-    const deployID = await deployStore.deploy(props.repoID)
+    const deployment = await deployStore.deploy(props.repoID)
+    if (deployment) {
+      navigate(`/deployment/${deployment.deploymentID}`, {
+        state: {
+          deployment: deployment,
+        },
+      })
+    } else {
+      throw Error('cant start a deployment')
+    }
   }
 
   return (
