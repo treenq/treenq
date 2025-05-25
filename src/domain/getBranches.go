@@ -34,6 +34,12 @@ func (h *Handler) GetBranches(ctx context.Context, req GetBranchesRequest) (GetB
 	}
 
 	branches, err := h.githubClient.GetBranches(ctx, githubInstallationID, profile.UserInfo.DisplayName, req.RepoName, true)
+	if err != nil {
+		return GetBranchesResopnse{}, &vel.Error{
+			Message: "failed to get branches",
+			Err:     err,
+		}
+	}
 
 	return GetBranchesResopnse{Branches: branches}, nil
 }
