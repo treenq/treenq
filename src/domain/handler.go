@@ -23,7 +23,8 @@ type Handler struct {
 	authRedirectUrl string
 	authTtl         time.Duration
 
-	l *slog.Logger
+	l      *slog.Logger
+	isProd bool
 }
 
 func NewHandler(
@@ -41,6 +42,7 @@ func NewHandler(
 	authTtl time.Duration,
 
 	l *slog.Logger,
+	isProd bool,
 ) *Handler {
 	return &Handler{
 		db:           db,
@@ -57,6 +59,7 @@ func NewHandler(
 		authRedirectUrl: authRedirectUrl,
 		authTtl:         authTtl,
 		l:               l,
+		isProd:          isProd,
 	}
 }
 
@@ -75,6 +78,7 @@ type Database interface {
 	// Github repos domain
 	// //////////////////////
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) (string, error)
+	RelinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) (string, error)
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
