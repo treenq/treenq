@@ -235,6 +235,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
+		hasFinalMessage := false
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == "" {
@@ -247,9 +248,17 @@ func TestGithubAppInstallation(t *testing.T) {
 			err = json.Unmarshal([]byte(line), &progressMessage)
 			require.NoError(t, err)
 
-			t.Logf("%+v", progressMessage)
+			hasFinalMessage = progressMessage.Message.Final
+			if hasFinalMessage {
+				break
+			}
+
+			require.NotEmpty(t, progressMessage.Message.Timestamp)
+			require.NotEmpty(t, progressMessage.Message.Level.String())
+			require.NotEmpty(t, progressMessage.Message.Payload)
 		}
 
+		assert.True(t, hasFinalMessage, "progress build must have a final message")
 		return
 
 	}

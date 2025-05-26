@@ -281,9 +281,10 @@ type buf struct {
 }
 
 type ProgressMessage struct {
-	Payload string     `json:"payload"`
-	Level   slog.Level `json:"level"`
-	Final   bool       `json:"-"`
+	Payload   string     `json:"payload"`
+	Level     slog.Level `json:"level"`
+	Final     bool       `json:"final"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
 type Subscriber struct {
@@ -323,6 +324,7 @@ func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan Progr
 }
 
 func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
+	m.Timestamp = time.Now().UTC()
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
