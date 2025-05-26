@@ -452,8 +452,6 @@ type DeployResponse struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-}
-
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
 	var res DeployResponse
 

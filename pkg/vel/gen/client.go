@@ -102,6 +102,9 @@ func collectStructs(field Field, dataTypeSet map[string]struct{}) ([]DataType, e
 }
 
 func collectTypes(field Field, dataTypeSet map[string]struct{}) ([]DataType, error) {
+	if _, ok := builtinTypes[field.TypeName]; ok {
+		return nil, nil
+	}
 	dataTypes := make([]DataType, 0)
 	subType, err := extractDataType(field.Type)
 	if err != nil {
