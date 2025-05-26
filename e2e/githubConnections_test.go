@@ -104,6 +104,14 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	// not connected repo can't be deployed
+	_, err = apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID: reposResponse.Repos[1].TreenqID,
+	})
+	require.Equal(t, err, &client.Error{
+		Code: "REPO_IS_NOT_CONNECTED",
+	}, "a not connected repo must not be deployable")
+
 	branchName := "test-branch"
 	connectRepoRes, err := apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
