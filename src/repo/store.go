@@ -188,6 +188,9 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	return deps, nil
 }
 
+// LinkGithub is called either on "created" app installation event
+// or on manual sync,
+// it cleans the previous installed repos state and inserts everything in the repos slice
 func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) (string, error) {
 	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
 	if err != nil {
@@ -205,6 +208,12 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin 
 	treenqInstallationID, err := s.saveInstallation(ctx, tx, userID, installationID, timestamp)
 	if err != nil {
 		return "", fmt.Errorf("failed to save installation: %w", err)
+	}
+
+	// clean previous state
+	err = s.removeInstalledRepos(ctx, userID, installationID, tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to remove installed repos: %w", err)
 	}
 
 	// Insert repositories
@@ -238,6 +247,29 @@ func (s *Store) getUserIDByDisplayName(ctx context.Context, senderLogin string, 
 		return "", fmt.Errorf("failed to get user ID: %w", err)
 	}
 	return userID, nil
+}
+
+func (s *Store) removeInstalledRepos(
+	ctx context.Context,
+	userID string,
+	installationID int,
+	q Querier,
+) error {
+	repoQuery := s.sq.Delete("installedRepos").Where(sq.Eq{
+		"userId":         userID,
+		"installationId": installationID,
+	})
+
+	sql, args, err := repoQuery.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build repositories query: %w", err)
+	}
+
+	if _, err := q.ExecContext(ctx, sql, args...); err != nil {
+		return fmt.Errorf("failed to insert repositories: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Store) insertInstalledRepos(
