@@ -3,15 +3,16 @@ import type { Component, JSX } from 'solid-js'
 
 import Auth from '@/components/pages/Auth'
 import Main from '@/components/pages/Main'
-import { onMount, Show } from 'solid-js'
+import { createSignal, onMount, Show } from 'solid-js'
 
 import DeployPage from '@/components/pages/DeployPage'
+import NotFound from '@/components/pages/NotFound'
 import RedirectPage from '@/components/pages/RedirectPage'
 import RepoPage from '@/components/pages/RepoPage'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { Header } from '@/components/widgets/Header'
 import { AppSidebar } from '@/components/widgets/Sidebar'
 import { userStore } from '@/store/userStore'
-import NotFound from './components/pages/NotFound'
 
 type ProtectedRouterProps = {
   component: () => JSX.Element
@@ -34,8 +35,17 @@ function MakeProtectedComponent(props: ProtectedRouterProps): Component {
 }
 
 function App(): JSX.Element {
+  const [isLoading, setIsLoading] = createSignal(true)
+
   onMount(() => {
-    userStore.getProfile()
+    const fetchUser = async () => {
+      try {
+        await userStore.getProfile()
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchUser()
   })
 
   const isAuthenticated = () => !!userStore.user
@@ -52,28 +62,30 @@ function App(): JSX.Element {
     <>
       <Header />
       <div class="flex min-h-screen w-full">
-        <Show when={userStore.user}>
-          <AppSidebar />
+        <Show when={!isLoading()} fallback={<Skeleton />}>
+          <Show when={userStore.user}>
+            <AppSidebar />
+          </Show>
+          <div class="min-h-screen flex-1">
+            <Router>
+              <Route path="/">
+                <Route path="/" component={requiresAuth(Main)} />
+                <Route path="/repos/:id" component={requiresAuth(RepoPage)} />
+                <Route path="/deploy/:id" component={requiresAuth(DeployPage)} />
+              </Route>
+              <Route
+                path="/auth"
+                component={MakeProtectedComponent({
+                  satisfies: isNotAuthenticated,
+                  redirectTo: '/',
+                  component: Auth,
+                })}
+              />
+              <Route path="/githubPostInstall" component={RedirectPage} />
+              <Route path="*404" component={NotFound} />
+            </Router>
+          </div>
         </Show>
-        <div class="min-h-screen flex-1">
-          <Router>
-            <Route path="/">
-              <Route path="/" component={requiresAuth(Main)} />
-              <Route path="/repos/:id" component={requiresAuth(RepoPage)} />
-              <Route path="/deploy/:id" component={requiresAuth(DeployPage)} />
-            </Route>
-            <Route
-              path="/auth"
-              component={MakeProtectedComponent({
-                satisfies: isNotAuthenticated,
-                redirectTo: '/',
-                component: Auth,
-              })}
-            />
-            <Route path="/githubPostInstall" component={RedirectPage} />
-            <Route path="*404" component={NotFound} />
-          </Router>
-        </div>
       </div>
     </>
   )
