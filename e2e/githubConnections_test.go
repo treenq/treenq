@@ -104,6 +104,14 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	// not connected repo can't be deployed
+	_, err = apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID: reposResponse.Repos[1].TreenqID,
+	})
+	require.Equal(t, err, &client.Error{
+		Code: "REPO_IS_NOT_CONNECTED",
+	}, "a not connected repo must not be deployable")
+
 	branchName := "test-branch"
 	connectRepoRes, err := apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
@@ -235,6 +243,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
+		hasFinalMessage := false
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == "" {
@@ -247,9 +256,17 @@ func TestGithubAppInstallation(t *testing.T) {
 			err = json.Unmarshal([]byte(line), &progressMessage)
 			require.NoError(t, err)
 
-			t.Logf("%+v", progressMessage)
+			hasFinalMessage = progressMessage.Message.Final
+			if hasFinalMessage {
+				break
+			}
+
+			require.NotEmpty(t, progressMessage.Message.Timestamp)
+			require.NotEmpty(t, progressMessage.Message.Level.String())
+			require.NotEmpty(t, progressMessage.Message.Payload)
 		}
 
+		assert.True(t, hasFinalMessage, "progress build must have a final message")
 		return
 
 	}

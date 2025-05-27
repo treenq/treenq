@@ -452,8 +452,6 @@ type DeployResponse struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-}
-
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
 	var res DeployResponse
 
@@ -579,9 +577,10 @@ type GetBuildProgressResponse struct {
 }
 
 type ProgressMessage struct {
-	Payload string     `json:"payload"`
-	Level   slog.Level `json:"level"`
-	Final   bool       `json:"-"`
+	Payload   string     `json:"payload"`
+	Level     slog.Level `json:"level"`
+	Final     bool       `json:"final"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
 func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {

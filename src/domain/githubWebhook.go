@@ -218,12 +218,16 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) (AppDeployment, *vel.Error) {
 	// validate the repo must run
 	if repo.Branch == "" {
-		return AppDeployment{}, nil
+		return AppDeployment{}, &vel.Error{
+			Code: "REPO_IS_NOT_CONNECTED",
+		}
 	}
 	if repo.Status != StatusRepoActive {
 		// not expected case, suspended repos won't send any events,
 		// but in case we introduce a new status it must handle it
-		return AppDeployment{}, nil
+		return AppDeployment{}, &vel.Error{
+			Code: "REPO_IS_NOT_ACTIVE",
+		}
 	}
 
 	// Create initial deployment with "init" status
@@ -281,9 +285,10 @@ type buf struct {
 }
 
 type ProgressMessage struct {
-	Payload string     `json:"payload"`
-	Level   slog.Level `json:"level"`
-	Final   bool       `json:"-"`
+	Payload   string     `json:"payload"`
+	Level     slog.Level `json:"level"`
+	Final     bool       `json:"final"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
 type Subscriber struct {
@@ -323,6 +328,7 @@ func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan Progr
 }
 
 func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
+	m.Timestamp = time.Now().UTC()
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
