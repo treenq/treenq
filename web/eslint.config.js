@@ -36,6 +36,12 @@ export default ts.config(
           message: 'Use undefined instead of null (TypeScript type)',
         },
       ],
+      'prettier/prettier': [
+        'error',
+        {
+          endOfLine: 'auto',
+        },
+      ],
       'no-unused-vars': [
         'error',
         {
