@@ -26,7 +26,7 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 		}
 	}
 
-	savedInstallation, err := h.db.RelinkGithub(ctx, githubInstallation, profile.UserInfo.DisplayName, installedRepos)
+	savedInstallation, err := h.db.LinkGithub(ctx, githubInstallation, profile.UserInfo.DisplayName, installedRepos)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
 			Message: "failed to sync a github repos link",

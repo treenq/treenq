@@ -614,3 +614,46 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 
 	return res, nil
 }
+
+type GetDeploymentHistoryRequest struct {
+	RepoID string
+}
+
+type GetDeploymentHistoryResponse struct {
+	History []AppDeployment
+}
+
+func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, error) {
+	var res GetDeploymentHistoryResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeploymentHistory", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getDeploymentHistory: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getDeploymentHistory response: %w", err)
+	}
+
+	return res, nil
+}

@@ -247,12 +247,16 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 	}
 
 	go func() {
+		// prepare local goroutine scope
+		deployment := deployment
 		ctx := context.WithoutCancel(ctx)
 		ctx, cancel := context.WithTimeout(ctx, time.Second*300)
 		defer cancel()
-		// Start the build process
-		if err := h.buildApp(ctx, deployment, repo); err != nil {
-			// Update deployment status to failed
+
+		// start the build process
+		deployment, err := h.buildApp(ctx, deployment, repo)
+		if err != nil {
+			// update deployment status to failed
 			deployment.Status = DeployStatusFailed
 			if updateErr := h.db.UpdateDeployment(ctx, deployment); updateErr != nil {
 				// TODO: log error
@@ -261,7 +265,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 			log.Println("[ERROR] failed to build app", err)
 		}
 
-		// Update deployment status to done
+		// update deployment status to done
 		deployment.Status = DeployStatusDone
 		if err := h.db.UpdateDeployment(ctx, deployment); err != nil {
 			// TODO: log error
@@ -399,7 +403,7 @@ func (w *progressWriter) Write(buf []byte) (int, error) {
 
 var progress = &ProgressBuf{Bufs: make(map[string]buf)}
 
-func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) *vel.Error {
+func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) (AppDeployment, *vel.Error) {
 	token := ""
 	if repo.Private {
 		var err error
@@ -413,7 +417,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 				Payload: "failed to issue a github access token: " + err.Error(),
 				Level:   slog.LevelError,
 			})
-			return &vel.Error{
+			return AppDeployment{}, &vel.Error{
 				Message: "failed to issue github access token",
 				Err:     err,
 			}
@@ -434,7 +438,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to clone github repository: " + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to clone git repo",
 			Err:     err,
 		}
@@ -457,12 +461,12 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Level:   slog.LevelError,
 		})
 		if errors.Is(err, ErrNoConfigFileFound) {
-			return &vel.Error{
+			return AppDeployment{}, &vel.Error{
 				Message: "failed to extract config",
 				Code:    "NO_TQ_CONFIG_FOUND",
 			}
 		}
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to extract config",
 			Err:     err,
 		}
@@ -494,7 +498,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to build image: " + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to build an image",
 			Err:     err,
 		}
@@ -521,7 +525,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to update deployment state" + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to save deployment",
 			Err:     err,
 		}
@@ -545,7 +549,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to apply new image" + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to apply kube definition",
 			Err:     err,
 		}
@@ -556,5 +560,5 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Final:   true,
 	})
 
-	return nil
+	return deployment, nil
 }

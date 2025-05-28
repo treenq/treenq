@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
+	"github.com/treenq/treenq/src/domain"
 )
 
 //go:embed testdata/appInstall.json
@@ -267,6 +268,18 @@ func TestGithubAppInstallation(t *testing.T) {
 		}
 
 		assert.True(t, hasFinalMessage, "progress build must have a final message")
+
+		history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
+			RepoID: deployment.Deployment.RepoID,
+		})
+		require.Len(t, history.History, 1, "1 item expected in history deployment after first successful")
+		require.NoError(t, err, "no error expected on deployment history")
+		assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
+		assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
+		assert.NotEmpty(t, history.History[0].BuildTag)
+		assert.NotEmpty(t, history.History[0].Sha)
+		assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
+		assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
 		return
 
 	}

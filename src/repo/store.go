@@ -149,9 +149,9 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 }
 
 func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "createdAt").
+	query, args, err := s.sq.Select("id", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
 		From("deployments").
-		Where(sq.Eq{"id": repoID}).
+		Where(sq.Eq{"repoId": repoID}).
 		OrderBy("createdAt DESC").
 		Limit(20).
 		ToSql()
@@ -159,7 +159,7 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 		return nil, fmt.Errorf("failed to build GetDeploymentHistory query: %w", err)
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, args)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query GetDeploymentHistory: %w", err)
 	}
@@ -169,15 +169,15 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	for rows.Next() {
 		var dep domain.AppDeployment
 		var spacePayload string
-		if err := rows.Scan(&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.CreatedAt); err != nil {
+		if err := rows.Scan(&dep.ID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan GetDeploymentHistory row: %w", err)
 		}
 
-		var a tqsdk.Space
-		if err := json.Unmarshal([]byte(spacePayload), &spacePayload); err != nil {
+		var space tqsdk.Space
+		if err := json.Unmarshal([]byte(spacePayload), &space); err != nil {
 			return nil, fmt.Errorf("failed to decode app payload in GetDeploymentHistory: %w", err)
 		}
-		dep.Space = a
+		dep.Space = space
 		deps = append(deps, dep)
 	}
 
