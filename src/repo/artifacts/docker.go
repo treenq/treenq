@@ -1,3 +1,6 @@
+//go:build !no_buildah
+// +build !no_buildah
+
 package artifacts
 
 import (
@@ -140,4 +143,8 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	}
 
 	return image, nil
+}
+
+func (a *DockerArtifact) Inspect() (domain.Image, error) {
+	return domain.Image{}, domain.ErrImageNotFound
 }

@@ -41,19 +41,6 @@ RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cac
 # Set the default command to run the app with dlv for debugging
 CMD ["dlv", "--listen=:40000", "--continue", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "server"]
 
-# E2E target, has -race flag
-FROM builder AS e2e
-
-# Copy after installed delve in order to cache delve in the upper layer
-COPY . .
-
-# lsflags to strip debug info
-RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cache/go-build" go build -race -ldflags "-s -w" -o server ./cmd/server
-
-CMD ["/app/server"]
-
-
-# PROD target, optimized for prod
 FROM builder AS prod
 
 # Copy after installed delve in order to cache delve in the upper layer

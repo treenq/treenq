@@ -12,6 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type TestingRepository struct {
+	ID   string
+	Path string
+}
+
+func (r TestingRepository) CloneURL() string {
+	return "file://" + r.Path
+}
+
+func (r TestingRepository) Location(root string) string {
+	return filepath.Join(root, r.ID)
+}
+
 func TestClone(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "test-repo-clone")
 	if err != nil {
@@ -27,9 +40,12 @@ func TestClone(t *testing.T) {
 	reposDir := filepath.Join(wd, "repos")
 	git := NewGit(reposDir)
 
-	repoURL := "file://" + mockRepoPath
+	repo := TestingRepository{
+		ID:   "1",
+		Path: mockRepoPath,
+	}
 
-	firstGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
+	firstGitRepo, err := git.Clone(repo, "dummy-access-token", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -39,7 +55,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	secondGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
+	secondGitRepo, err := git.Clone(repo, "dummy-access-token", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(secondGitRepo.Dir) // Clean up
 

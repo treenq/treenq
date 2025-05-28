@@ -34,6 +34,7 @@ CREATE TYPE status AS ENUM ('init', 'failed', 'done');
 
 CREATE TABLE IF NOT EXISTS deployments (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+    fromDeploymentId uuid NOT NULL,
     repoId uuid NOT NULL,
 
     space jsonb NOT NULL,

@@ -23,12 +23,11 @@ func (h *Handler) GetDeployment(ctx context.Context, req GetDeploymentRequest) (
 		if errors.Is(err, ErrDeploymentNotFound) {
 			return GetDeploymentResponse{}, &vel.Error{
 				Code: "DEPLOYMENT_NOT_FOUND",
-				Err:  err,
 			}
 		}
 		return GetDeploymentResponse{}, &vel.Error{
-			Code: "FAILED_GET_DEPLOYMENT",
-			Err:  err,
+			Message: "failed to get deployment",
+			Err:     err,
 		}
 	}
 

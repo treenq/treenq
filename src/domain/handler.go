@@ -80,24 +80,24 @@ type Database interface {
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) (string, error)
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
-	GetGithubRepos(ctx context.Context, email string) ([]Repository, error)
+	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, error)
 	GetInstallationID(ctx context.Context, userID string) (string, int, error)
 	SaveInstallation(ctx context.Context, userID string, githubID int) (string, error)
-	ConnectRepo(ctx context.Context, userID, repoID, branchName string) (Repository, error)
-	GetRepoByGithub(ctx context.Context, githubRepoID int) (Repository, error)
-	GetRepoByID(ctx context.Context, userID, repoID string) (Repository, error)
+	ConnectRepo(ctx context.Context, userID, repoID, branchName string) (GithubRepository, error)
+	GetRepoByGithub(ctx context.Context, githubRepoID int) (GithubRepository, error)
+	GetRepoByID(ctx context.Context, userID, repoID string) (GithubRepository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 }
 
 type GithubClient interface {
 	IssueAccessToken(installationID int) (string, error)
 	GetUserInstallation(ctx context.Context, displayName string) (int, error)
-	ListRepositories(ctx context.Context, installationID int) ([]Repository, error)
+	ListRepositories(ctx context.Context, installationID int) ([]GithubRepository, error)
 	GetBranches(ctx context.Context, installationID int, owner string, repoName string, fresh bool) ([]string, error)
 }
 
 type Git interface {
-	Clone(url string, installationID int, repoID string, accesstoken string) (GitRepo, error)
+	Clone(repo Repository, accesstoken, sha string) (GitRepo, error)
 }
 
 type Extractor interface {
@@ -107,6 +107,7 @@ type Extractor interface {
 type DockerArtifactory interface {
 	Image(args BuildArtifactRequest) Image
 	Build(ctx context.Context, args BuildArtifactRequest, progress *ProgressBuf) (Image, error)
+	Inspect() (Image, error)
 }
 
 type Kube interface {
