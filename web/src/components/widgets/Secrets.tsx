@@ -8,33 +8,38 @@ import {
   TableRow,
 } from '@/components/ui/Table'
 import { TextField, TextFieldInput } from '@/components/ui/TextField'
-import { Accessor, createSignal, Index, Setter, Show } from 'solid-js'
+import { Accessor, createSignal, Index, JSX, Setter, Show } from 'solid-js'
 
 type Secret = { name: string; value: string }
 
 type SecretRowProps = { secret: Accessor<Secret>; index: number; setSecrets: Setter<Secret[]> }
 
-const SecretRow = ({ secret, index, setSecrets }: SecretRowProps) => {
-  const [inputs, setInputs] = createSignal<Secret>(secret())
-  const [isEditing, setIsEditing] = createSignal(false)
+type SecretTableRowProps = {
+  isEditing: Accessor<boolean>
+  inputs: Accessor<Secret>
+  setInputs: Setter<Secret>
+  secret?: Accessor<Secret>
+  children: JSX.Element
+}
+
+const SecretTableRow = ({
+  isEditing,
+  inputs,
+  setInputs,
+  secret,
+  children,
+}: SecretTableRowProps) => {
   const [toggleVisible, setToggleVisible] = createSignal(false)
-
-  const updateSecret = () => {
-    setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
-    setIsEditing(false)
-  }
-
-  const deleteSecret = () => setSecrets((secrets) => secrets.filter((_, i) => i !== index))
 
   return (
     <TableRow>
       <TableCell>
-        <Show when={isEditing()} fallback={secret().name}>
+        <Show when={isEditing()} fallback={secret && secret().name}>
           <TextField
             value={inputs().name}
             onChange={(name) => setInputs((inputs) => ({ ...inputs, name }))}
           >
-            <TextFieldInput />
+            <TextFieldInput placeholder="SECRET_NAME" />
           </TextField>
         </Show>
       </TableCell>
@@ -45,27 +50,42 @@ const SecretRow = ({ secret, index, setSecrets }: SecretRowProps) => {
           readOnly={!isEditing()}
           class="flex-1"
         >
-          <TextFieldInput type={toggleVisible() ? 'text' : 'password'} />
+          <TextFieldInput placeholder="Secret value" type={toggleVisible() ? 'text' : 'password'} />
         </TextField>
         <Button onClick={() => setToggleVisible(!toggleVisible())}>Toggle</Button>
       </TableCell>
-      <TableCell>
-        <div class="flex">
-          <Show
-            when={isEditing()}
-            fallback={<Button onClick={() => setIsEditing(true)}>Edit</Button>}
-          >
-            <Button onClick={updateSecret}>Save</Button>
-          </Show>
-          <Button onClick={deleteSecret}>Delete</Button>
-        </div>
-      </TableCell>
+      <TableCell>{children}</TableCell>
     </TableRow>
   )
 }
 
+const SecretRow = ({ secret, index, setSecrets }: SecretRowProps) => {
+  const [inputs, setInputs] = createSignal<Secret>(secret())
+  const [isEditing, setIsEditing] = createSignal(false)
+
+  const updateSecret = () => {
+    setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
+    setIsEditing(false)
+  }
+
+  const deleteSecret = () => setSecrets((secrets) => secrets.filter((_, i) => i !== index))
+
+  return (
+    <SecretTableRow {...{ isEditing, inputs, setInputs, secret }}>
+      <div class="flex">
+        <Show
+          when={isEditing()}
+          fallback={<Button onClick={() => setIsEditing(true)}>Edit</Button>}
+        >
+          <Button onClick={updateSecret}>Save</Button>
+        </Show>
+        <Button onClick={deleteSecret}>Delete</Button>
+      </div>
+    </SecretTableRow>
+  )
+}
+
 const AddSecretRow = ({ setSecrets }: { setSecrets: Setter<Secret[]> }) => {
-  const [toggleVisible, setToggleVisible] = createSignal(false)
   const [inputs, setInputs] = createSignal<Secret>({ name: '', value: '' })
 
   const addSecret = () => {
@@ -74,31 +94,11 @@ const AddSecretRow = ({ setSecrets }: { setSecrets: Setter<Secret[]> }) => {
   }
 
   return (
-    <TableRow>
-      <TableCell>
-        <TextField
-          value={inputs().name}
-          onChange={(name) => setInputs((inputs) => ({ ...inputs, name }))}
-        >
-          <TextFieldInput placeholder="SECRET_NAME" />
-        </TextField>
-      </TableCell>
-      <TableCell class="flex">
-        <TextField
-          value={inputs().value}
-          onChange={(value) => setInputs((inputs) => ({ ...inputs, value }))}
-          class="flex-1"
-        >
-          <TextFieldInput placeholder="Secret value" type={toggleVisible() ? 'text' : 'password'} />
-        </TextField>
-        <Button onClick={() => setToggleVisible(!toggleVisible())}>Toggle</Button>
-      </TableCell>
-      <TableCell>
-        <Button disabled={!inputs().name || !inputs().value} onClick={addSecret}>
-          Add
-        </Button>
-      </TableCell>
-    </TableRow>
+    <SecretTableRow isEditing={() => true} inputs={inputs} setInputs={setInputs}>
+      <Button disabled={!inputs().name || !inputs().value} onClick={addSecret}>
+        Add
+      </Button>
+    </SecretTableRow>
   )
 }
 
