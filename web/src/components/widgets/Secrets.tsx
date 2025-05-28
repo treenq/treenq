@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import {
   Table,
@@ -20,6 +21,7 @@ type SecretTableRowProps = {
   setInputs: Setter<Secret>
   secret?: Accessor<Secret>
   children: JSX.Element
+  type: 'add' | 'edit'
 }
 
 const SecretTableRow = ({
@@ -28,6 +30,7 @@ const SecretTableRow = ({
   setInputs,
   secret,
   children,
+  type,
 }: SecretTableRowProps) => {
   const [toggleVisible, setToggleVisible] = createSignal(false)
 
@@ -43,16 +46,25 @@ const SecretTableRow = ({
           </TextField>
         </Show>
       </TableCell>
-      <TableCell class="flex">
+      <TableCell class="flex space-x-2">
         <TextField
           value={inputs().value}
           onChange={(value) => setInputs((inputs) => ({ ...inputs, value }))}
           readOnly={!isEditing()}
           class="flex-1"
         >
-          <TextFieldInput placeholder="Secret value" type={toggleVisible() ? 'text' : 'password'} />
+          <TextFieldInput
+            placeholder="Secret value"
+            type={toggleVisible() || isEditing() ? 'text' : 'password'}
+          />
         </TextField>
-        <Button onClick={() => setToggleVisible(!toggleVisible())}>Toggle</Button>
+        <Show when={type === 'edit'}>
+          <Button onClick={() => setToggleVisible(!toggleVisible())}>
+            <Show when={toggleVisible()} fallback={<Eye />}>
+              <EyeOff />
+            </Show>
+          </Button>
+        </Show>
       </TableCell>
       <TableCell>{children}</TableCell>
     </TableRow>
@@ -71,8 +83,8 @@ const SecretRow = ({ secret, index, setSecrets }: SecretRowProps) => {
   const deleteSecret = () => setSecrets((secrets) => secrets.filter((_, i) => i !== index))
 
   return (
-    <SecretTableRow {...{ isEditing, inputs, setInputs, secret }}>
-      <div class="flex">
+    <SecretTableRow {...{ isEditing, inputs, setInputs, secret }} type="edit">
+      <div class="flex space-x-2">
         <Show
           when={isEditing()}
           fallback={<Button onClick={() => setIsEditing(true)}>Edit</Button>}
@@ -94,7 +106,7 @@ const AddSecretRow = ({ setSecrets }: { setSecrets: Setter<Secret[]> }) => {
   }
 
   return (
-    <SecretTableRow isEditing={() => true} inputs={inputs} setInputs={setInputs}>
+    <SecretTableRow isEditing={() => true} inputs={inputs} setInputs={setInputs} type="add">
       <Button disabled={!inputs().name || !inputs().value} onClick={addSecret}>
         Add
       </Button>
