@@ -8,13 +8,13 @@ import {
   TableRow,
 } from '@/components/ui/Table'
 import { TextField, TextFieldInput } from '@/components/ui/TextField'
-import { createSignal, For, Setter } from 'solid-js'
+import { Accessor, createSignal, Index, Setter } from 'solid-js'
 
 type Secret = { name: string; value: string }
 
-type SecretRowProps = Secret & { index: number; setSecrets: Setter<Secret[]> }
+type SecretRowProps = { secret: Accessor<Secret>; index: number; setSecrets: Setter<Secret[]> }
 
-const SecretRow = ({ name, value, index, setSecrets }: SecretRowProps) => {
+const SecretRow = ({ secret, index, setSecrets }: SecretRowProps) => {
   const [readOnly, setReadOnly] = createSignal(true)
 
   const updateSecret = (value: string) =>
@@ -22,10 +22,10 @@ const SecretRow = ({ name, value, index, setSecrets }: SecretRowProps) => {
 
   return (
     <TableRow>
-      <TableCell>{name}</TableCell>
+      <TableCell>{secret().name}</TableCell>
       <TableCell>
         <TextField onChange={updateSecret} readOnly={readOnly()}>
-          <TextFieldInput value={value} type="password" />
+          <TextFieldInput value={secret().value} type="password" />
         </TextField>
       </TableCell>
       <TableCell>
@@ -53,9 +53,9 @@ const Secrets = () => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <For each={secrets()}>
-          {(secret, index) => <SecretRow {...secret} index={index()} setSecrets={setSecrets} />}
-        </For>
+        <Index each={secrets()}>
+          {(secret, index) => <SecretRow {...{ secret, index, setSecrets }} />}
+        </Index>
       </TableBody>
     </Table>
   )
