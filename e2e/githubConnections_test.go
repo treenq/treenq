@@ -221,7 +221,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
 	require.NotEmpty(t, createdDeployment.DeploymentID)
-	require.Equal(t, createdDeployment.Status, "init")
+	require.Equal(t, createdDeployment.Status, "run")
 	require.NotEmpty(t, createdDeployment.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 

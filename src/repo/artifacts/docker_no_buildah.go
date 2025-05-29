@@ -18,6 +18,12 @@ type DockerArtifact struct {
 
 func NewDockerArtifactory(
 	registry string,
+	registryTLSVerify bool,
+	registryCertDir,
+	registryAuthType,
+	registryUsername,
+	registryPassword,
+	registryToken string,
 ) (*DockerArtifact, error) {
 	return &DockerArtifact{
 		registry: registry,

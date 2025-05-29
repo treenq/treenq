@@ -19,9 +19,11 @@ import (
 )
 
 var (
-	ErrNoConfigFileFound        = errors.New("no config file found")
-	ErrDeployStatusMustBeString = errors.New("deploy status must be string")
-	ErrImageNotFound            = errors.New("image not found")
+	ErrNoConfigFileFound                = errors.New("no config file found")
+	ErrDeployStatusMustBeString         = errors.New("deploy status must be string")
+	ErrImageNotFound                    = errors.New("image not found")
+	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
+	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha are mutually exclusive")
 )
 
 type GithubWebhookRequest struct {
@@ -471,7 +473,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo G
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo, token, deployment.Sha)
+	gitRepo, err := h.git.Clone(repo, token, repo.Branch, deployment.Sha)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),

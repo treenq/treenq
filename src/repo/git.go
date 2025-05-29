@@ -19,7 +19,14 @@ func NewGit(dir string) *Git {
 	return &Git{dir: dir}
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, sha string) (domain.GitRepo, error) {
+func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string) (domain.GitRepo, error) {
+	if branch == "" && sha == "" {
+		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
+	}
+	if branch != "" && sha != "" {
+		return domain.GitRepo{}, domain.ErrGitBranchAndShaMutuallyExclusive
+	}
+
 	dir := repo.Location(g.dir)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, os.ModePerm)
@@ -59,9 +66,19 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, sha string) (dom
 			return domain.GitRepo{}, fmt.Errorf("error while pulling latest: %s", err)
 		}
 	}
+	if w == nil {
+		w, err = r.Worktree()
+		if err != nil {
+			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %s", err)
+		}
+	}
 	if sha != "" {
 		w.Checkout(&git.CheckoutOptions{
 			Hash: plumbing.NewHash(sha),
+		})
+	} else {
+		w.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewBranchReferenceName(branch),
 		})
 	}
 	ref, err := r.Head()

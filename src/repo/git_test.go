@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/treenq/treenq/src/domain"
 )
 
 type TestingRepository struct {
@@ -38,31 +39,73 @@ func TestClone(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	reposDir := filepath.Join(wd, "repos")
-	git := NewGit(reposDir)
+	gitComponent := NewGit(reposDir)
 
 	repo := TestingRepository{
 		ID:   "1",
 		Path: mockRepoPath,
 	}
+	os.RemoveAll(repo.Location(reposDir))
 
-	firstGitRepo, err := git.Clone(repo, "dummy-access-token", "")
+	_, err = gitComponent.Clone(repo, "", "", "")
+	assert.Equal(t, domain.ErrNoGitCheckoutSpecified, err, "must give an error if no branch or sha passed")
+
+	_, err = gitComponent.Clone(repo, "", "main", "1234")
+	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND sha passed")
+
+	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
+	initialSHA := firstGitRepo.Sha
 
 	clonedReadmePath := filepath.Join(firstGitRepo.Dir, "README.md")
 	_, err = os.Stat(clonedReadmePath)
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	secondGitRepo, err := git.Clone(repo, "dummy-access-token", "")
+	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
 	require.NoError(t, err)
-	defer os.RemoveAll(secondGitRepo.Dir) // Clean up
+	defer os.RemoveAll(sameGitRepo.Dir) // Clean up
+	latestSHA := sameGitRepo.Sha
 
-	clonedNewFilePath := filepath.Join(secondGitRepo.Dir, "NEW_FILE.md")
+	clonedNewFilePath := filepath.Join(sameGitRepo.Dir, "NEW_FILE.md")
 	_, err = os.Stat(clonedNewFilePath)
 	assert.NoError(t, err)
-	assert.Equal(t, len(secondGitRepo.Sha), 40)
+	assert.Equal(t, len(sameGitRepo.Sha), 40)
+
+	// --- Checkout to the initial commit and verify ---
+	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA)
+	require.NoError(t, err)
+	defer os.RemoveAll(checkoutRepo.Dir)
+	assert.Equal(t, initialSHA, checkoutRepo.Sha)
+
+	// README.md should exist (from initial commit)
+	readmePath := filepath.Join(checkoutRepo.Dir, "README.md")
+	_, err = os.Stat(readmePath)
+	assert.NoError(t, err)
+
+	// NEW_FILE.md should NOT exist (added in later commit)
+	newFilePath := filepath.Join(checkoutRepo.Dir, "NEW_FILE.md")
+	_, err = os.Stat(newFilePath)
+	assert.Error(t, err)
+	assert.True(t, os.IsNotExist(err))
+
+	// --- Checkout to a master branch
+	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(checkoutRepo.Dir)
+	assert.Equal(t, latestSHA, checkoutRepo.Sha)
+
+	// README.md should exist (from initial commit)
+	readmePath = filepath.Join(checkoutRepo.Dir, "README.md")
+	_, err = os.Stat(readmePath)
+	assert.NoError(t, err)
+
+	// NEW_FILE.md should exist (added in later commit)
+	newFilePath = filepath.Join(checkoutRepo.Dir, "NEW_FILE.md")
+	_, err = os.Stat(newFilePath)
+	assert.NoError(t, err)
 }
 
 func newRepo(t *testing.T, path string) *git.Worktree {

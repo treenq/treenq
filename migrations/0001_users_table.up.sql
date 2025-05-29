@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS installedRepos (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TYPE status AS ENUM ('init', 'failed', 'done');
+CREATE TYPE status AS ENUM ('run', 'failed', 'done');
 
 CREATE TABLE IF NOT EXISTS deployments (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
-    fromDeploymentId uuid NOT NULL,
+    fromDeploymentId char(36) NOT NULL,
     repoId uuid NOT NULL,
 
     space jsonb NOT NULL,
