@@ -159,16 +159,6 @@ type AppDeployment struct {
 
 type DeployStatus string
 
-func (s *DeployStatus) Scan(src any) error {
-	str, ok := src.(string)
-	if !ok {
-		return ErrDeployStatusMustBeString
-	}
-
-	*s = DeployStatus(str)
-	return nil
-}
-
 const (
 	DeployStatusRunning DeployStatus = "run"
 	DeployStatusDone    DeployStatus = "done"
