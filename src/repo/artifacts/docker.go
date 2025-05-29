@@ -15,6 +15,7 @@ import (
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
 	"github.com/containers/storage"
+	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/treenq/treenq/src/domain"
 )
 
@@ -123,7 +124,6 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		return image, fmt.Errorf("failed to build a docker container: %w", err)
 	}
 
-	// storeRef, err := is.Transport.ParseStoreReference(a.store, "docker://" + image.FullPath())
 	storeRef, err := alltransports.ParseImageName("docker://" + image.FullPath())
 	if err != nil {
 		return image, fmt.Errorf("failed to parse store reference: %w", err)
@@ -147,19 +147,24 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 
 func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeployment) (domain.Image, error) {
 	image := a.Image(deployment.Space.Service.Name, deployment.BuildTag)
-	sysContext, err := a.systemContext()
+
+	storeRef, err := alltransports.ParseImageName("docker://" + image.FullPath())
 	if err != nil {
-		return image, fmt.Errorf("failed to get system context: %w", err)
+		return image, fmt.Errorf("failed to parse store reference: %w", err)
 	}
-	options := buildah.ImportFromImageOptions{
-		Image:         image.FullPath(),
-		SystemContext: sysContext,
-	}
-	_, err = buildah.ImportBuilderFromImage(ctx, a.store, options)
+	systemContext, err := a.systemContext()
 	if err != nil {
-		if errors.Is(err, storage.ErrImageUnknown) {
+		return image, fmt.Errorf("failed to get auth type: %w", err)
+	}
+
+	src, err := storeRef.NewImageSource(ctx, systemContext)
+	if err != nil {
+		var e errcode.Error
+		if errors.As(err, &e) && e.Message == "manifest unknown" {
 			return image, domain.ErrImageNotFound
 		}
+		return image, fmt.Errorf("failed to get iamge source: %w", err)
 	}
+	defer src.Close()
 	return image, nil
 }
