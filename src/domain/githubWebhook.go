@@ -432,9 +432,40 @@ var progress = &ProgressBuf{Bufs: make(map[string]buf)}
 
 func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
 	if deployment.FromDeploymentID != "" {
-		panic("lookup in the docker registry if exists")
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "inspecting an image",
+			Level:   slog.LevelDebug,
+		})
+		image, err := h.docker.Inspect(ctx, deployment)
+		if err != nil {
+			if errors.Is(err, ErrImageNotFound) {
+				progress.Append(deployment.ID, ProgressMessage{
+					Payload: "image not found, build is required",
+					Level:   slog.LevelWarn,
+				})
+				return h.buildFromRepo(ctx, deployment, repo)
+			}
+			progress.Append(deployment.ID, ProgressMessage{
+				Payload: "failed to inspect an iamge",
+				Level:   slog.LevelError,
+			})
+			return AppDeployment{}, &vel.Error{
+				Message: "failed to inspect an image",
+				Err:     err,
+			}
+		}
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "image has been inspected",
+			Level:   slog.LevelInfo,
+		})
+
+		return h.applyImage(ctx, repo.TreenqID, deployment, image)
 	}
 
+	return h.buildFromRepo(ctx, deployment, repo)
+}
+
+func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
 	token := ""
 	if repo.Private {
 		var err error
@@ -575,15 +606,15 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo G
 		Level:   slog.LevelInfo,
 	})
 
+	return h.applyImage(ctx, repo.TreenqID, deployment, image)
+}
+
+func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image) (AppDeployment, *vel.Error) {
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "apply new image",
+		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	progress.Append(deployment.ID, ProgressMessage{
-		Payload: fmt.Sprintf("%+v", image),
-		Level:   slog.LevelDebug,
-	})
-	appKubeDef := h.kube.DefineApp(ctx, repo.TreenqID, appSpace, image)
+	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.Space, image)
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to apply new image" + err.Error(),

@@ -94,16 +94,16 @@ func (a *DockerArtifact) systemContext() (*types.SystemContext, error) {
 	}, nil
 }
 
-func (a *DockerArtifact) Image(args domain.BuildArtifactRequest) domain.Image {
+func (a *DockerArtifact) Image(name, tag string) domain.Image {
 	return domain.Image{
 		Registry:   a.registry,
-		Repository: args.Name,
-		Tag:        args.Tag,
+		Repository: name,
+		Tag:        tag,
 	}
 }
 
 func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest, progress *domain.ProgressBuf) (domain.Image, error) {
-	image := a.Image(args)
+	image := a.Image(args.Name, args.Tag)
 	out := progress.AsWriter(args.DeploymentID, slog.LevelInfo)
 	errOut := progress.AsWriter(args.DeploymentID, slog.LevelError)
 	reportOut := progress.AsWriter(args.DeploymentID, slog.LevelDebug)
@@ -145,6 +145,21 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	return image, nil
 }
 
-func (a *DockerArtifact) Inspect() (domain.Image, error) {
-	return domain.Image{}, domain.ErrImageNotFound
+func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeployment) (domain.Image, error) {
+	image := a.Image(deployment.Space.Service.Name, deployment.BuildTag)
+	sysContext, err := a.systemContext()
+	if err != nil {
+		return image, fmt.Errorf("failed to get system context: %w", err)
+	}
+	options := buildah.ImportFromImageOptions{
+		Image:         image.FullPath(),
+		SystemContext: sysContext,
+	}
+	_, err = buildah.ImportBuilderFromImage(ctx, a.store, options)
+	if err != nil {
+		if errors.Is(err, storage.ErrImageUnknown) {
+			return image, domain.ErrImageNotFound
+		}
+	}
+	return image, nil
 }

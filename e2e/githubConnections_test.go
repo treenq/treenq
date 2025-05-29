@@ -64,7 +64,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NotEmpty(t, treenqInstallationID)
 	assert.Equal(t, client.GetReposResponse{
 		Installation: treenqInstallationID,
-		Repos: []client.Repository{
+		Repos: []client.GithubRepository{
 			{
 				TreenqID: reposResponse.Repos[0].TreenqID,
 				ID:       805585115,
@@ -86,7 +86,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -120,7 +120,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	require.NoError(t, err, "connect branch must succeed")
 	require.Equal(t, client.ConnectBranchResponse{
-		Repo: client.Repository{
+		Repo: client.GithubRepository{
 			TreenqID:       reposResponse.Repos[0].TreenqID,
 			InstallationID: reposResponse.Repos[0].InstallationID,
 			ID:             805585115,
@@ -139,7 +139,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after merge main")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -167,7 +167,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -194,7 +194,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
-		Repo: client.Repository{
+		Repo: client.GithubRepository{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
 			FullName: "treenq/useless",
@@ -206,7 +206,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -226,6 +226,51 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "failed to deploys app")
 
 	// wait for deployment done
+	readProgress(t, ctx, createdDeployment, apiClient, userToken)
+
+	history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, history.History, 1, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
+	assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
+	assert.NotEmpty(t, history.History[0].BuildTag)
+	assert.NotEmpty(t, history.History[0].Sha)
+	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
+	assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+
+	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID:           reposResponse.Repos[0].TreenqID,
+		FromDeploymentID: history.History[0].ID,
+	})
+	require.NotEqual(t, rollbackDeploy.DeploymentID, createdDeployment.DeploymentID, "rollback id must not be the same")
+	require.NotEmpty(t, rollbackDeploy.DeploymentID)
+	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
+	// require.Equal(t, rollbackDeploy.Status, "run")
+	require.NotEmpty(t, rollbackDeploy.CreatedAt)
+	require.NoError(t, err, "failed to deploys app")
+
+	history, err = apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, history.History, 2, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
+	assert.Equal(t, rollbackDeploy.DeploymentID, history.History[0].ID)
+	assert.NotEmpty(t, history.History[0].BuildTag)
+	assert.NotEmpty(t, history.History[0].Sha)
+	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
+	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
+	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+
+	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+}
+
+func readProgress(t *testing.T, ctx context.Context, createdDeployment client.DeployResponse, apiClient *client.Client, userToken string) {
+	t.Helper()
+
+	progressRead := false
 	for range 20 {
 		time.Sleep(time.Second * 2)
 		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
@@ -268,22 +313,9 @@ func TestGithubAppInstallation(t *testing.T) {
 		}
 
 		assert.True(t, hasFinalMessage, "progress build must have a final message")
-
-		history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
-			RepoID: deployment.Deployment.RepoID,
-		})
-		require.Len(t, history.History, 1, "1 item expected in history deployment after first successful")
-		require.NoError(t, err, "no error expected on deployment history")
-		assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
-		assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
-		assert.NotEmpty(t, history.History[0].BuildTag)
-		assert.NotEmpty(t, history.History[0].Sha)
-		assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
-		assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
-		return
-
+		progressRead = true
+		break
 	}
 
-	t.Log("status must be done to this moment")
-	t.FailNow()
+	require.True(t, progressRead, "progress must be read")
 }

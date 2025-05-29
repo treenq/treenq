@@ -105,9 +105,9 @@ type Extractor interface {
 }
 
 type DockerArtifactory interface {
-	Image(args BuildArtifactRequest) Image
+	Image(name, tag string) Image
 	Build(ctx context.Context, args BuildArtifactRequest, progress *ProgressBuf) (Image, error)
-	Inspect() (Image, error)
+	Inspect(ctx context.Context, deploy AppDeployment) (Image, error)
 }
 
 type Kube interface {

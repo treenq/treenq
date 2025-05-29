@@ -124,15 +124,15 @@ func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) erro
 }
 
 type GithubWebhookRequest struct {
-	After               string       `json:"after"`
-	Installation        Installation `json:"installation"`
-	Sender              Sender       `json:"sender"`
-	Action              string       `json:"action"`
-	Repositories        []Repository `json:"repositories"`
-	RepositoriesAdded   []Repository `json:"repositories_added"`
-	RepositoriesRemoved []Repository `json:"repositories_removed"`
-	Ref                 string       `json:"ref"`
-	Repository          Repository   `json:"repository"`
+	After               string             `json:"after"`
+	Installation        Installation       `json:"installation"`
+	Sender              Sender             `json:"sender"`
+	Action              string             `json:"action"`
+	Repositories        []GithubRepository `json:"repositories"`
+	RepositoriesAdded   []GithubRepository `json:"repositories_added"`
+	RepositoriesRemoved []GithubRepository `json:"repositories_removed"`
+	Ref                 string             `json:"ref"`
+	Repository          GithubRepository   `json:"repository"`
 }
 
 type Installation struct {
@@ -150,7 +150,7 @@ type Sender struct {
 	Login string `json:"login"`
 }
 
-type Repository struct {
+type GithubRepository struct {
 	ID             int    `json:"id"`
 	FullName       string `json:"full_name"`
 	Private        bool   `json:"private"`
@@ -289,8 +289,8 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Installation string       `json:"installationID"`
-	Repos        []Repository `json:"repos"`
+	Installation string             `json:"installationID"`
+	Repos        []GithubRepository `json:"repos"`
 }
 
 func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
@@ -404,7 +404,7 @@ type ConnectBranchRequest struct {
 }
 
 type ConnectBranchResponse struct {
-	Repo Repository `json:"repo"`
+	Repo GithubRepository `json:"repo"`
 }
 
 func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, error) {
@@ -443,7 +443,8 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 }
 
 type DeployRequest struct {
-	RepoID string `json:"repoID"`
+	RepoID           string `json:"repoID"`
+	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
 type DeployResponse struct {
@@ -496,15 +497,16 @@ type GetDeploymentResponse struct {
 }
 
 type AppDeployment struct {
-	ID              string    `json:"id"`
-	RepoID          string    `json:"repoID"`
-	Space           Space     `json:"space"`
-	Sha             string    `json:"sha"`
-	BuildTag        string    `json:"buildTag"`
-	UserDisplayName string    `json:"userDisplayName"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	Status          string    `json:"status"`
+	ID               string    `json:"id"`
+	FromDeploymentID string    `json:"fromDeploymentID"`
+	RepoID           string    `json:"repoID"`
+	Space            Space     `json:"space"`
+	Sha              string    `json:"sha"`
+	BuildTag         string    `json:"buildTag"`
+	UserDisplayName  string    `json:"userDisplayName"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	Status           string    `json:"status"`
 }
 
 type Space struct {

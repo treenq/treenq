@@ -30,11 +30,11 @@ func NewDockerArtifactory(
 	}, nil
 }
 
-func (a *DockerArtifact) Image(args domain.BuildArtifactRequest) domain.Image {
+func (a *DockerArtifact) Image(name, tag string) domain.Image {
 	return domain.Image{
 		Registry:   a.registry,
-		Repository: args.Name,
-		Tag:        args.Tag,
+		Repository: name,
+		Tag:        tag,
 	}
 }
 

@@ -153,7 +153,7 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
 		From("deployments").
 		Where(sq.Eq{"repoId": repoID}).
-		OrderBy("createdAt DESC").
+		OrderBy("id DESC").
 		Limit(20).
 		ToSql()
 	if err != nil {
@@ -427,10 +427,10 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 }
 
 func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.GithubRepository, error) {
-	query, args, err := s.sq.Select("r.id", "r.githubId", "r.fullName", "r.private", "r.status", "r.branch").
-		From("installedRepos r").
-		Where(sq.Eq{"r.userId": userID}).
-		OrderBy("r.createdAt ASC").
+	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "status", "branch").
+		From("installedRepos").
+		Where(sq.Eq{"userId": userID}).
+		OrderBy("id ASC").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build GetGithubRepos query: %w", err)
