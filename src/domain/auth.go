@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/rs/xid"
 	"github.com/treenq/treenq/pkg/vel"
 	"github.com/treenq/treenq/pkg/vel/auth"
 )
@@ -30,7 +30,7 @@ func (h *Handler) GithubAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) writeState(w http.ResponseWriter) string {
-	state := uuid.NewString()
+	state := xid.New().String()
 	exp := time.Second * 300
 	expiration := time.Now().Add(exp)
 

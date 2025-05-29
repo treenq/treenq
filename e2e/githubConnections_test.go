@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/rs/xid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
@@ -33,11 +33,11 @@ func TestGithubAppInstallation(t *testing.T) {
 	clearDatabase()
 
 	// create a user and obtain its token
-	user := client.UserInfo{ID: uuid.NewString(), Email: "test@mail.com", DisplayName: "testing"}
+	user := client.UserInfo{ID: xid.New().String(), Email: "test@mail.com", DisplayName: "testing"}
 	userToken, err := createUser(user)
 	require.NoError(t, err, "user must be created")
 
-	anotherUser := client.UserInfo{ID: uuid.NewString(), Email: "test2@mail.com", DisplayName: "testing2"}
+	anotherUser := client.UserInfo{ID: xid.New().String(), Email: "test2@mail.com", DisplayName: "testing2"}
 	anotherToken, err := createUser(anotherUser)
 	require.NoError(t, err, "user must be created")
 

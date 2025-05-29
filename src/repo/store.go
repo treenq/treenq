@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/rs/xid"
+
 	"github.com/jmoiron/sqlx"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/domain"
@@ -56,7 +57,7 @@ func (s *Store) GetOrCreateUser(ctx context.Context, user domain.UserInfo) (doma
 }
 
 func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.UserInfo, error) {
-	id := uuid.NewString()
+	id := xid.New().String()
 	query, args, err := s.sq.Insert("users").
 		Columns("id", "email", "displayName").
 		Values(id, user.Email, user.DisplayName).
@@ -73,7 +74,7 @@ func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.Us
 }
 
 func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (domain.AppDeployment, error) {
-	def.ID = uuid.NewString()
+	def.ID = xid.New().String()
 	def.CreatedAt = now()
 	appPayload, err := json.Marshal(def.Space)
 	if err != nil {
@@ -288,7 +289,7 @@ func (s *Store) insertInstalledRepos(
 		Columns("id", "githubId", "fullName", "private", "branch", "installationId", "userId", "status", "createdAt")
 
 	for _, repo := range repos {
-		id := uuid.NewString()
+		id := xid.New().String()
 		repoQuery = repoQuery.Values(
 			id,
 			repo.ID,
@@ -408,7 +409,7 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 	}
 
 	// No existing installation found, create new one
-	installationID = uuid.NewString()
+	installationID = xid.New().String()
 
 	query, args, err = s.sq.Insert("installations").
 		Columns("id", "userId", "githubId", "createdAt").
