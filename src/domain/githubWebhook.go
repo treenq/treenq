@@ -133,6 +133,8 @@ type GithubWebhookResponse struct{}
 type GitRepo struct {
 	Dir string
 	Sha string
+	// Message defines a commit message
+	Message string
 }
 
 type AppDeployment struct {
@@ -146,6 +148,8 @@ type AppDeployment struct {
 	Space tqsdk.Space `json:"space"`
 	// Sha is a commit sha a user requested to deploy or given from a github webhook
 	Sha string `json:"sha"`
+	// CommitMessage defines a commit message
+	CommitMessage string `json:"commitMessage"`
 	// BuildTag is a docker build image or an image created using buildpacks
 	BuildTag string `json:"buildTag"`
 	// UserDisplayName is a user loging, comes from a user token or github hook Sender
@@ -261,6 +265,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 			}
 		}
 		deployment.Sha = fromDeployment.Sha
+		deployment.CommitMessage = fromDeployment.CommitMessage
 		deployment.BuildTag = fromDeployment.BuildTag
 		deployment.Space = fromDeployment.Space
 	}
@@ -582,6 +587,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 	deployment.Space = appSpace
 	deployment.BuildTag = image.Tag
 	deployment.Sha = gitRepo.Sha
+	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "updating deployment state",
 		Level:   slog.LevelDebug,

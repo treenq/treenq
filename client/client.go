@@ -502,6 +502,7 @@ type AppDeployment struct {
 	RepoID           string    `json:"repoID"`
 	Space            Space     `json:"space"`
 	Sha              string    `json:"sha"`
+	CommitMessage    string    `json:"commitMessage"`
 	BuildTag         string    `json:"buildTag"`
 	UserDisplayName  string    `json:"userDisplayName"`
 	CreatedAt        time.Time `json:"createdAt"`

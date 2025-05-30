@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS deployments (
 
     space jsonb NOT NULL,
     sha char(64) NOT NULL,
+    commitMessage text NOT NULL,
     buildTag varchar(80),
     userDisplayName varchar(255) NOT NULL,
     status varchar(24) NOT NULL,

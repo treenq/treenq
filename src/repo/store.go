@@ -82,8 +82,8 @@ func (s *Store) SaveDeployment(ctx context.Context, def domain.AppDeployment) (d
 	}
 
 	query, args, err := s.sq.Insert("deployments").
-		Columns("id", "fromDeploymentId", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
-		Values(def.ID, def.FromDeploymentID, def.RepoID, string(appPayload), def.Sha, def.BuildTag, def.UserDisplayName, def.Status, def.CreatedAt).
+		Columns("id", "fromDeploymentId", "repoId", "space", "sha", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
+		Values(def.ID, def.FromDeploymentID, def.RepoID, string(appPayload), def.Sha, def.CommitMessage, def.BuildTag, def.UserDisplayName, def.Status, def.CreatedAt).
 		ToSql()
 	if err != nil {
 		return def, fmt.Errorf("failed to build SaveDeployment query: %w", err)
@@ -105,6 +105,7 @@ func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeplo
 	query, args, err := s.sq.Update("deployments").
 		Set("space", appPayload).
 		Set("sha", deployment.Sha).
+		Set("commitMessage", deployment.CommitMessage).
 		Set("buildTag", deployment.BuildTag).
 		Set("status", deployment.Status).
 		Where(sq.Eq{"id": deployment.ID}).
@@ -121,7 +122,7 @@ func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeplo
 }
 
 func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
+	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
 		From("deployments").
 		Where(sq.Eq{"id": deploymentID}).
 		ToSql()
@@ -132,7 +133,7 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 	var dep domain.AppDeployment
 	var spacePayload string
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt,
+		&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dep, domain.ErrDeploymentNotFound
@@ -150,7 +151,7 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 }
 
 func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "buildTag", "userDisplayName", "status", "createdAt").
+	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
 		From("deployments").
 		Where(sq.Eq{"repoId": repoID}).
 		OrderBy("id DESC").
@@ -170,7 +171,7 @@ func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]doma
 	for rows.Next() {
 		var dep domain.AppDeployment
 		var spacePayload string
-		if err := rows.Scan(&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt); err != nil {
+		if err := rows.Scan(&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan GetDeploymentHistory row: %w", err)
 		}
 

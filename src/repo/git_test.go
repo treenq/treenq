@@ -96,6 +96,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, latestSHA, checkoutRepo.Sha)
+	assert.NotEmpty(t, checkoutRepo.Message, "expected not empty commit message")
 
 	// README.md should exist (from initial commit)
 	readmePath = filepath.Join(checkoutRepo.Dir, "README.md")

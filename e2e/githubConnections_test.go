@@ -237,6 +237,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
 	assert.NotEmpty(t, history.History[0].BuildTag)
 	assert.NotEmpty(t, history.History[0].Sha)
+	assert.NotEmpty(t, history.History[0].CommitMessage)
 	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
 	assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
 
@@ -260,6 +261,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.Equal(t, rollbackDeploy.DeploymentID, history.History[0].ID)
 	assert.NotEmpty(t, history.History[0].BuildTag)
 	assert.NotEmpty(t, history.History[0].Sha)
+	assert.NotEmpty(t, history.History[0].CommitMessage)
 	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
 	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
 	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
