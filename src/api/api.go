@@ -19,7 +19,7 @@ import (
 	"github.com/treenq/treenq/src/services/cdk"
 )
 
-func New(conf Config) (http.Handler, error) {
+func New(conf Config, progressBuf *domain.ProgressBuf) (http.Handler, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func New(conf Config) (http.Handler, error) {
 	authJwtIssuer := auth.NewJwtIssuer("treenq-api", []byte(conf.AuthPrivateKey), []byte(conf.AuthPublicKey), conf.AuthTtl)
 	githubClient := repo.NewGithubClient(githubJwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
-	gitClient := repo.NewGit(gitDir)
+	gitClient := repo.NewGit(gitDir, progressBuf)
 	docker, err := artifacts.NewDockerArtifactory(
 		conf.DockerRegistry,
 		conf.RegistryTLSVerify,

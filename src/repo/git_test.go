@@ -39,7 +39,8 @@ func TestClone(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	reposDir := filepath.Join(wd, "repos")
-	gitComponent := NewGit(reposDir)
+	progressBuf := domain.NewProgressBuf()
+	gitComponent := NewGit(reposDir, progressBuf)
 
 	repo := TestingRepository{
 		ID:   "1",
