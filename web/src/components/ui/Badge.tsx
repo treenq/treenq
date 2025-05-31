@@ -25,24 +25,12 @@ const badgeVariants = cva(
   },
 )
 
-type BadgeProps = ComponentProps<'div'> &
-  VariantProps<typeof badgeVariants> & {
-    round?: boolean
-  }
+type BadgeProps = ComponentProps<'div'> & VariantProps<typeof badgeVariants>
 
 const Badge: Component<BadgeProps> = (props) => {
-  const [local, others] = splitProps(props, ['class', 'variant', 'round'])
+  const [local, others] = splitProps(props, ['class', 'variant'])
 
-  return (
-    <div
-      class={cn(
-        badgeVariants({ variant: local.variant }),
-        local.round && 'rounded-full',
-        local.class,
-      )}
-      {...others}
-    />
-  )
+  return <div class={cn(badgeVariants({ variant: local.variant }), local.class)} {...others} />
 }
 
 export { Badge, badgeVariants }
