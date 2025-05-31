@@ -8,7 +8,8 @@ import (
 )
 
 type DeployRequest struct {
-	RepoID string `json:"repoID"`
+	RepoID           string `json:"repoID"`
+	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
 type DeployResponse struct {
@@ -35,6 +36,7 @@ func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (DeployResponse
 		ctx,
 		profile.UserInfo.DisplayName,
 		repo,
+		req.FromDeploymentID,
 	)
 	if apiErr != nil {
 		return DeployResponse{}, apiErr

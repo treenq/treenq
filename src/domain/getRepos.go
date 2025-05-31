@@ -8,8 +8,8 @@ import (
 )
 
 type GetReposResponse struct {
-	Installation string       `json:"installationID"`
-	Repos        []Repository `json:"repos"`
+	Installation string             `json:"installationID"`
+	Repos        []GithubRepository `json:"repos"`
 }
 
 func (h *Handler) GetRepos(ctx context.Context, _ struct{}) (GetReposResponse, *vel.Error) {

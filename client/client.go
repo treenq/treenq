@@ -124,15 +124,15 @@ func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) erro
 }
 
 type GithubWebhookRequest struct {
-	After               string       `json:"after"`
-	Installation        Installation `json:"installation"`
-	Sender              Sender       `json:"sender"`
-	Action              string       `json:"action"`
-	Repositories        []Repository `json:"repositories"`
-	RepositoriesAdded   []Repository `json:"repositories_added"`
-	RepositoriesRemoved []Repository `json:"repositories_removed"`
-	Ref                 string       `json:"ref"`
-	Repository          Repository   `json:"repository"`
+	After               string             `json:"after"`
+	Installation        Installation       `json:"installation"`
+	Sender              Sender             `json:"sender"`
+	Action              string             `json:"action"`
+	Repositories        []GithubRepository `json:"repositories"`
+	RepositoriesAdded   []GithubRepository `json:"repositories_added"`
+	RepositoriesRemoved []GithubRepository `json:"repositories_removed"`
+	Ref                 string             `json:"ref"`
+	Repository          GithubRepository   `json:"repository"`
 }
 
 type Installation struct {
@@ -150,7 +150,7 @@ type Sender struct {
 	Login string `json:"login"`
 }
 
-type Repository struct {
+type GithubRepository struct {
 	ID             int    `json:"id"`
 	FullName       string `json:"full_name"`
 	Private        bool   `json:"private"`
@@ -289,8 +289,8 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Installation string       `json:"installationID"`
-	Repos        []Repository `json:"repos"`
+	Installation string             `json:"installationID"`
+	Repos        []GithubRepository `json:"repos"`
 }
 
 func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
@@ -404,7 +404,7 @@ type ConnectBranchRequest struct {
 }
 
 type ConnectBranchResponse struct {
-	Repo Repository `json:"repo"`
+	Repo GithubRepository `json:"repo"`
 }
 
 func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, error) {
@@ -443,7 +443,8 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 }
 
 type DeployRequest struct {
-	RepoID string `json:"repoID"`
+	RepoID           string `json:"repoID"`
+	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
 type DeployResponse struct {
@@ -496,15 +497,17 @@ type GetDeploymentResponse struct {
 }
 
 type AppDeployment struct {
-	ID              string    `json:"id"`
-	RepoID          string    `json:"repoID"`
-	Space           Space     `json:"space"`
-	Sha             string    `json:"sha"`
-	BuildTag        string    `json:"buildTag"`
-	UserDisplayName string    `json:"userDisplayName"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	Status          string    `json:"status"`
+	ID               string    `json:"id"`
+	FromDeploymentID string    `json:"fromDeploymentID"`
+	RepoID           string    `json:"repoID"`
+	Space            Space     `json:"space"`
+	Sha              string    `json:"sha"`
+	CommitMessage    string    `json:"commitMessage"`
+	BuildTag         string    `json:"buildTag"`
+	UserDisplayName  string    `json:"userDisplayName"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	Status           string    `json:"status"`
 }
 
 type Space struct {
@@ -610,6 +613,49 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return res, fmt.Errorf("failed to decode getBuildProgress response: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetDeploymentHistoryRequest struct {
+	RepoID string
+}
+
+type GetDeploymentHistoryResponse struct {
+	History []AppDeployment
+}
+
+func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, error) {
+	var res GetDeploymentHistoryResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeploymentHistory", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getDeploymentHistory: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getDeploymentHistory response: %w", err)
 	}
 
 	return res, nil

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/rs/xid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
@@ -14,7 +14,7 @@ import (
 func TestGetProfile(t *testing.T) {
 	clearDatabase()
 
-	user := client.UserInfo{ID: uuid.NewString(), Email: "test@gmail.com", DisplayName: "testing"}
+	user := client.UserInfo{ID: xid.New().String(), Email: "test@gmail.com", DisplayName: "testing"}
 	userToken, err := createUser(user)
 	require.NoError(t, err)
 

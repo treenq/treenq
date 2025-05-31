@@ -5,11 +5,8 @@
   "tabWidth": 2,
   "printWidth": 100,
   "tailwindStylesheet": "./src/app.css",
-  "plugins": [
-    "prettier-plugin-organize-imports",
-    "prettier-plugin-tailwindcss"
-  ],
+  "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-tailwindcss"],
   "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }],
-  "organizeImportsSkipDestructiveCodeActions": true
+  "organizeImportsSkipDestructiveCodeActions": true,
+  "endOfLine": "lf"
 }
-

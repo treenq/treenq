@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -18,8 +19,11 @@ import (
 )
 
 var (
-	ErrNoConfigFileFound        = errors.New("no config file found")
-	ErrDeployStatusMustBeString = errors.New("deploy status must be string")
+	ErrNoConfigFileFound                = errors.New("no config file found")
+	ErrDeployStatusMustBeString         = errors.New("deploy status must be string")
+	ErrImageNotFound                    = errors.New("image not found")
+	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
+	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha are mutually exclusive")
 )
 
 type GithubWebhookRequest struct {
@@ -35,8 +39,8 @@ type GithubWebhookRequest struct {
 	RepositoriesRemoved []InstalledRepository `json:"repositories_removed"`
 
 	// commits only
-	Ref        string     `json:"ref"`
-	Repository Repository `json:"repository"`
+	Ref        string           `json:"ref"`
+	Repository GithubRepository `json:"repository"`
 }
 
 type Sender struct {
@@ -54,9 +58,14 @@ type InstallationAccount struct {
 	Login string `json:"login"`
 }
 
-type InstalledRepository = Repository
+type InstalledRepository = GithubRepository
 
-type Repository struct {
+type Repository interface {
+	CloneURL() string
+	Location(root string) string
+}
+
+type GithubRepository struct {
 	// Fields come from github api
 
 	ID int `json:"id"`
@@ -79,8 +88,14 @@ type Repository struct {
 	Status string `json:"status"`
 }
 
-func (r Repository) CloneUrl() string {
+// CloneUrl implements gives a provider's clone url
+func (r GithubRepository) CloneURL() string {
 	return fmt.Sprintf("https://github.com/%s.git", r.FullName)
+}
+
+// Location gives a defined location where the repository is placed on a disk
+func (r GithubRepository) Location(root string) string {
+	return filepath.Join(root, strconv.Itoa(r.InstallationID), r.TreenqID)
 }
 
 const (
@@ -118,16 +133,23 @@ type GithubWebhookResponse struct{}
 type GitRepo struct {
 	Dir string
 	Sha string
+	// Message defines a commit message
+	Message string
 }
 
 type AppDeployment struct {
 	ID string `json:"id"`
+	// FromDeploymentID defines a deployment from which it was inherited,
+	// used to specify rollbacks
+	FromDeploymentID string `json:"fromDeploymentID"`
 	// RepoID is a reference to a repository id
 	RepoID string `json:"repoID"`
 	// Space is a treenq space definition
 	Space tqsdk.Space `json:"space"`
 	// Sha is a commit sha a user requested to deploy or given from a github webhook
 	Sha string `json:"sha"`
+	// CommitMessage defines a commit message
+	CommitMessage string `json:"commitMessage"`
 	// BuildTag is a docker build image or an image created using buildpacks
 	BuildTag string `json:"buildTag"`
 	// UserDisplayName is a user loging, comes from a user token or github hook Sender
@@ -141,20 +163,10 @@ type AppDeployment struct {
 
 type DeployStatus string
 
-func (s *DeployStatus) Scan(src any) error {
-	str, ok := src.(string)
-	if !ok {
-		return ErrDeployStatusMustBeString
-	}
-
-	*s = DeployStatus(str)
-	return nil
-}
-
 const (
-	DeployStatusInit   DeployStatus = "init"
-	DeployStatusDone   DeployStatus = "done"
-	DeployStatusFailed DeployStatus = "failed"
+	DeployStatusRunning DeployStatus = "run"
+	DeployStatusDone    DeployStatus = "done"
+	DeployStatusFailed  DeployStatus = "failed"
 )
 
 func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (GithubWebhookResponse, *vel.Error) {
@@ -215,7 +227,7 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	return GithubWebhookResponse{}, nil
 }
 
-func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo Repository) (AppDeployment, *vel.Error) {
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo GithubRepository, fromDeploymentID string) (AppDeployment, *vel.Error) {
 	// validate the repo must run
 	if repo.Branch == "" {
 		return AppDeployment{}, &vel.Error{
@@ -232,10 +244,30 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 
 	// Create initial deployment with "init" status
 	deployment := AppDeployment{
-		RepoID:          repo.TreenqID,
-		UserDisplayName: userDisplayName,
-		Status:          DeployStatusInit,
-		Space:           tqsdk.Space{},
+		RepoID:           repo.TreenqID,
+		UserDisplayName:  userDisplayName,
+		Status:           DeployStatusRunning,
+		Space:            tqsdk.Space{},
+		FromDeploymentID: fromDeploymentID,
+	}
+
+	if fromDeploymentID != "" {
+		fromDeployment, err := h.db.GetDeployment(ctx, fromDeploymentID)
+		if err != nil {
+			if errors.Is(err, ErrDeploymentNotFound) {
+				return AppDeployment{}, &vel.Error{
+					Code: "DEPLOYMENT_NOT_FOUND",
+				}
+			}
+			return AppDeployment{}, &vel.Error{
+				Message: "failed to get deployment to rollback to",
+				Err:     err,
+			}
+		}
+		deployment.Sha = fromDeployment.Sha
+		deployment.CommitMessage = fromDeployment.CommitMessage
+		deployment.BuildTag = fromDeployment.BuildTag
+		deployment.Space = fromDeployment.Space
 	}
 
 	deployment, err := h.db.SaveDeployment(ctx, deployment)
@@ -247,12 +279,16 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 	}
 
 	go func() {
+		// prepare local goroutine scope
+		deployment := deployment
 		ctx := context.WithoutCancel(ctx)
 		ctx, cancel := context.WithTimeout(ctx, time.Second*300)
 		defer cancel()
-		// Start the build process
-		if err := h.buildApp(ctx, deployment, repo); err != nil {
-			// Update deployment status to failed
+
+		// start the build process
+		deployment, err := h.buildApp(ctx, deployment, repo)
+		if err != nil {
+			// update deployment status to failed
 			deployment.Status = DeployStatusFailed
 			if updateErr := h.db.UpdateDeployment(ctx, deployment); updateErr != nil {
 				// TODO: log error
@@ -261,7 +297,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo R
 			log.Println("[ERROR] failed to build app", err)
 		}
 
-		// Update deployment status to done
+		// update deployment status to done
 		deployment.Status = DeployStatusDone
 		if err := h.db.UpdateDeployment(ctx, deployment); err != nil {
 			// TODO: log error
@@ -399,7 +435,42 @@ func (w *progressWriter) Write(buf []byte) (int, error) {
 
 var progress = &ProgressBuf{Bufs: make(map[string]buf)}
 
-func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo Repository) *vel.Error {
+func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
+	if deployment.FromDeploymentID != "" {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "inspecting an image",
+			Level:   slog.LevelDebug,
+		})
+		image, err := h.docker.Inspect(ctx, deployment)
+		if err != nil {
+			if errors.Is(err, ErrImageNotFound) {
+				progress.Append(deployment.ID, ProgressMessage{
+					Payload: "image not found, build is required",
+					Level:   slog.LevelWarn,
+				})
+				return h.buildFromRepo(ctx, deployment, repo)
+			}
+			progress.Append(deployment.ID, ProgressMessage{
+				Payload: "failed to inspect an iamge",
+				Level:   slog.LevelError,
+			})
+			return AppDeployment{}, &vel.Error{
+				Message: "failed to inspect an image",
+				Err:     err,
+			}
+		}
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "image has been inspected",
+			Level:   slog.LevelInfo,
+		})
+
+		return h.applyImage(ctx, repo.TreenqID, deployment, image)
+	}
+
+	return h.buildFromRepo(ctx, deployment, repo)
+}
+
+func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
 	token := ""
 	if repo.Private {
 		var err error
@@ -413,7 +484,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 				Payload: "failed to issue a github access token: " + err.Error(),
 				Level:   slog.LevelError,
 			})
-			return &vel.Error{
+			return AppDeployment{}, &vel.Error{
 				Message: "failed to issue github access token",
 				Err:     err,
 			}
@@ -428,13 +499,13 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token)
+	gitRepo, err := h.git.Clone(repo, token, repo.Branch, deployment.Sha)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to clone git repo",
 			Err:     err,
 		}
@@ -450,27 +521,36 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Payload: "extracting treenq config",
 		Level:   slog.LevelDebug,
 	})
-	appSpace, err := h.extractor.ExtractConfig(gitRepo.Dir)
-	if err != nil {
+	var appSpace tqsdk.Space
+	if deployment.Space.Key != "" {
+		appSpace = deployment.Space
 		progress.Append(deployment.ID, ProgressMessage{
-			Payload: "failed to extract treenq config: " + err.Error(),
-			Level:   slog.LevelError,
+			Payload: "reusing tq config from referenced deployment",
+			Level:   slog.LevelInfo,
 		})
-		if errors.Is(err, ErrNoConfigFileFound) {
-			return &vel.Error{
+	} else {
+		appSpace, err = h.extractor.ExtractConfig(gitRepo.Dir)
+		if err != nil {
+			progress.Append(deployment.ID, ProgressMessage{
+				Payload: "failed to extract treenq config: " + err.Error(),
+				Level:   slog.LevelError,
+			})
+			if errors.Is(err, ErrNoConfigFileFound) {
+				return AppDeployment{}, &vel.Error{
+					Message: "failed to extract config",
+					Code:    "NO_TQ_CONFIG_FOUND",
+				}
+			}
+			return AppDeployment{}, &vel.Error{
 				Message: "failed to extract config",
-				Code:    "NO_TQ_CONFIG_FOUND",
+				Err:     err,
 			}
 		}
-		return &vel.Error{
-			Message: "failed to extract config",
-			Err:     err,
-		}
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "extracted treenq config",
+			Level:   slog.LevelInfo,
+		})
 	}
-	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "extracted treenq config",
-		Level:   slog.LevelInfo,
-	})
 
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
 	buildRequest := BuildArtifactRequest{
@@ -494,7 +574,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to build image: " + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to build an image",
 			Err:     err,
 		}
@@ -507,6 +587,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 	deployment.Space = appSpace
 	deployment.BuildTag = image.Tag
 	deployment.Sha = gitRepo.Sha
+	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "updating deployment state",
 		Level:   slog.LevelDebug,
@@ -521,7 +602,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 			Payload: "failed to update deployment state" + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to save deployment",
 			Err:     err,
 		}
@@ -531,21 +612,21 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Level:   slog.LevelInfo,
 	})
 
+	return h.applyImage(ctx, repo.TreenqID, deployment, image)
+}
+
+func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image) (AppDeployment, *vel.Error) {
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "apply new image",
+		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	progress.Append(deployment.ID, ProgressMessage{
-		Payload: fmt.Sprintf("%+v", image),
-		Level:   slog.LevelDebug,
-	})
-	appKubeDef := h.kube.DefineApp(ctx, repo.TreenqID, appSpace, image)
+	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.Space, image)
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to apply new image" + err.Error(),
 			Level:   slog.LevelError,
 		})
-		return &vel.Error{
+		return AppDeployment{}, &vel.Error{
 			Message: "failed to apply kube definition",
 			Err:     err,
 		}
@@ -556,5 +637,5 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Final:   true,
 	})
 
-	return nil
+	return deployment, nil
 }
