@@ -1,7 +1,7 @@
+import { cn } from '@/components/ui/utils'
 import { type BuildProgressMessage } from '@/services/client'
 import { cva } from 'class-variance-authority'
 import { For, createEffect, onCleanup } from 'solid-js'
-import { cn } from './utils'
 
 const messageVariants = cva('mx-1', {
   variants: {
@@ -33,6 +33,7 @@ export default function Console(props: PropsConsole) {
   }
 
   createEffect(() => {
+    //TODO: make it onMount, then autoscroll down when the last line is visible
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     props.logs.length
     scrollToBottom()

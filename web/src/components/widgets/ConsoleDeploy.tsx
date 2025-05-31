@@ -1,12 +1,17 @@
-import { BuildProgressMessage, GetBuildProgressMessage, httpClient } from '@/services/client'
+import { Badge, badgeVariants } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
+import Console from '@/components/ui/Console'
+import {
+  BuildProgressMessage,
+  DeployResponse,
+  GetBuildProgressMessage,
+  httpClient,
+} from '@/services/client'
 import { userStore } from '@/store/userStore'
 import { useLocation } from '@solidjs/router'
 import { VariantProps } from 'class-variance-authority'
 import { createSignal } from 'solid-js'
-import { Badge, badgeVariants } from '../ui/Badge'
-import { Button } from '../ui/Button'
-import { Card, CardDescription, CardTitle } from '../ui/Card'
-import Console from '../ui/Console'
 
 const MAX_LINES = 100
 
@@ -16,11 +21,9 @@ const STATUS_DEPLOYMENT = {
   done: 'success',
 }
 interface DeploymentState {
-  deployment: {
-    deploymentID: string
-    status: 'run' | 'failed' | 'done'
-  }
+  deployment: DeployResponse
 }
+
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 export default function ConsoleDeploy() {
   const [isExpanded, setIsExpanded] = createSignal(false)
@@ -56,24 +59,24 @@ export default function ConsoleDeploy() {
       <div class="border-b-border mb-3 grid grid-cols-4 justify-between border-b border-solid pb-3">
         <div>
           <CardDescription>Duration</CardDescription>
-          <CardDescription class="mt-0 text-white">5m 0s</CardDescription>
+          <CardDescription class="mt-0">5m 0s</CardDescription>
         </div>
         <div>
           <CardDescription>Branch</CardDescription>
-          <CardDescription class="mt-0 text-white">Main</CardDescription>
+          <CardDescription class="mt-0">Main</CardDescription>
         </div>
         <div>
           <CardDescription>Main</CardDescription>
-          <CardDescription class="mt-0 text-white">a1b2c3d</CardDescription>
+          <CardDescription class="mt-0">a1b2c3d</CardDescription>
         </div>
         <div>
           <CardDescription>Triggered by</CardDescription>
-          <CardDescription class="mt-0 text-white">{userName}</CardDescription>
+          <CardDescription class="mt-0">{userName}</CardDescription>
         </div>
       </div>
       <div class="mb-3 text-sm">
         <CardDescription>Commit message</CardDescription>
-        <CardDescription class="mt-0 text-white">
+        <CardDescription class="mt-0">
           feat: Add new authentication flow and improve error handling
         </CardDescription>
       </div>

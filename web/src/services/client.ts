@@ -61,8 +61,15 @@ export type DeployRequest = {
 
 export type DeployResponse = {
   deploymentID: string
-  status: string
+  fromDeploymentID: string
+  repoID: string
+  sha: string
+  commitMessage: string
+  buildTag: string
+  userDisplayName: string
+  status: 'run' | 'failed' | 'done'
   createdAt: string
+  updatedAt: string
 }
 
 export type GetBuildProgressMessage = {
@@ -178,13 +185,14 @@ class HttpClient {
     const eventSource = new EventSource(url)
 
     eventSource.addEventListener('message', (event) => {
-      callback(JSON.parse(event.data))
-    })
+      const data: GetBuildProgressMessage = JSON.parse(event.data)
+      callback(data)
 
-    eventSource.addEventListener('leave', (event) => {
-      console.log(`${event.data} вышел`)
+      if (data.message.final) {
+        eventSource.close()
+        console.log('FINISH Event Source, listenProgress')
+      }
     })
-    // eventSource.close()
   }
 }
 

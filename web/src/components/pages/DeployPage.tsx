@@ -1,7 +1,7 @@
 import { DeployResponse } from '@/services/client'
 import { useLocation } from '@solidjs/router'
 
-import ConsoleDeploy from '../widgets/consoleDeploy'
+import ConsoleDeploy from '@/components/widgets/ConsoleDeploy'
 
 export default function DeploymentDetailsPage() {
   const location = useLocation()
