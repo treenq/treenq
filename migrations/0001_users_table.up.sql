@@ -43,3 +43,11 @@ CREATE TABLE IF NOT EXISTS deployments (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+CREATE TABLE secrets (
+    repoId CHAR(20) NOT NULL REFERENCES installedRepos(id),
+    key varchar(64) NOT NULL,
+    userDisplayName varchar(255) NOT NULL,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (repoId, key)
+);
