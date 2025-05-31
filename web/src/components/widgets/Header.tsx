@@ -26,7 +26,6 @@ export function Header() {
           </Show>
         </div>
       </div>
-      <hr />
     </header>
   )
 }

@@ -25,6 +25,7 @@ interface DeploymentState {
 }
 
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
+
 export default function ConsoleDeploy() {
   const [isExpanded, setIsExpanded] = createSignal(false)
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
@@ -50,7 +51,6 @@ export default function ConsoleDeploy() {
       <div class="mb-3 flex items-center gap-2">
         <CardTitle>Logs</CardTitle>
         <Badge
-          round={true}
           variant={STATUS_DEPLOYMENT[location.state?.deployment?.status || 'run'] as BadgeVariant}
         >
           Running

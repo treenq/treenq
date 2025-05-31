@@ -13,8 +13,10 @@ export default function DeploymentDetailsPage() {
 
   return (
     <div>
-      <h1>Deployment Triggered</h1>
-      <ConsoleDeploy />
+      <h1 class="px-8 py-4">Deployment Triggered</h1>
+      <div class="px-8">
+        <ConsoleDeploy />
+      </div>
     </div>
   )
 }
