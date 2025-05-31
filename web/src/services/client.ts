@@ -65,6 +65,19 @@ export type DeployResponse = {
   createdAt: string
 }
 
+export type GetBuildProgressMessage = {
+  message: BuildProgressMessage
+}
+
+export type TLevelMessage = 'INFO' | 'DEBUG' | 'ERROR'
+
+export type BuildProgressMessage = {
+  payload: string
+  level: TLevelMessage
+  final: boolean
+  timestamp: string
+}
+
 class HttpClient {
   constructor(
     private baseUrl: string,
@@ -157,6 +170,21 @@ class HttpClient {
 
   async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
     return await this.post('deploy', req)
+  }
+
+  listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
+    const url = this.buildUrl('getBuildProgress', { deploymentID })
+
+    const eventSource = new EventSource(url)
+
+    eventSource.addEventListener('message', (event) => {
+      callback(JSON.parse(event.data))
+    })
+
+    eventSource.addEventListener('leave', (event) => {
+      console.log(`${event.data} вышел`)
+    })
+    // eventSource.close()
   }
 }
 

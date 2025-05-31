@@ -1,6 +1,7 @@
 import { DeployResponse } from '@/services/client'
 import { useLocation } from '@solidjs/router'
-import { Show } from 'solid-js'
+
+import ConsoleDeploy from '../widgets/consoleDeploy'
 
 export default function DeploymentDetailsPage() {
   const location = useLocation()
@@ -13,27 +14,7 @@ export default function DeploymentDetailsPage() {
   return (
     <div>
       <h1>Deployment Triggered</h1>
-      <Show
-        when={deploy}
-        fallback={<p>Deployment details not available or state not passed correctly.</p>}
-      >
-        {(d) => (
-          <div>
-            <p>
-              <strong>Deployment ID:</strong> {d().deploymentID}
-            </p>
-            <p>
-              <strong>Status:</strong> {d().status}
-            </p>
-            <p>
-              <strong>Created At:</strong> {d().createdAt}
-            </p>
-            <p>
-              <em>This page displays details for the deployment just initiated.</em>
-            </p>
-          </div>
-        )}
-      </Show>
+      <ConsoleDeploy />
     </div>
   )
 }
