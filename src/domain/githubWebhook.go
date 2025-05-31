@@ -24,6 +24,7 @@ var (
 	ErrImageNotFound                    = errors.New("image not found")
 	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
 	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha are mutually exclusive")
+	ErrSecretNotFound                   = errors.New("secret not found")
 )
 
 type GithubWebhookRequest struct {

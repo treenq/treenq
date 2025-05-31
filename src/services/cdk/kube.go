@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -43,8 +44,16 @@ func (k *Kube) DefineApp(ctx context.Context, id string, app tqsdk.Space, image 
 	return *out
 }
 
+func ns(space, repoID string) string {
+	return space + "-" + repoID
+}
+
+func secretName(repoID, key string) string {
+	return repoID + "-" + key
+}
+
 func (k *Kube) newAppChart(scope constructs.Construct, id string, app tqsdk.Space, image domain.Image) []cdk8s.Chart {
-	ns := jsii.String(app.Key + "-" + id)
+	ns := jsii.String(ns(app.Key, id))
 	chart := cdk8s.NewChart(scope, jsii.String(app.Key), &cdk8s.ChartProps{
 		Namespace: ns,
 	})
@@ -202,4 +211,34 @@ func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {
 	}
 
 	return nil
+}
+
+var (
+	secretMock = map[string]map[string]string{}
+	secretMx   sync.RWMutex
+)
+
+func (k *Kube) StoreSecret(ctx context.Context, rawConfig string, repoID, key, value string) error {
+	secretMx.Lock()
+	defer secretMx.Unlock()
+	secrets := secretMock[repoID]
+	if secrets == nil {
+		secrets = make(map[string]string)
+	}
+
+	secrets[key] = value
+	secretMock[repoID] = secrets
+	return nil
+}
+
+func (k *Kube) GetSecret(ctx context.Context, rawConfig string, repoID, key string) (string, error) {
+	secretMx.RLock()
+	defer secretMx.RUnlock()
+
+	secrets := secretMock[repoID]
+	if secrets == nil {
+		return "", domain.ErrSecretNotFound
+	}
+	val := secrets[key]
+	return val, nil
 }
