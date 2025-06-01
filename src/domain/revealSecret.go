@@ -20,7 +20,7 @@ func (h *Handler) RevealSecrets(ctx context.Context, req RevealSecretRequest) (R
 	if rpcErr != nil {
 		return RevealSecretResponse{}, rpcErr
 	}
-	exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, req.RepoID, profile.UserInfo.DisplayName)
+	exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, req.Key, profile.UserInfo.DisplayName)
 	if err != nil {
 		return RevealSecretResponse{}, &vel.Error{
 			Message: "failed to lookup a secret key",
@@ -29,7 +29,7 @@ func (h *Handler) RevealSecrets(ctx context.Context, req RevealSecretRequest) (R
 	}
 	if !exists {
 		return RevealSecretResponse{}, &vel.Error{
-			Code: "SECRET_DOESN_EXISTS",
+			Code: "SECRET_DOESNT_EXIST",
 		}
 	}
 

@@ -561,7 +561,7 @@ func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, userDisplay
 	query, args, err := s.sq.Select("key").
 		From("secrets").
 		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName}).
-		OrderBy("created_at ASC").
+		OrderBy("createdAt ASC").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build GetRepositorySecretKeys query: %w", err)

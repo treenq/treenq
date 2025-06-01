@@ -660,3 +660,124 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 
 	return res, nil
 }
+
+type SetSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+}
+
+func (c *Client) SetSecret(ctx context.Context, req SetSecretRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/setSecret", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call setSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type GetSecretsRequest struct {
+	RepoID string `json:"repoID"`
+}
+
+type GetSecretsResponse struct {
+	Keys []string `json:"keys"`
+}
+
+func (c *Client) GetSecrets(ctx context.Context, req GetSecretsRequest) (GetSecretsResponse, error) {
+	var res GetSecretsResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getSecrets", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getSecrets: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getSecrets response: %w", err)
+	}
+
+	return res, nil
+}
+
+type RevealSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+}
+
+type RevealSecretResponse struct {
+	Value string `json:"value"`
+}
+
+func (c *Client) RevealSecrets(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, error) {
+	var res RevealSecretResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/revealSecrets", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call revealSecrets: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode revealSecrets response: %w", err)
+	}
+
+	return res, nil
+}
