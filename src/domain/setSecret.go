@@ -18,7 +18,7 @@ func (h *Handler) SetSecret(ctx context.Context, req SetSecretRequest) (struct{}
 		return struct{}{}, rpcErr
 	}
 
-	err := h.kube.StoreSecret(ctx, h.kubeConfig, req.RepoID, req.Key, req.Value)
+	err := h.kube.StoreSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key, req.Value)
 	if err != nil {
 		return struct{}{}, &vel.Error{
 			Message: "failed to store secret",

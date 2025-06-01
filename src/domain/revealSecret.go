@@ -33,7 +33,7 @@ func (h *Handler) RevealSecrets(ctx context.Context, req RevealSecretRequest) (R
 		}
 	}
 
-	value, err := h.kube.GetSecret(ctx, h.kubeConfig, req.RepoID, req.Key)
+	value, err := h.kube.GetSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key)
 	if err != nil {
 		return RevealSecretResponse{}, &vel.Error{
 			Message: "failed to reveal secret",

@@ -533,6 +533,10 @@ func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
 		&repo.Private, &repo.Branch, &repo.InstallationID, &repo.Status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repo, domain.ErrRepoNotFound
+		}
+
 		return domain.GithubRepository{}, fmt.Errorf("failed to scan GetRepoByID value: %w", err)
 	}
 
