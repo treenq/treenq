@@ -1,7 +1,6 @@
 package tqsdk
 
 type Space struct {
-	Key    string
 	Region string
 
 	Service Service

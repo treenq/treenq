@@ -53,6 +53,11 @@ spec:
               value: "111"
             - name: GITHUB_WEBHOOK_SECRET_ENABLE
               value: "false"
+            - name: SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: SECRET
+                  name: id-1234-SECRET
           image: registry:5000/treenq:0.0.1
           imagePullPolicy: Always
           name: simple-app

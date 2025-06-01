@@ -533,6 +533,10 @@ func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
 		&repo.Private, &repo.Branch, &repo.InstallationID, &repo.Status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repo, domain.ErrRepoNotFound
+		}
+
 		return domain.GithubRepository{}, fmt.Errorf("failed to scan GetRepoByID value: %w", err)
 	}
 
@@ -561,7 +565,7 @@ func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, userDisplay
 	query, args, err := s.sq.Select("key").
 		From("secrets").
 		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName}).
-		OrderBy("created_at ASC").
+		OrderBy("createdAt ASC").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build GetRepositorySecretKeys query: %w", err)

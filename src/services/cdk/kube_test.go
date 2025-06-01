@@ -14,6 +14,7 @@ import (
 var appYaml string
 
 func TestAppDefinition(t *testing.T) {
+	secretKeys := []string{"SECRET"}
 	k := NewKube("treenq.com", "registry:5000", "testuser", "testpassword")
 	ctx := context.Background()
 	res := k.DefineApp(ctx, "id-1234", tqsdk.Space{
@@ -33,7 +34,7 @@ func TestAppDefinition(t *testing.T) {
 		Registry:   "registry:5000",
 		Repository: "treenq",
 		Tag:        "0.0.1",
-	})
+	}, secretKeys)
 
 	assert.Equal(t, appYaml, res)
 }

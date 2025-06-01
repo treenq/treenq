@@ -117,10 +117,10 @@ type DockerArtifactory interface {
 }
 
 type Kube interface {
-	DefineApp(ctx context.Context, id string, app tqsdk.Space, image Image) string
+	DefineApp(ctx context.Context, id, nsName string, app tqsdk.Space, image Image, secretKeys []string) string
 	Apply(ctx context.Context, rawConig, data string) error
-	StoreSecret(ctx context.Context, rawConfig string, repoID, key, value string) error
-	GetSecret(ctx context.Context, rawConfig string, repoID, key string) (string, error)
+	StoreSecret(ctx context.Context, rawConfig, nsName, repoID, key, value string) error
+	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
 }
 
 type OauthProvider interface {
