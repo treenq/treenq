@@ -12,3 +12,7 @@
 starlight-rapide-theme-select {
   display: none;
 }
+
+body {
+  background-image: url("data:image/svg+xml,<svg id='patternId' width='100%' height='100%' xmlns='http://www.w3.org/2000/svg'><defs><pattern id='a' patternUnits='userSpaceOnUse' width='40' height='40' patternTransform='scale(2) rotate(65)'><rect x='0' y='0' width='100%' height='100%' fill='%2308080aff'/><path d='M20-5V5m0 30v10m20-30v10M0 15v10'  stroke-linecap='square' stroke-width='0.5' stroke='%23052220ff' fill='none'/><path d='M-5 40H5M-5 0H5m30 0h10M35 40h10M15 20h10'  stroke-linecap='square' stroke-width='0.5' stroke='%2308080aff' fill='none'/></pattern></defs><rect width='800%' height='800%' transform='translate(-66,-106)' fill='url(%23a)'/></svg>");
+}
