@@ -6,42 +6,49 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-type RevealSecretRequest struct {
-	RepoID string `json:"repoID"`
-	Key    string `json:"key"`
+type RevealSecretsRequest struct {
+	RepoID string   `json:"repoID"`
+	Keys   []string `json:"keys"`
 }
 
-type RevealSecretResponse struct {
-	Value string `json:"value"`
+type RevealSecretsResponse struct {
+	Values map[string]string `json:"values"`
 }
 
-func (h *Handler) RevealSecret(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, *vel.Error) {
+func (h *Handler) RevealSecrets(ctx context.Context, req RevealSecretsRequest) (RevealSecretsResponse, *vel.Error) {
 	profile, rpcErr := h.GetProfile(ctx, struct{}{})
 	if rpcErr != nil {
-		return RevealSecretResponse{}, rpcErr
-	}
-	exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, req.Key, profile.UserInfo.DisplayName)
-	if err != nil {
-		return RevealSecretResponse{}, &vel.Error{
-			Message: "failed to lookup a secret key",
-			Err:     err,
-		}
-	}
-	if !exists {
-		return RevealSecretResponse{}, &vel.Error{
-			Code: "SECRET_DOESNT_EXIST",
-		}
+		return RevealSecretsResponse{}, rpcErr
 	}
 
-	value, err := h.kube.GetSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key)
-	if err != nil {
-		return RevealSecretResponse{}, &vel.Error{
-			Message: "failed to reveal secret",
-			Err:     err,
-		}
+	response := RevealSecretsResponse{
+		Values: make(map[string]string),
 	}
 
-	return RevealSecretResponse{
-		Value: value,
-	}, nil
+	for _, key := range req.Keys {
+		exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, key, profile.UserInfo.DisplayName)
+		if err != nil {
+			return RevealSecretsResponse{}, &vel.Error{
+				Message: "failed to lookup a secret key: " + key,
+				Err:     err,
+			}
+		}
+		if !exists {
+			return RevealSecretsResponse{}, &vel.Error{
+				Code:    "SECRET_DOESNT_EXIST",
+				Message: "secret key does not exist: " + key,
+			}
+		}
+
+		value, err := h.kube.GetSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, key)
+		if err != nil {
+			return RevealSecretsResponse{}, &vel.Error{
+				Message: "failed to reveal secret: " + key,
+				Err:     err,
+			}
+		}
+		response.Values[key] = value
+	}
+
+	return response, nil
 }

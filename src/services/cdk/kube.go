@@ -20,6 +20,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/dynamic"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -316,4 +320,33 @@ func (k *Kube) GetSecret(ctx context.Context, rawConfig string, space, repoID, k
 	}
 
 	return string(value), nil
+}
+
+func (k *Kube) RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig))
+	if err != nil {
+		return fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	namespace := ns(space, repoID) // Uses existing ns() helper
+	secretObjectName := secretName(repoID, key) // Uses existing secretName() helper
+	secretClient := clientset.CoreV1().Secrets(namespace)
+
+	err = secretClient.Delete(ctx, secretObjectName, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// If the secret is not found, it's not an error for a remove operation.
+			// You could return domain.ErrSecretNotFound if specific error handling for "not found" is required upstream,
+			// but for now, returning nil is acceptable as "successfully removed (or was already gone)".
+			return nil
+		}
+		return fmt.Errorf("failed to delete secret %s in namespace %s: %w", secretObjectName, namespace, err)
+	}
+
+	return nil
 }

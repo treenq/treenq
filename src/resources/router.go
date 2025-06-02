@@ -35,9 +35,9 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "getDeployment", handlers.GetDeployment, auth)
 	vel.RegisterGet(router, "getBuildProgress", handlers.GetBuildProgress, auth)
 	vel.RegisterPost(router, "getDeploymentHistory", handlers.GetDeploymentHistory, auth)
-	vel.RegisterPost(router, "setSecret", handlers.SetSecret, auth)
+	vel.RegisterPost(router, "setSecret", handlers.SetSecrets, auth) // This line
 	vel.RegisterPost(router, "getSecrets", handlers.GetSecrets, auth)
-	vel.RegisterPost(router, "revealSecret", handlers.RevealSecret, auth)
+	vel.RegisterPost(router, "revealSecret", handlers.RevealSecrets, auth) // And this line
 
 	return router
 }
