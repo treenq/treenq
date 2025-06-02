@@ -304,7 +304,6 @@ func (s *Store) insertInstalledRepos(
 		)
 	}
 
-	// Add ON CONFLICT DO NOTHING clause
 	repoQuery = repoQuery.Suffix("ON CONFLICT (githubId) DO NOTHING")
 
 	sql, args, err := repoQuery.ToSql()
@@ -534,8 +533,84 @@ func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
 		&repo.Private, &repo.Branch, &repo.InstallationID, &repo.Status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repo, domain.ErrRepoNotFound
+		}
+
 		return domain.GithubRepository{}, fmt.Errorf("failed to scan GetRepoByID value: %w", err)
 	}
 
 	return repo, nil
+}
+
+func (s *Store) SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error {
+	createdAt := now()
+	query, args, err := s.sq.Insert("secrets").
+		Columns("repoId", "key", "userDisplayName", "createdAt").
+		Values(repoID, key, userDisplayName, createdAt).
+		Suffix("ON CONFLICT DO NOTHING").
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build SaveSecret query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec SaveSecret: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error) {
+	query, args, err := s.sq.Select("key").
+		From("secrets").
+		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName}).
+		OrderBy("createdAt ASC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GetRepositorySecretKeys query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query GetRepositorySecretKeys: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, fmt.Errorf("failed to scan GetRepositorySecretKeys row: %w", err)
+		}
+		keys = append(keys, key)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("an error occurred while iterating GetRepositorySecretKeys rows: %w", err)
+	}
+
+	return keys, nil
+}
+
+func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error) {
+	query, args, err := s.sq.Select("1").
+		From("secrets").
+		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName, "key": key}).
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to build RepositorySecretKeyExists query: %w", err)
+	}
+
+	var exists int
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to query RepositorySecretKeyExists: %w", err)
+	}
+
+	return true, nil
 }

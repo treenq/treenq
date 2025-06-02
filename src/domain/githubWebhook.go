@@ -24,6 +24,7 @@ var (
 	ErrImageNotFound                    = errors.New("image not found")
 	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
 	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha are mutually exclusive")
+	ErrSecretNotFound                   = errors.New("secret not found")
 )
 
 type GithubWebhookRequest struct {
@@ -522,7 +523,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Level:   slog.LevelDebug,
 	})
 	var appSpace tqsdk.Space
-	if deployment.Space.Key != "" {
+	if deployment.Space.Service.Key != "" {
 		appSpace = deployment.Space
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "reusing tq config from referenced deployment",
@@ -617,10 +618,31 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 
 func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image) (AppDeployment, *vel.Error) {
 	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "get avilable secret keys", ,
+		Level:   slog.LevelDebug,
+	})
+	secretKeys, err := h.db.GetRepositorySecretKeys(ctx, repoID, deployment.UserDisplayName)
+	if err != nil {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to get repo secret keys" + err.Error(),
+			Level:   slog.LevelError,
+		})
+		return AppDeployment{}, &vel.Error{
+			Message: "failed to get repo secret keys",
+			Err:     err,
+		}
+	}
+	progress.Append(deployment.ID, ProgressMessage{
+		Payload: "retrieved available secret keys",
+		Level:   slog.LevelInfo,
+		Final:   true,
+	})
+
+	progress.Append(deployment.ID, ProgressMessage{
 		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.Space, image)
+	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to apply new image" + err.Error(),
@@ -636,6 +658,5 @@ func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppD
 		Level:   slog.LevelInfo,
 		Final:   true,
 	})
-
 	return deployment, nil
 }

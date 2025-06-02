@@ -30,6 +30,7 @@ var repoRemoveRequestBody []byte
 var repoBranchMergeMainRequestBody []byte
 
 func TestGithubAppInstallation(t *testing.T) {
+	t.Parallel()
 	clearDatabase()
 
 	// create a user and obtain its token
@@ -216,6 +217,52 @@ func TestGithubAppInstallation(t *testing.T) {
 			Branch:   branchName,
 		},
 	}}, reposResponse, "installed repositories don't match")
+
+	secrets, err := apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err := apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
+	err = apiClient.SetSecret(ctx, client.SetSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+		Value:  "SUPER",
+	})
+	require.NoError(t, err, "no error expect on set secret")
+
+	secrets, err = apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Equal(t, []string{"SECRET"}, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.NoError(t, err, "must reveal a secret successfully")
+	require.Equal(t, "SUPER", revealSecretResponse.Value, "no revealed secret is expected")
+
+	revealSecretResponse, err = apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET2",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
+	secrets, err = anotherApiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
 	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,

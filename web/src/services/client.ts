@@ -61,8 +61,28 @@ export type DeployRequest = {
 
 export type DeployResponse = {
   deploymentID: string
-  status: string
+  fromDeploymentID: string
+  repoID: string
+  sha: string
+  commitMessage: string
+  buildTag: string
+  userDisplayName: string
+  status: 'run' | 'failed' | 'done'
   createdAt: string
+  updatedAt: string
+}
+
+export type GetBuildProgressMessage = {
+  message: BuildProgressMessage
+}
+
+export type TLevelMessage = 'INFO' | 'DEBUG' | 'ERROR'
+
+export type BuildProgressMessage = {
+  payload: string
+  level: TLevelMessage
+  final: boolean
+  timestamp: string
 }
 
 class HttpClient {
@@ -157,6 +177,22 @@ class HttpClient {
 
   async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
     return await this.post('deploy', req)
+  }
+
+  listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
+    const url = this.buildUrl('getBuildProgress', { deploymentID })
+
+    const eventSource = new EventSource(url)
+
+    eventSource.addEventListener('message', (event) => {
+      const data: GetBuildProgressMessage = JSON.parse(event.data)
+      callback(data)
+
+      if (data.message.final) {
+        eventSource.close()
+        console.log('FINISH Event Source, listenProgress')
+      }
+    })
   }
 }
 

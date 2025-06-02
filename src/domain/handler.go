@@ -87,6 +87,12 @@ type Database interface {
 	GetRepoByGithub(ctx context.Context, githubRepoID int) (GithubRepository, error)
 	GetRepoByID(ctx context.Context, userID, repoID string) (GithubRepository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
+
+	// Secrets
+	// ////////////////////////
+	SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error
+	GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error)
+	RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error)
 }
 
 type GithubClient interface {
@@ -111,8 +117,10 @@ type DockerArtifactory interface {
 }
 
 type Kube interface {
-	DefineApp(ctx context.Context, id string, app tqsdk.Space, image Image) string
+	DefineApp(ctx context.Context, id, nsName string, app tqsdk.Space, image Image, secretKeys []string) string
 	Apply(ctx context.Context, rawConig, data string) error
+	StoreSecret(ctx context.Context, rawConfig, nsName, repoID, key, value string) error
+	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
 }
 
 type OauthProvider interface {
