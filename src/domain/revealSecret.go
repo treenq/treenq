@@ -15,7 +15,7 @@ type RevealSecretResponse struct {
 	Value string `json:"value"`
 }
 
-func (h *Handler) RevealSecrets(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, *vel.Error) {
+func (h *Handler) RevealSecret(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, *vel.Error) {
 	profile, rpcErr := h.GetProfile(ctx, struct{}{})
 	if rpcErr != nil {
 		return RevealSecretResponse{}, rpcErr
