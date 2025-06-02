@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/Table'
 import { TextField, TextFieldInput } from '@/components/ui/TextField'
 import { httpClient } from '@/services/client'
-import { Accessor, createSignal, Index, JSX, onMount, Setter, Show } from 'solid-js'
+import { Accessor, createEffect, createSignal, Index, JSX, Setter, Show } from 'solid-js'
 
 type Secret = { key: string; value: string }
 
@@ -174,7 +174,7 @@ const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
 const Secrets = ({ repoID }: SecretsProps) => {
   const [secrets, setSecrets] = createSignal<Secret[]>([])
 
-  onMount(() => {
+  createEffect(() => {
     const fetchSecrets = async () => {
       const response = await httpClient.getSecrets({ repoID })
       if (!('error' in response) && response.data.keys) {
