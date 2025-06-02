@@ -27,7 +27,7 @@ export default function RepoPage() {
             <Deploy repoID={params.id} />
           </TabsContent>
           <TabsContent value="secrets">
-            <Secrets />
+            <Secrets repoID={params.id} />
           </TabsContent>
         </Tabs>
       </div>

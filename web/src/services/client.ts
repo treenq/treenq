@@ -72,6 +72,16 @@ export type DeployResponse = {
   updatedAt: string
 }
 
+export type SetSecretRequest = { repoID: string; key: string; value: string }
+
+export type GetSecretsRequest = { repoID: string }
+
+export type GetSecretsResponse = { keys: string[] | null }
+
+export type RevealSecretRequest = { repoID: string; key: string }
+
+export type RevealSecretResponse = { value: string }
+
 export type GetBuildProgressMessage = {
   message: BuildProgressMessage
 }
@@ -177,6 +187,18 @@ class HttpClient {
 
   async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
     return await this.post('deploy', req)
+  }
+
+  async setSecret(req: SetSecretRequest): Promise<Result<undefined>> {
+    return await this.post('setSecret', req)
+  }
+
+  async getSecrets(req: GetSecretsRequest): Promise<Result<GetSecretsResponse>> {
+    return await this.post('getSecrets', req)
+  }
+
+  async revealSecret(req: RevealSecretRequest): Promise<Result<RevealSecretResponse>> {
+    return await this.post('revealSecret', req)
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
