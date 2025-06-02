@@ -224,7 +224,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
-	revealSecretResponse, err := apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+	revealSecretResponse, err := apiClient.RevealSecret(ctx, client.RevealSecretRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 		Key:    "SECRET",
 	})
@@ -244,14 +244,14 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Equal(t, []string{"SECRET"}, secrets.Keys, "secrets are expected to be empty")
 
-	revealSecretResponse, err = apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 		Key:    "SECRET",
 	})
 	require.NoError(t, err, "must reveal a secret successfully")
 	require.Equal(t, "SUPER", revealSecretResponse.Value, "no revealed secret is expected")
 
-	revealSecretResponse, err = apiClient.RevealSecrets(ctx, client.RevealSecretRequest{
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 		Key:    "SECRET2",
 	})

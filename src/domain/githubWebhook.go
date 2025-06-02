@@ -618,7 +618,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 
 func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image) (AppDeployment, *vel.Error) {
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "get avilable secret keys", ,
+		Payload: "get avilable secret keys",
 		Level:   slog.LevelDebug,
 	})
 	secretKeys, err := h.db.GetRepositorySecretKeys(ctx, repoID, deployment.UserDisplayName)

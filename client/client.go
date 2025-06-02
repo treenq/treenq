@@ -511,7 +511,6 @@ type AppDeployment struct {
 }
 
 type Space struct {
-	Key     string
 	Region  string
 	Service Service
 }
@@ -747,7 +746,7 @@ type RevealSecretResponse struct {
 	Value string `json:"value"`
 }
 
-func (c *Client) RevealSecrets(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, error) {
+func (c *Client) RevealSecret(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, error) {
 	var res RevealSecretResponse
 
 	bodyBytes, err := json.Marshal(req)
@@ -756,7 +755,7 @@ func (c *Client) RevealSecrets(ctx context.Context, req RevealSecretRequest) (Re
 	}
 	body := bytes.NewBuffer(bodyBytes)
 
-	r, err := http.NewRequest("POST", c.baseUrl+"/revealSecrets", body)
+	r, err := http.NewRequest("POST", c.baseUrl+"/revealSecret", body)
 	if err != nil {
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -765,7 +764,7 @@ func (c *Client) RevealSecrets(ctx context.Context, req RevealSecretRequest) (Re
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call revealSecrets: %w", err)
+		return res, fmt.Errorf("failed to call revealSecret: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -776,7 +775,7 @@ func (c *Client) RevealSecrets(ctx context.Context, req RevealSecretRequest) (Re
 
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return res, fmt.Errorf("failed to decode revealSecrets response: %w", err)
+		return res, fmt.Errorf("failed to decode revealSecret response: %w", err)
 	}
 
 	return res, nil
