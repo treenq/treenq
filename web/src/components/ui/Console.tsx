@@ -1,8 +1,8 @@
+import { Button } from '@/components/ui/Button'
 import { cn } from '@/components/ui/utils'
 import { type BuildProgressMessage } from '@/services/client'
 import { cva } from 'class-variance-authority'
 import { For, createEffect, createSignal, onCleanup } from 'solid-js'
-import { Button } from './Button'
 
 const MAX_LINES = 50
 
@@ -43,7 +43,7 @@ export default function Console(props: PropsConsole) {
     scrollToBottom()
   })
 
-  const handleWheel = () => {
+  const toggleShowFull = () => {
     isPaused = true
     clearTimeout(pauseTimeout)
     pauseTimeout = window.setTimeout(() => {
@@ -54,7 +54,7 @@ export default function Console(props: PropsConsole) {
     setIsExpanded((prev) => !prev)
   }
 
-  onCleanup(() => handleWheel)
+  onCleanup(() => toggleShowFull)
 
   return (
     <>
@@ -64,7 +64,7 @@ export default function Console(props: PropsConsole) {
           'rounded-radius-xl bg-background border-border h-[400px] overflow-y-auto border border-solid p-4',
           props.classNames,
         )}
-        onWheel={handleWheel}
+        onWheel={toggleShowFull}
       >
         <For each={isExpanded() ? props.logs.slice(-MAX_LINES) : props.logs}>
           {(log) => (
