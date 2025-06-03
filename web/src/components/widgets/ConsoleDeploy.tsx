@@ -13,8 +13,6 @@ import { useLocation } from '@solidjs/router'
 import { VariantProps } from 'class-variance-authority'
 import { createSignal } from 'solid-js'
 
-const MAX_LINES = 100
-
 const STATUS_DEPLOYMENT = {
   run: 'default',
   failed: 'error',
@@ -27,8 +25,8 @@ interface DeploymentState {
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 
 export default function ConsoleDeploy() {
-  const [isExpanded, setIsExpanded] = createSignal(false)
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
+
   const userName = userStore.user?.displayName
 
   const location = useLocation<DeploymentState>()
@@ -41,10 +39,7 @@ export default function ConsoleDeploy() {
       })
     },
   )
-
-  const handleLogsLess = () => {
-    setIsExpanded((prev) => !prev)
-  }
+  console.log(logs())
 
   return (
     <Card class="p-6">
@@ -81,18 +76,7 @@ export default function ConsoleDeploy() {
         </CardDescription>
       </div>
 
-      <Console classNames="mb-3" logs={isExpanded() ? logs().slice(-MAX_LINES) : logs()} />
-      <div class="flex justify-between">
-        <CardDescription>
-          {`Showing ${isExpanded() ? `latest ${MAX_LINES} of` : 'all  of'} ${logs().length} log lines`}
-        </CardDescription>
-        <Button
-          size="sm"
-          class="h-6"
-          onClick={handleLogsLess}
-          textContent={isExpanded() ? 'Show all' : 'Show less'}
-        />
-      </div>
+      <Console classNames="mb-3" logs={logs()} />
     </Card>
   )
 }
