@@ -149,6 +149,8 @@ type AppDeployment struct {
 	Space tqsdk.Space `json:"space"`
 	// Sha is a commit sha a user requested to deploy or given from a github webhook
 	Sha string `json:"sha"`
+	// Branch is a git branch deployed if sha is not specified directly
+	Branch string `json:"branch"`
 	// CommitMessage defines a commit message
 	CommitMessage string `json:"commitMessage"`
 	// BuildTag is a docker build image or an image created using buildpacks
@@ -249,6 +251,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 		UserDisplayName:  userDisplayName,
 		Status:           DeployStatusRunning,
 		Space:            tqsdk.Space{},
+		Branch:           repo.Branch,
 		FromDeploymentID: fromDeploymentID,
 	}
 
@@ -266,6 +269,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 			}
 		}
 		deployment.Sha = fromDeployment.Sha
+		deployment.Branch = fromDeployment.Branch
 		deployment.CommitMessage = fromDeployment.CommitMessage
 		deployment.BuildTag = fromDeployment.BuildTag
 		deployment.Space = fromDeployment.Space
