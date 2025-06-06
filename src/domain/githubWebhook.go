@@ -108,6 +108,7 @@ type BuildArtifactRequest struct {
 	Name         string
 	Path         string
 	Dockerfile   string
+	Dockerignore string
 	Tag          string
 	DeploymentID string
 }
@@ -351,11 +352,10 @@ func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan Progr
 			select {
 			case out <- m:
 				if m.Final {
-					close(out)
 					return
 				}
 			case <-ctx.Done():
-				close(out)
+				return
 			}
 		}
 		buf.Subs = append(buf.Subs, Subscriber{
@@ -385,7 +385,6 @@ func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
 			close(sub.out)
 			sub.closed = true
 		case sub.out <- m:
-
 		}
 
 		if m.Final {
@@ -558,10 +557,15 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 	}
 
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
+	dockerignorePath := ""
+	if appSpace.Service.DockerignorePath != "" {
+		dockerignorePath = filepath.Join(gitRepo.Dir, appSpace.Service.DockerignorePath)
+	}
 	buildRequest := BuildArtifactRequest{
 		Name:         appSpace.Service.Name,
 		Path:         gitRepo.Dir,
 		Dockerfile:   dockerFilePath,
+		Dockerignore: dockerignorePath,
 		Tag:          gitRepo.Sha,
 		DeploymentID: deployment.ID,
 	}
