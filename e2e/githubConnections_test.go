@@ -264,6 +264,21 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
+	// secrets must not be available to the other users
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = anotherApiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = anotherApiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
 	err = apiClient.RemoveSecret(ctx, client.RemoveSecretRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 		Key:    "SECRET",
