@@ -93,6 +93,7 @@ type Database interface {
 	SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error
 	GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error)
 	RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error)
+	RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error
 }
 
 type GithubClient interface {
@@ -121,6 +122,7 @@ type Kube interface {
 	Apply(ctx context.Context, rawConig, data string) error
 	StoreSecret(ctx context.Context, rawConfig, nsName, repoID, key, value string) error
 	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
+	RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error
 }
 
 type OauthProvider interface {

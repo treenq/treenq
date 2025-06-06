@@ -317,3 +317,29 @@ func (k *Kube) GetSecret(ctx context.Context, rawConfig string, space, repoID, k
 
 	return string(value), nil
 }
+
+func (k *Kube) RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig))
+	if err != nil {
+		return fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	namespace := ns(space, repoID)
+	secretObjectName := secretName(repoID, key)
+	secretClient := clientset.CoreV1().Secrets(namespace)
+
+	err = secretClient.Delete(ctx, secretObjectName, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete secret %s in namespace %s: %w", secretObjectName, namespace, err)
+	}
+
+	return nil
+}

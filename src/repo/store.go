@@ -615,3 +615,18 @@ func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID, key, user
 
 	return true, nil
 }
+
+func (s *Store) RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error {
+	query, args, err := s.sq.Delete("secrets").
+		Where(sq.Eq{"repoId": repoID, "key": key, "userDisplayName": userDisplayName}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build RemoveSecret query: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec RemoveSecret: %w", err)
+	}
+
+	return nil
+}

@@ -519,6 +519,7 @@ type Space struct {
 type Service struct {
 	Key                 string
 	DockerfilePath      string
+	DockerignorePath    string
 	BuildEnvs           map[string]string
 	RuntimeEnvs         map[string]string
 	BuildSecrets        []string
@@ -780,4 +781,37 @@ func (c *Client) RevealSecret(ctx context.Context, req RevealSecretRequest) (Rev
 	}
 
 	return res, nil
+}
+
+type RemoveSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+}
+
+func (c *Client) RemoveSecret(ctx context.Context, req RemoveSecretRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/removeSecret", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call removeSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

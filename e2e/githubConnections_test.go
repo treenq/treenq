@@ -264,6 +264,24 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
+	err = apiClient.RemoveSecret(ctx, client.RemoveSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
 	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
@@ -314,7 +332,6 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
 	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
 	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
-
 	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
 }
 
