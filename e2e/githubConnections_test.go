@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -307,6 +308,17 @@ func TestGithubAppInstallation(t *testing.T) {
 
 	// wait for deployment done
 	readProgress(t, ctx, createdDeployment, apiClient, userToken)
+	time.Sleep(time.Second * 5)
+	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+	require.NoError(t, err, "request for kube:80 must be created")
+	req.Host = "qwer.localhost"
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "no error must be from qwer.localhost")
+	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "body must be read from qwer.localhost")
+	resp.Body.Close()
+	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
 
 	history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
