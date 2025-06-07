@@ -447,51 +447,6 @@ type DeployRequest struct {
 	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
-type DeployResponse struct {
-	DeploymentID string    `json:"deploymentID"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"createdAt"`
-}
-
-func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
-	var res DeployResponse
-
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return res, fmt.Errorf("failed to marshal request: %w", err)
-	}
-	body := bytes.NewBuffer(bodyBytes)
-
-	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
-	if err != nil {
-		return res, fmt.Errorf("failed to create request: %w", err)
-	}
-	r = r.WithContext(ctx)
-	r.Header = c.headers
-
-	resp, err := c.client.Do(r)
-	if err != nil {
-		return res, fmt.Errorf("failed to call deploy: %w", err)
-	}
-	defer resp.Body.Close()
-
-	err = HandleErr(resp)
-	if err != nil {
-		return res, err
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&res)
-	if err != nil {
-		return res, fmt.Errorf("failed to decode deploy response: %w", err)
-	}
-
-	return res, nil
-}
-
-type GetDeploymentRequest struct {
-	DeploymentID string `json:"deploymentID"`
-}
-
 type GetDeploymentResponse struct {
 	Deployment AppDeployment `json:"deployment"`
 }
@@ -535,6 +490,45 @@ type ComputationResource struct {
 	CpuUnits   int
 	MemoryMibs int
 	DiskGibs   int
+}
+
+func (c *Client) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentResponse, error) {
+	var res GetDeploymentResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/deploy", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call deploy: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode deploy response: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetDeploymentRequest struct {
+	DeploymentID string `json:"deploymentID"`
 }
 
 func (c *Client) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, error) {
@@ -620,7 +614,7 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 }
 
 type GetDeploymentsRequest struct {
-	RepoID string
+	RepoID string `json:"repoID"`
 }
 
 type GetDeploymentsResponse struct {

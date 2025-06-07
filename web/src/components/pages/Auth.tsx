@@ -4,7 +4,7 @@ import { ROUTES } from '@/routes'
 
 export default function Auth() {
   function handleAuth() {
-    window.location.href = `${import.meta.env.APP_API_HOST}${ROUTES.auth}`
+    window.location.replace(`${import.meta.env.APP_API_HOST}${ROUTES.auth}`)
   }
 
   return (

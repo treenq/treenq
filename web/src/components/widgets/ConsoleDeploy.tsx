@@ -4,15 +4,14 @@ import Console from '@/components/ui/Console'
 import {
   BuildProgressMessage,
   type DeploymentStatus,
-  DeployResponse,
   type GetBuildProgressMessage,
+  type GetDeploymentResponse,
   httpClient,
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
 
 import { useSolidRoute } from '@/hooks/useSolidRoutre'
-import { ROUTES } from '@/routes'
-import { redirect } from '@solidjs/router'
+import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
 import { createEffect, createSignal } from 'solid-js'
 
@@ -21,51 +20,31 @@ const STATUS_DEPLOYMENT: Record<DeploymentStatus, BadgeVariant> = {
   failed: 'error',
   done: 'success',
 }
-interface DeploymentState {
-  deployment: DeployResponse
-}
 
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
-  const [dataDeployment, setDataDeployment] = createSignal<DeployResponse>()
   const userName = userStore.user?.displayName
-  const { params, stateRoute } = useSolidRoute<DeploymentState>()
-
-  const getDeployment = async () => {
-    const res = await httpClient.getDeployment(params.id)
-    if ('error' in res) return
-
-    setDataDeployment(res.data)
-  }
+  const { params } = useSolidRoute<GetDeploymentResponse>()
 
   createEffect(() => {
-    if (!stateRoute.deployment.id) {
-      getDeployment()
+    if (!deployStore.deployment.id) {
+      deployStore.getDeployment(params.id)
     }
   })
 
-  httpClient.listenProgress(
-    stateRoute.deployment.id || params.id,
-    (data: GetBuildProgressMessage) => {
-      setLogs((listMessage) => {
-        return [...listMessage, data.message]
-      })
-    },
-  )
+  httpClient.listenProgress(params.id, (data: GetBuildProgressMessage) => {
+    setLogs((listMessage) => {
+      return [...listMessage, data.message]
+    })
+  })
 
   return (
     <Card class="p-6">
       <div class="mb-3 flex items-center gap-2">
         <CardTitle>Logs</CardTitle>
-        <Badge
-          variant={
-            STATUS_DEPLOYMENT[
-              stateRoute?.deployment?.status || dataDeployment()?.status || 'run'
-            ] as BadgeVariant
-          }
-        >
+        <Badge variant={STATUS_DEPLOYMENT[deployStore.deployment.status || 'run'] as BadgeVariant}>
           Running
         </Badge>
       </div>
@@ -76,11 +55,11 @@ export default function ConsoleDeploy() {
         </div>
         <div>
           <CardDescription>Branch</CardDescription>
-          <CardDescription class="mt-0">{dataDeployment()?.branch}</CardDescription>
+          <CardDescription class="mt-0">{deployStore.deployment.branch}</CardDescription>
         </div>
         <div>
           <CardDescription>Main</CardDescription>
-          <CardDescription class="mt-0">{dataDeployment()?.sha.slice(0, 7)}</CardDescription>
+          <CardDescription class="mt-0">{deployStore.deployment.sha.slice(0, 7)}</CardDescription>
         </div>
         <div>
           <CardDescription>Triggered by</CardDescription>
@@ -89,7 +68,7 @@ export default function ConsoleDeploy() {
       </div>
       <div class="mb-3 text-sm">
         <CardDescription>Commit message</CardDescription>
-        <CardDescription class="mt-0">{dataDeployment()?.commitMessage}</CardDescription>
+        <CardDescription class="mt-0">{deployStore.deployment.commitMessage}</CardDescription>
       </div>
 
       <Console classNames="mb-3" logs={logs()} />

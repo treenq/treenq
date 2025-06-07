@@ -301,9 +301,9 @@ func TestGithubAppInstallation(t *testing.T) {
 	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.NotEmpty(t, createdDeployment.DeploymentID)
-	require.Equal(t, createdDeployment.Status, "run")
-	require.NotEmpty(t, createdDeployment.CreatedAt)
+	require.NotEmpty(t, createdDeployment.Deployment.ID)
+	require.Equal(t, createdDeployment.Deployment.Status, "run")
+	require.NotEmpty(t, createdDeployment.Deployment.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 
 	// wait for deployment done
@@ -326,7 +326,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
 	require.NoError(t, err, "no error expected on deployment history")
 	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, createdDeployment.DeploymentID, deployments.Deployments[0].ID)
+	assert.Equal(t, createdDeployment.Deployment.ID, deployments.Deployments[0].ID)
 	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
 	assert.NotEmpty(t, deployments.Deployments[0].Sha)
 	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
@@ -338,11 +338,11 @@ func TestGithubAppInstallation(t *testing.T) {
 		RepoID:           reposResponse.Repos[0].TreenqID,
 		FromDeploymentID: deployments.Deployments[0].ID,
 	})
-	require.NotEqual(t, rollbackDeploy.DeploymentID, createdDeployment.DeploymentID, "rollback id must not be the same")
-	require.NotEmpty(t, rollbackDeploy.DeploymentID)
+	require.NotEqual(t, rollbackDeploy.Deployment.ID, createdDeployment.Deployment.ID, "rollback id must not be the same")
+	require.NotEmpty(t, rollbackDeploy.Deployment.ID)
 	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
 	// require.Equal(t, rollbackDeploy.Status, "run")
-	require.NotEmpty(t, rollbackDeploy.CreatedAt)
+	require.NotEmpty(t, rollbackDeploy.Deployment.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 
 	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
@@ -351,7 +351,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
 	require.NoError(t, err, "no error expected on deployment history")
 	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, rollbackDeploy.DeploymentID, deployments.Deployments[0].ID)
+	assert.Equal(t, rollbackDeploy.Deployment.ID, deployments.Deployments[0].ID)
 	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
 	assert.NotEmpty(t, deployments.Deployments[0].Sha)
 	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
@@ -362,14 +362,14 @@ func TestGithubAppInstallation(t *testing.T) {
 	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
 }
 
-func readProgress(t *testing.T, ctx context.Context, createdDeployment client.DeployResponse, apiClient *client.Client, userToken string) {
+func readProgress(t *testing.T, ctx context.Context, createdDeployment client.GetDeploymentResponse, apiClient *client.Client, userToken string) {
 	t.Helper()
 
 	progressRead := false
 	for range 20 {
 		time.Sleep(time.Second * 2)
 		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
-			DeploymentID: createdDeployment.DeploymentID,
+			DeploymentID: createdDeployment.Deployment.ID,
 		})
 		require.NoError(t, err)
 		require.NotEqual(t, "failed", deployment.Deployment.Status)
@@ -377,7 +377,7 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.De
 			continue
 		}
 
-		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.DeploymentID, nil)
+		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.Deployment.ID, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		resp, err := http.DefaultClient.Do(req)

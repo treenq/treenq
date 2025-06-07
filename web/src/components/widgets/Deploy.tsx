@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { ROUTES } from '@/routes'
 
-import { DeployResponse } from '@/services/client'
+import { Deployment } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
 import { reposStore, type Repo } from '@/store/repoStore'
 import { useNavigate } from '@solidjs/router'
@@ -14,21 +14,15 @@ type DeployProps = {
 }
 
 export default function Deploy(props: DeployProps) {
-  const [deployments, setDeployments] = createSignal<DeployResponse[]>([])
+  const [deployments, setDeployments] = createSignal<Deployment[]>([])
   const [repo, setRepo] = createSignal<Repo | undefined>()
   const navigate = useNavigate()
 
-  const deploy = async () => {
-    const deployment = await deployStore.deploy(props.repoID)
-
+  const deploy = async (fromDeploymentID: string = '') => {
+    const deployment = await deployStore.deploy(props.repoID, fromDeploymentID)
     if (deployment) {
-      navigate(`${ROUTES.deploy}/${deployment.id}`, {
-        state: {
-          deployment: deployment,
-        },
-      })
-    } else {
-      throw Error('cant start a deployment')
+      deployStore.setDeployment(deployment)
+      navigate(`${ROUTES.deploy}/${deployment.id}`, {})
     }
   }
 
@@ -55,7 +49,7 @@ export default function Deploy(props: DeployProps) {
             </div>
             <h3 class="font-bold">{repo()?.fullName}</h3>
           </div>
-          <Button variant="outline" class="hover:bg-primary" onclick={deploy}>
+          <Button variant="outline" class="hover:bg-primary" onclick={() => deploy()}>
             Deploy Now
             <div class="bg-muted ml-2 h-4 w-4 rounded" />
           </Button>
@@ -102,7 +96,12 @@ export default function Deploy(props: DeployProps) {
                       </div>
 
                       {deployment.status === 'done' && (
-                        <Button variant="outline" size="sm" class="gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          class="gap-1"
+                          onClick={() => deploy(deployment.id)}
+                        >
                           <div class="bg-muted h-4 w-4 rounded" />
                           Rollback
                         </Button>

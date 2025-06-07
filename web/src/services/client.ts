@@ -57,9 +57,10 @@ export type GetBranchesResponse = {
 
 export type DeployRequest = {
   repoID: string
+  fromDeploymentID: string
 }
 
-export type DeployResponse = {
+export type Deployment = {
   id: string
   fromDeploymentID: string
   repoID: string
@@ -80,7 +81,15 @@ export type GetDeploymentsRequest = {
 }
 
 export type GetDeploymentsResponse = {
-  deployments: DeployResponse[]
+  deployments: Deployment[]
+}
+
+export type GetDeploymentRequest = {
+  deploymentID: string
+}
+
+export type GetDeploymentResponse = {
+  deployment: Deployment
 }
 
 export type SetSecretRequest = { repoID: string; key: string; value: string }
@@ -196,7 +205,7 @@ class HttpClient {
     return await this.post('getBranches', req)
   }
 
-  async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
+  async deploy(req: DeployRequest): Promise<Result<GetDeploymentResponse>> {
     return await this.post('deploy', req)
   }
 
@@ -216,8 +225,8 @@ class HttpClient {
     return await this.post('revealSecret', req)
   }
 
-  async getDeployment(deploymentID: string): Promise<Result<DeployResponse>> {
-    return await this.post('getDeployment', { deploymentID })
+  async getDeployment(req: GetDeploymentRequest): Promise<Result<GetDeploymentResponse>> {
+    return await this.post('getDeployment', req)
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
