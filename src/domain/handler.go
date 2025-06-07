@@ -73,7 +73,7 @@ type Database interface {
 	SaveDeployment(ctx context.Context, def AppDeployment) (AppDeployment, error)
 	UpdateDeployment(ctx context.Context, def AppDeployment) error
 	GetDeployment(ctx context.Context, deploymentID string) (AppDeployment, error)
-	GetDeploymentHistory(ctx context.Context, repoID string) ([]AppDeployment, error)
+	GetDeployments(ctx context.Context, repoID string) ([]AppDeployment, error)
 
 	// Github repos domain
 	// //////////////////////

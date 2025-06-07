@@ -1,3 +1,4 @@
+import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import {
@@ -12,7 +13,6 @@ import {
   ComboboxTrigger,
 } from '@/components/ui/Combobox'
 import { reposStore } from '@/store/repoStore'
-import { A } from '@solidjs/router'
 import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
@@ -30,7 +30,7 @@ function RepoItem(props: ConnectReposItem) {
       <CardHeader class="flex-row items-center justify-between gap-4 p-6 pb-2">
         <div class="min-w-0 flex-1">
           <CardTitle class="truncate">
-            <A class="hover:text-accent" href={repoHref}>
+            <A variant="light" href={repoHref}>
               {props.fullName}
             </A>
           </CardTitle>

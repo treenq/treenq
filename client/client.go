@@ -619,16 +619,16 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 	return res, nil
 }
 
-type GetDeploymentHistoryRequest struct {
+type GetDeploymentsRequest struct {
 	RepoID string
 }
 
-type GetDeploymentHistoryResponse struct {
-	History []AppDeployment
+type GetDeploymentsResponse struct {
+	Deployments []AppDeployment `json:"deployments"`
 }
 
-func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, error) {
-	var res GetDeploymentHistoryResponse
+func (c *Client) GetDeployments(ctx context.Context, req GetDeploymentsRequest) (GetDeploymentsResponse, error) {
+	var res GetDeploymentsResponse
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
@@ -636,7 +636,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 	}
 	body := bytes.NewBuffer(bodyBytes)
 
-	r, err := http.NewRequest("POST", c.baseUrl+"/getDeploymentHistory", body)
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeployments", body)
 	if err != nil {
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -645,7 +645,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call getDeploymentHistory: %w", err)
+		return res, fmt.Errorf("failed to call getDeployments: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -656,7 +656,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return res, fmt.Errorf("failed to decode getDeploymentHistory response: %w", err)
+		return res, fmt.Errorf("failed to decode getDeployments response: %w", err)
 	}
 
 	return res, nil

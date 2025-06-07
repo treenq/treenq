@@ -151,7 +151,7 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 	return dep, nil
 }
 
-func (s *Store) GetDeploymentHistory(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
+func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
 	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
 		From("deployments").
 		Where(sq.Eq{"repoId": repoID}).
