@@ -39,7 +39,6 @@ export default function ConsoleDeploy() {
       })
     },
   )
-  console.log(logs())
 
   return (
     <Card class="p-6">
