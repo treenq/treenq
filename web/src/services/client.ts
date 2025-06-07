@@ -216,7 +216,7 @@ class HttpClient {
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
     const url = this.buildUrl('getBuildProgress', { deploymentID })
 
-    const eventSource = new EventSource(url)
+    const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.addEventListener('message', (event) => {
       const data: GetBuildProgressMessage = JSON.parse(event.data)

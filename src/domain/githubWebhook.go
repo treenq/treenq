@@ -376,20 +376,22 @@ func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
 	buf := b.Bufs[deploymentID]
 	buf.WriteAt = time.Now()
 	buf.Content = append(buf.Content, m)
-	for _, sub := range buf.Subs {
+	for i, sub := range buf.Subs {
 		select {
 		case <-sub.done:
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
+			continue
 		case <-time.After(time.Second):
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
+			continue
 		case sub.out <- m:
 		}
 
 		if m.Final {
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
 		}
 	}
 
