@@ -1,7 +1,6 @@
-# Указывает, что это корневой файл EditorConfig
 root = true
 
-# Общие настройки для всех файлов
+
 [*]
 charset = utf-8
 end_of_line = lf
