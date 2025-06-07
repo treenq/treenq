@@ -39,17 +39,18 @@ export default function ConsoleDeploy() {
 
     setDataDeployment(res.data)
   }
-  getDeployment()
+  if (!stateRoute.deployment.deploymentID) {
+    getDeployment()
+  }
 
-  httpClient.listenProgress(params.id, (data: GetBuildProgressMessage) => {
-    if (data.message.final) {
-      return
-    }
-
-    setLogs((listMessage) => {
-      return [...listMessage, data.message]
-    })
-  })
+  httpClient.listenProgress(
+    stateRoute.deployment.fromDeploymentID || params.id,
+    (data: GetBuildProgressMessage) => {
+      setLogs((listMessage) => {
+        return [...listMessage, data.message]
+      })
+    },
+  )
 
   return (
     <Card class="p-6">

@@ -22,7 +22,11 @@ export default function Deploy(props: DeployProps) {
     const deployment = await deployStore.deploy(props.repoID)
 
     if (deployment) {
-      navigate(`${ROUTES.deploy}/${deployment.fromDeploymentID}`)
+      navigate(`${ROUTES.deploy}/${deployment.deploymentID}`, {
+        state: {
+          deployment: deployment,
+        },
+      })
     } else {
       throw Error('cant start a deployment')
     }

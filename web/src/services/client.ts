@@ -62,6 +62,7 @@ export type DeployRequest = {
 export type DeployResponse = {
   id: string
   fromDeploymentID: string
+  deploymentID: string
   repoID: string
   space: unknown
   sha: string
