@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -30,6 +31,9 @@ type Kube struct {
 	dockerRegistry string
 	userName       string
 	userPassword   string
+
+	// jsii is not thread safe
+	mx sync.Mutex
 }
 
 func NewKube(
@@ -39,6 +43,8 @@ func NewKube(
 }
 
 func (k *Kube) DefineApp(ctx context.Context, id string, nsName string, app tqsdk.Space, image domain.Image, secretKeys []string) string {
+	k.mx.Lock()
+	defer k.mx.Unlock()
 	a := cdk8s.NewApp(nil)
 	k.newAppChart(a, id, nsName, app, image, secretKeys)
 	out := a.SynthYaml()
