@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { deployStore } from '@/store/deployStore'
+import { ROUTES } from '@/utils/constants/routes'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For } from 'solid-js' // Added Show
 
@@ -76,7 +77,7 @@ export default function Deploy(props: DeployProps) {
   const deploy = async () => {
     const deployment = await deployStore.deploy(props.repoID)
     if (deployment) {
-      navigate(`/deploy/${deployment.deploymentID}`, {
+      navigate(`${ROUTES.deploy}/${deployment.deploymentID}`, {
         state: {
           deployment: deployment,
         },

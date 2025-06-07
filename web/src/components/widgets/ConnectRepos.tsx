@@ -13,6 +13,7 @@ import {
   ComboboxTrigger,
 } from '@/components/ui/Combobox'
 import { reposStore } from '@/store/repoStore'
+import { ROUTES } from '@/utils/constants/routes'
 import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
@@ -23,7 +24,7 @@ type ConnectReposItem = {
 }
 
 function RepoItem(props: ConnectReposItem) {
-  const repoHref = `/repos/${props.id}`
+  const repoHref = `${ROUTES.repos}/${props.id}`
 
   return (
     <Card class="mx-auto w-full max-w-2xl">
