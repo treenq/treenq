@@ -7,10 +7,10 @@ import { useSolidRoute } from '@/hooks/useSolidRoutre'
 import { createEffect } from 'solid-js'
 
 export default function RepoPage() {
-  const { id, backPage } = useSolidRoute()
+  const { params, backPage } = useSolidRoute()
 
   createEffect(() => {
-    console.log(id)
+    console.log(params.id)
   })
 
   // get installation
@@ -31,10 +31,10 @@ export default function RepoPage() {
             <TabsTrigger value="secrets">Secrets</TabsTrigger>
           </TabsList>
           <TabsContent value="deployments">
-            <Deploy repoID={id} />
+            <Deploy repoID={params.id} />
           </TabsContent>
           <TabsContent value="secrets">
-            <Secrets repoID={id} />
+            <Secrets repoID={params.id} />
           </TabsContent>
         </Tabs>
       </div>
