@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -307,24 +308,35 @@ func TestGithubAppInstallation(t *testing.T) {
 
 	// wait for deployment done
 	readProgress(t, ctx, createdDeployment, apiClient, userToken)
+	time.Sleep(time.Second * 5)
+	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+	require.NoError(t, err, "request for kube:80 must be created")
+	req.Host = "qwer.localhost"
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "no error must be from qwer.localhost")
+	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "body must be read from qwer.localhost")
+	resp.Body.Close()
+	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
 
-	history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
+	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.Len(t, history.History, 1, "1 item expected in history deployment after first successful")
+	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
 	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
-	assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
-	assert.NotEmpty(t, history.History[0].BuildTag)
-	assert.NotEmpty(t, history.History[0].Sha)
-	assert.Equal(t, branchName, history.History[0].Branch)
-	assert.NotEmpty(t, history.History[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
-	assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, createdDeployment.DeploymentID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
 
 	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID:           reposResponse.Repos[0].TreenqID,
-		FromDeploymentID: history.History[0].ID,
+		FromDeploymentID: deployments.Deployments[0].ID,
 	})
 	require.NotEqual(t, rollbackDeploy.DeploymentID, createdDeployment.DeploymentID, "rollback id must not be the same")
 	require.NotEmpty(t, rollbackDeploy.DeploymentID)
@@ -333,18 +345,18 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NotEmpty(t, rollbackDeploy.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 
-	history, err = apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
+	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.Len(t, history.History, 2, "1 item expected in history deployment after first successful")
+	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
 	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
-	assert.Equal(t, rollbackDeploy.DeploymentID, history.History[0].ID)
-	assert.NotEmpty(t, history.History[0].BuildTag)
-	assert.NotEmpty(t, history.History[0].Sha)
-	assert.Equal(t, branchName, history.History[0].Branch)
-	assert.NotEmpty(t, history.History[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, rollbackDeploy.DeploymentID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
 	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
 	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
 	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
