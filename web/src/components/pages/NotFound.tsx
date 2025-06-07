@@ -1,5 +1,5 @@
+import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
-import { A } from '@solidjs/router'
 
 export default function NotFound() {
   return (
