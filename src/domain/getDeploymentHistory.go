@@ -6,24 +6,24 @@ import (
 	"github.com/treenq/treenq/pkg/vel"
 )
 
-type GetDeploymentHistoryRequest struct {
+type GetDeploymentsRequest struct {
 	RepoID string
 }
 
-type GetDeploymentHistoryResponse struct {
-	History []AppDeployment
+type GetDeploymentsResponse struct {
+	Deployments []AppDeployment `json:"deployments"`
 }
 
-func (h *Handler) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, *vel.Error) {
-	history, err := h.db.GetDeploymentHistory(ctx, req.RepoID)
+func (h *Handler) GetDeployments(ctx context.Context, req GetDeploymentsRequest) (GetDeploymentsResponse, *vel.Error) {
+	history, err := h.db.GetDeployments(ctx, req.RepoID)
 	if err != nil {
-		return GetDeploymentHistoryResponse{}, &vel.Error{
+		return GetDeploymentsResponse{}, &vel.Error{
 			Message: "failed get deployment history",
 			Err:     err,
 		}
 	}
 
-	return GetDeploymentHistoryResponse{
-		History: history,
+	return GetDeploymentsResponse{
+		Deployments: history,
 	}, nil
 }
