@@ -113,6 +113,7 @@ export type BuildProgressMessage = {
   level: TLevelMessage
   final: boolean
   timestamp: string
+  deployment: Deployment
 }
 
 class HttpClient {

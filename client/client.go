@@ -575,10 +575,11 @@ type GetBuildProgressResponse struct {
 }
 
 type ProgressMessage struct {
-	Payload   string     `json:"payload"`
-	Level     slog.Level `json:"level"`
-	Final     bool       `json:"final"`
-	Timestamp time.Time  `json:"timestamp"`
+	Payload    string        `json:"payload"`
+	Level      slog.Level    `json:"level"`
+	Final      bool          `json:"final"`
+	Timestamp  time.Time     `json:"timestamp"`
+	Deployment AppDeployment `json:"deployment,omitzero"`
 }
 
 func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {

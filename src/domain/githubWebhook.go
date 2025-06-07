@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -163,6 +164,10 @@ type AppDeployment struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Status describes the status of the deployment
 	Status DeployStatus `json:"status"`
+}
+
+func (d AppDeployment) IsZero() bool {
+	return d.ID == ""
 }
 
 type DeployStatus string
@@ -327,10 +332,11 @@ type buf struct {
 }
 
 type ProgressMessage struct {
-	Payload   string     `json:"payload"`
-	Level     slog.Level `json:"level"`
-	Final     bool       `json:"final"`
-	Timestamp time.Time  `json:"timestamp"`
+	Payload    string        `json:"payload"`
+	Level      slog.Level    `json:"level"`
+	Final      bool          `json:"final"`
+	Timestamp  time.Time     `json:"timestamp"`
+	Deployment AppDeployment `json:"deployment,omitzero"`
 }
 
 type Subscriber struct {
@@ -516,9 +522,12 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 			Err:     err,
 		}
 	}
+	deployment.Sha = gitRepo.Sha
+	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "cloned github repository",
-		Level:   slog.LevelInfo,
+		Payload:    "cloned github repository",
+		Level:      slog.LevelInfo,
+		Deployment: deployment,
 	})
 
 	defer os.RemoveAll(gitRepo.Dir)
@@ -552,9 +561,18 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 				Err:     err,
 			}
 		}
+		deployment.Space = appSpace
 		progress.Append(deployment.ID, ProgressMessage{
-			Payload: "extracted treenq config",
-			Level:   slog.LevelInfo,
+			Payload:    "extracted treenq config",
+			Level:      slog.LevelInfo,
+			Deployment: deployment,
+		})
+	}
+	marshalledSpaceConfig, err := json.Marshal(deployment.Space)
+	if err == nil {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: string(marshalledSpaceConfig),
+			Level:   slog.LevelDebug,
 		})
 	}
 
@@ -590,21 +608,15 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 			Err:     err,
 		}
 	}
+	deployment.BuildTag = image.Tag
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "built image",
-		Level:   slog.LevelInfo,
+		Payload:    "built image: " + image.FullPath(),
+		Level:      slog.LevelInfo,
+		Deployment: deployment,
 	})
 
-	deployment.Space = appSpace
-	deployment.BuildTag = image.Tag
-	deployment.Sha = gitRepo.Sha
-	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "updating deployment state",
-		Level:   slog.LevelDebug,
-	})
-	progress.Append(deployment.ID, ProgressMessage{
-		Payload: fmt.Sprintf("%+v", deployment),
 		Level:   slog.LevelDebug,
 	})
 	err = h.db.UpdateDeployment(ctx, deployment)
