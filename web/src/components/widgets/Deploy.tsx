@@ -22,7 +22,7 @@ export default function Deploy(props: DeployProps) {
     const deployment = await deployStore.deploy(props.repoID)
 
     if (deployment) {
-      navigate(`${ROUTES.deploy}/${deployment.deploymentID}`, {
+      navigate(`${ROUTES.deploy}/${deployment.id}`, {
         state: {
           deployment: deployment,
         },

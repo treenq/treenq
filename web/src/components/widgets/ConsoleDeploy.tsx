@@ -14,7 +14,7 @@ import { useSolidRoute } from '@/hooks/useSolidRoutre'
 import { ROUTES } from '@/routes'
 import { redirect } from '@solidjs/router'
 import { VariantProps } from 'class-variance-authority'
-import { createSignal } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 
 const STATUS_DEPLOYMENT: Record<DeploymentStatus, BadgeVariant> = {
   run: 'default',
@@ -39,12 +39,15 @@ export default function ConsoleDeploy() {
 
     setDataDeployment(res.data)
   }
-  if (!stateRoute.deployment.deploymentID) {
-    getDeployment()
-  }
+
+  createEffect(() => {
+    if (!stateRoute.deployment.id) {
+      getDeployment()
+    }
+  })
 
   httpClient.listenProgress(
-    stateRoute.deployment.fromDeploymentID || params.id,
+    stateRoute.deployment.id || params.id,
     (data: GetBuildProgressMessage) => {
       setLogs((listMessage) => {
         return [...listMessage, data.message]
@@ -56,7 +59,13 @@ export default function ConsoleDeploy() {
     <Card class="p-6">
       <div class="mb-3 flex items-center gap-2">
         <CardTitle>Logs</CardTitle>
-        <Badge variant={STATUS_DEPLOYMENT[stateRoute?.deployment?.status || 'run'] as BadgeVariant}>
+        <Badge
+          variant={
+            STATUS_DEPLOYMENT[
+              stateRoute?.deployment?.status || dataDeployment()?.status || 'run'
+            ] as BadgeVariant
+          }
+        >
           Running
         </Badge>
       </div>
