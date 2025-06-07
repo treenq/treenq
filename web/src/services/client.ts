@@ -217,7 +217,6 @@ class HttpClient {
     eventSource.addEventListener('message', (event) => {
       const data: GetBuildProgressMessage = JSON.parse(event.data)
       callback(data)
-      console.log(data.message.final)
 
       if (data.message.final) {
         eventSource.close()
