@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
+import { ROUTES } from '@/routes'
+
 import { deployStore } from '@/store/deployStore'
 import { useNavigate } from '@solidjs/router'
 import { createSignal, For } from 'solid-js' // Added Show
@@ -77,7 +79,7 @@ export default function Deploy(props: DeployProps) {
     const deployment = await deployStore.deploy(props.repoID)
 
     if (deployment) {
-      navigate(`/deploy/${deployment.deploymentID}`)
+      navigate(`${ROUTES.deploy}${deployment.fromDeploymentID}`)
     } else {
       throw Error('cant start a deployment')
     }

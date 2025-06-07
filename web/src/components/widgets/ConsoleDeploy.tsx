@@ -11,6 +11,8 @@ import {
 import { userStore } from '@/store/userStore'
 
 import { useSolidRoute } from '@/hooks/useSolidRoutre'
+import { ROUTES } from '@/routes'
+import { redirect } from '@solidjs/router'
 import { VariantProps } from 'class-variance-authority'
 import { createSignal } from 'solid-js'
 
@@ -29,11 +31,11 @@ export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
   const [dataDeployment, setDataDeployment] = createSignal<DeployResponse>()
   const userName = userStore.user?.displayName
-  const { params, stateRoute, redirect } = useSolidRoute<DeploymentState>()
+  const { params, stateRoute } = useSolidRoute<DeploymentState>()
 
   const getDeployment = async () => {
     const res = await httpClient.getDeployment(params.id)
-    if ('error' in res) throw redirect('/auth')
+    if ('error' in res) throw redirect(ROUTES.auth)
 
     setDataDeployment(res.data)
   }
