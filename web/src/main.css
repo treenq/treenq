@@ -102,7 +102,7 @@
   --secondary: var(--secondary-900);
   --secondary-foreground: var(--color-white);
   --muted: var(--base-800);
-  --muted-foreground: var(--base-300);
+  --muted-foreground: var(--base-400);
   --accent: var(--base-800);
   --accent-foreground: var(--base-200);
   --border: var(--base-800);

@@ -59,7 +59,7 @@ const SecretTableRow = ({
             value={inputs().key}
             onChange={(key) => setInputs((inputs) => ({ ...inputs, key }))}
           >
-            <TextFieldInput placeholder="SECRET_NAME" />
+            <TextFieldInput placeholder="input name" />
           </TextField>
         </Show>
       </TableCell>
@@ -71,7 +71,7 @@ const SecretTableRow = ({
           class="flex-1"
         >
           <TextFieldInput
-            placeholder="Secret value"
+            placeholder="and value here"
             type={visible() || isEditing() ? 'text' : 'password'}
           />
         </TextField>
@@ -196,7 +196,7 @@ const Secrets = ({ repoID }: SecretsProps) => {
         <TableRow>
           <TableHead class="w-sm">Name</TableHead>
           <TableHead class="w-3xl">Value</TableHead>
-          <TableHead class="w-3xs">Actions</TableHead>
+          <TableHead class="w-3xs"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

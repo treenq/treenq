@@ -1,3 +1,4 @@
+import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
@@ -85,13 +86,16 @@ export default function Deploy(props: DeployProps) {
                   <div class="flex-1">
                     <div class="flex items-center justify-between">
                       <div>
-                        <p class="text-base font-medium">
-                          {`Deploy ${deployment.status === 'run' ? 'live' : deployment.status}`} for{' '}
-                          <a href="#" class="text-primary hover:underline">
-                            {deployment.sha}
-                          </a>
-                          : {deployment.commitMessage}
-                        </p>
+                        <span class="text-base font-medium">
+                          Deploy
+                          <A class="text-primary" href={`${ROUTES.deploy}/${deployment.id}`}>
+                            #${deployment.id}
+                          </A>{' '}
+                          {deployment.status === 'run' ? 'live' : deployment.status}
+                          for {deployment.sha.slice(0, 7)}
+                          {': '}
+                          {deployment.commitMessage}
+                        </span>
                         <p class="text-muted-foreground mt-1 text-sm">{deployment.createdAt}</p>
                       </div>
 
