@@ -70,15 +70,17 @@ export type DeployResponse = {
   userDisplayName: string
   createdAt: string
   updatedAt: string
-  status: string
+  status: DeploymentStatus
   branch: string
 }
+
+export type DeploymentStatus = 'run' | 'failed' | 'done'
 
 export type SetSecretRequest = { repoID: string; key: string; value: string }
 
 export type GetSecretsRequest = { repoID: string }
 
-export type GetSecretsResponse = { keys: string[] | null }
+export type GetSecretsResponse = { keys: string[] }
 
 export type RevealSecretRequest = { repoID: string; key: string }
 
@@ -204,7 +206,7 @@ class HttpClient {
   }
 
   async getDeployment(deploymentID: string): Promise<Result<DeployResponse>> {
-    return await this.post('getDeployment', deploymentID)
+    return await this.post('getDeployment', { deploymentID })
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
@@ -215,7 +217,8 @@ class HttpClient {
     eventSource.addEventListener('message', (event) => {
       const data: GetBuildProgressMessage = JSON.parse(event.data)
       callback(data)
-      console.log(data.message)
+      console.log(data.message.final)
+
       if (data.message.final) {
         eventSource.close()
         console.log('FINISH Event Source, listenProgress')

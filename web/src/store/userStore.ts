@@ -16,7 +16,6 @@ function createUserStore() {
   const getProfile = async () => {
     const res = await httpClient.getProfile()
     if ('error' in res) throw redirect('/auth')
-    debugger
     setStore({ user: res.data.userInfo })
 
     return res.data.userInfo

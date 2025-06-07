@@ -1,10 +1,11 @@
-import { Badge, badgeVariants } from '@/components/ui/Badge'
+import { Badge, type badgeVariants } from '@/components/ui/Badge'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
 import Console from '@/components/ui/Console'
 import {
   BuildProgressMessage,
+  type DeploymentStatus,
   DeployResponse,
-  GetBuildProgressMessage,
+  type GetBuildProgressMessage,
   httpClient,
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
@@ -13,14 +14,13 @@ import { useSolidRoute } from '@/hooks/useSolidRoutre'
 import { VariantProps } from 'class-variance-authority'
 import { createSignal } from 'solid-js'
 
-const STATUS_DEPLOYMENT = {
+const STATUS_DEPLOYMENT: Record<DeploymentStatus, BadgeVariant> = {
   run: 'default',
   failed: 'error',
   done: 'success',
 }
 interface DeploymentState {
   deployment: DeployResponse
-  repoID: string
 }
 
 type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
@@ -29,34 +29,17 @@ export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
   const [dataDeployment, setDataDeployment] = createSignal<DeployResponse>()
   const userName = userStore.user?.displayName
-  const { id, stateRoute } = useSolidRoute<DeploymentState>()
-  const [dateCereate, setDateCereate] = createSignal({
-    start: 0,
-    finish: 0,
-  })
+  const { params, stateRoute, redirect } = useSolidRoute<DeploymentState>()
+
   const getDeployment = async () => {
-    try {
-      const res = await httpClient.getDeployment(id)
+    const res = await httpClient.getDeployment(params.id)
+    if ('error' in res) throw redirect('/auth')
 
-      setDataDeployment(res.data.deployment)
-      dateSecond(res.data.deployment.createdAt)
-    } catch (error) {
-      console.error('Failed to fetch deployment:', error)
-    }
+    setDataDeployment(res.data)
   }
-
-  const dateSecond = (data?: string) => {
-    if (!data) return
-
-    const date = new Date(data)
-    const seconds = date.getTime() / 1000
-
-    setDateCereate({ start: seconds })
-  }
-
   getDeployment()
 
-  httpClient.listenProgress(id, (data: GetBuildProgressMessage) => {
+  httpClient.listenProgress(params.id, (data: GetBuildProgressMessage) => {
     if (data.message.final) {
       return
     }
@@ -77,7 +60,7 @@ export default function ConsoleDeploy() {
       <div class="border-b-border mb-3 grid grid-cols-4 justify-between border-b border-solid pb-3">
         <div>
           <CardDescription>Duration</CardDescription>
-          <CardDescription class="mt-0">{dateCereate()}</CardDescription>
+          <CardDescription class="mt-0">{0}</CardDescription>
         </div>
         <div>
           <CardDescription>Branch</CardDescription>
