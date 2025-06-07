@@ -10,7 +10,7 @@ render(() => <App />, root!)
 
 if (import.meta.env.MODE === 'development') {
   import('@stagewise/toolbar').then(({ initToolbar }) => {
-    const stagewiseConfig = { plugins: [] };
-    initToolbar(stagewiseConfig);
-  });
+    const stagewiseConfig = { plugins: [] }
+    initToolbar(stagewiseConfig)
+  })
 }

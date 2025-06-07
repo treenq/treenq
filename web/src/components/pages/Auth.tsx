@@ -1,6 +1,6 @@
 import { GitHub } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
-import { ROUTES } from '@/utils/constants/routes'
+import { ROUTES } from '@/routes'
 
 export default function Auth() {
   function handleAuth() {

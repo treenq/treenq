@@ -1,5 +1,5 @@
+import { ROUTES } from '@/routes'
 import { httpClient, type UserInfo } from '@/services/client'
-import { ROUTES } from '@/utils/constants/routes'
 import { redirect } from '@solidjs/router'
 
 import { mergeProps } from 'solid-js'
@@ -18,6 +18,7 @@ function createUserStore() {
     const res = await httpClient.getProfile()
     if ('error' in res) throw redirect(ROUTES.auth)
     setStore({ user: res.data.userInfo })
+
     return res.data.userInfo
   }
 

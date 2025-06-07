@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Header } from '@/components/widgets/Header'
 import { AppSidebar } from '@/components/widgets/Sidebar'
 import { userStore } from '@/store/userStore'
-import { ROUTES } from './utils/constants/routes'
+import { ROUTES } from './routes'
 
 type ProtectedRouterProps = {
   component: () => JSX.Element
@@ -83,7 +83,7 @@ function App(): JSX.Element {
                 })}
               />
               <Route path="/githubPostInstall" component={RedirectPage} />
-              <Route path={`*${ROUTES[404]}`} component={NotFound} />
+              <Route path={`*${ROUTES.notFound}`} component={NotFound} />
             </Router>
           </div>
         </Show>

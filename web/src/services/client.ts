@@ -60,18 +60,21 @@ export type DeployRequest = {
 }
 
 export type DeployResponse = {
-  deploymentID: string
+  id: string
   fromDeploymentID: string
   repoID: string
+  space: unknown
   sha: string
   commitMessage: string
   buildTag: string
   userDisplayName: string
-  status: 'run' | 'failed' | 'done'
   createdAt: string
   updatedAt: string
+  status: DeploymentStatus
+  branch: string
 }
 
+export type DeploymentStatus = 'run' | 'failed' | 'done'
 export type GetDeploymentsRequest = {
   repoID: string
 }
@@ -211,6 +214,10 @@ class HttpClient {
 
   async revealSecret(req: RevealSecretRequest): Promise<Result<RevealSecretResponse>> {
     return await this.post('revealSecret', req)
+  }
+
+  async getDeployment(deploymentID: string): Promise<Result<DeployResponse>> {
+    return await this.post('getDeployment', { deploymentID })
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {

@@ -12,8 +12,8 @@ import {
   ComboboxItemLabel,
   ComboboxTrigger,
 } from '@/components/ui/Combobox'
+import { ROUTES } from '@/routes'
 import { reposStore } from '@/store/repoStore'
-import { ROUTES } from '@/utils/constants/routes'
 import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
 
 type ConnectReposItem = {
