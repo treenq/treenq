@@ -43,7 +43,7 @@ func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 				if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
 					w.WriteHeader(http.StatusBadRequest)
 					err = json.NewEncoder(w).Encode(Error{
-						Code: "FAILED_DECODING_BODY",
+						Code: "FAILED_DECODING_REQUEST_BODY",
 						Err:  err,
 					})
 					if err != nil {
@@ -73,7 +73,7 @@ func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				err = json.NewEncoder(w).Encode(Error{
-					Code:    "FAILED_ENCODING",
+					Code:    "FAILED_ENCODING_RESPONSE_BODY",
 					Message: err.Error(),
 				})
 				if err != nil {

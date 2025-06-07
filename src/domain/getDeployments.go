@@ -7,7 +7,7 @@ import (
 )
 
 type GetDeploymentsRequest struct {
-	RepoID string
+	RepoID string `json:"repoID"`
 }
 
 type GetDeploymentsResponse struct {

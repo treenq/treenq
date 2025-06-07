@@ -31,9 +31,11 @@ function RepoItem(props: ConnectReposItem) {
       <CardHeader class="flex-row items-center justify-between gap-4 p-6 pb-2">
         <div class="min-w-0 flex-1">
           <CardTitle class="truncate">
-            <A variant="light" href={repoHref}>
-              {props.fullName}
-            </A>
+            <Show when={props.branch !== ''} fallback={props.fullName}>
+              <A variant="light" href={repoHref}>
+                {props.fullName}
+              </A>
+            </Show>
           </CardTitle>
           <CardDescription>
             <span class="inline-flex items-center gap-1">

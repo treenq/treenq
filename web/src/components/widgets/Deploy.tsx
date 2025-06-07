@@ -3,87 +3,40 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { ROUTES } from '@/routes'
 
+import { DeployResponse } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
+import { reposStore, type Repo } from '@/store/repoStore'
 import { useNavigate } from '@solidjs/router'
-import { createSignal, For } from 'solid-js' // Added Show
-
-interface DeploymentProps {
-  id: string
-  hash: string
-  description: string
-  status: 'success' | 'failed' | 'started' | 'first'
-  timestamp: string
-  additionalInfo?: string
-  canRollback?: boolean
-}
+import { createEffect, createSignal, For } from 'solid-js'
 
 type DeployProps = {
   repoID: string
 }
 
 export default function Deploy(props: DeployProps) {
-  const [deployments] = createSignal<DeploymentProps[]>([
-    {
-      id: '1',
-      hash: '7144e6c',
-      description: 'feat(web): add router, signIn page, fix layout',
-      status: 'success',
-      timestamp: 'March 28, 2025 at 10:01 AM',
-      canRollback: false,
-    },
-    {
-      id: '2',
-      hash: '7144e6c',
-      description: 'feat(web): add router, signIn page, fix layout',
-      status: 'started',
-      timestamp: 'March 28, 2025 at 10:01 AM',
-      additionalInfo: 'New commit via Auto-Deploy',
-    },
-    {
-      id: '3',
-      hash: 'f47c499',
-      description: 'fix sed command in Makefile for cross platform compatibility (#51)',
-      status: 'success',
-      timestamp: 'March 26, 2025 at 11:20 PM',
-      canRollback: true,
-    },
-    {
-      id: '4',
-      hash: 'f47c499',
-      description: 'fix sed command in Makefile for cross platform compatibility (#51)',
-      status: 'started',
-      timestamp: 'March 26, 2025 at 11:19 PM',
-      additionalInfo: 'Build command updated',
-    },
-    {
-      id: '5',
-      hash: 'f47c499',
-      description: 'fix sed command in Makefile for cross platform compatibility (#51)',
-      status: 'failed',
-      timestamp: 'March 26, 2025 at 11:18 PM',
-      additionalInfo:
-        'Exited with status 254 while building your code. Check your deploy logs for more information.',
-      canRollback: true,
-    },
-    {
-      id: '6',
-      hash: 'f47c499',
-      description: 'fix sed command in Makefile for cross platform compatibility (#51)',
-      status: 'first',
-      timestamp: 'March 26, 2025 at 11:17 PM',
-    },
-  ])
+  const [deployments, setDeployments] = createSignal<DeployResponse[]>([])
+  const [repo, setRepo] = createSignal<Repo | undefined>()
   const navigate = useNavigate()
 
   const deploy = async () => {
     const deployment = await deployStore.deploy(props.repoID)
 
     if (deployment) {
-      navigate(`${ROUTES.deploy}${deployment.fromDeploymentID}`)
+      navigate(`${ROUTES.deploy}/${deployment.fromDeploymentID}`)
     } else {
       throw Error('cant start a deployment')
     }
   }
+
+  createEffect(() => {
+    deployStore.getDeployments(props.repoID).then((res) => {
+      setDeployments(res)
+    })
+    reposStore.getRepos().then(() => {
+      const repo = reposStore.repos.find((it) => it.treenqID === props.repoID)
+      setRepo(repo)
+    })
+  })
 
   return (
     <div class="mx-auto flex w-full flex-col">
@@ -96,7 +49,7 @@ export default function Deploy(props: DeployProps) {
                 SERVICE
               </span>
             </div>
-            <h1 class="text-3xl font-bold">treenq</h1>
+            <h3 class="font-bold">{repo()?.fullName}</h3>
           </div>
           <Button variant="outline" class="hover:bg-primary" onclick={deploy}>
             Deploy Now
@@ -107,16 +60,16 @@ export default function Deploy(props: DeployProps) {
         <div class="mb-2 flex items-center gap-4">
           <div class="flex items-center gap-2">
             <div class="bg-muted h-4 w-4 rounded-full" />
-            <span class="text-sm">treenq / treenq</span>
+            <span class="text-sm">{repo()?.fullName}</span>
           </div>
           <div class="flex items-center gap-2 text-sm">
             <div class="bg-muted h-4 w-4 rounded-full" />
-            <span>main</span>
+            <span>{repo()?.branch}</span>
           </div>
         </div>
 
         <div class="text-muted-foreground flex items-center gap-2 text-sm">
-          <span>treenq.onrender.com</span>
+          <span>repoID: {props.repoID}</span>
           <div class="bg-muted h-4 w-4 rounded" />
         </div>
       </div>
@@ -135,24 +88,16 @@ export default function Deploy(props: DeployProps) {
                     <div class="flex items-center justify-between">
                       <div>
                         <p class="text-base font-medium">
-                          {deployment.status === 'first'
-                            ? 'First deploy'
-                            : `Deploy ${deployment.status === 'success' ? 'live' : deployment.status}`}{' '}
-                          for{' '}
+                          {`Deploy ${deployment.status === 'run' ? 'live' : deployment.status}`} for{' '}
                           <a href="#" class="text-primary hover:underline">
-                            {deployment.hash}
+                            {deployment.sha}
                           </a>
-                          : {deployment.description}
+                          : {deployment.commitMessage}
                         </p>
-                        {deployment.additionalInfo && (
-                          <p class="text-muted-foreground mt-1 text-sm">
-                            {deployment.additionalInfo}
-                          </p>
-                        )}
-                        <p class="text-muted-foreground mt-1 text-sm">{deployment.timestamp}</p>
+                        <p class="text-muted-foreground mt-1 text-sm">{deployment.createdAt}</p>
                       </div>
 
-                      {deployment.canRollback && (
+                      {deployment.status === 'done' && (
                         <Button variant="outline" size="sm" class="gap-1">
                           <div class="bg-muted h-4 w-4 rounded" />
                           Rollback
