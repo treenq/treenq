@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { deployStore } from '@/store/deployStore'
 import { useNavigate } from '@solidjs/router'
-import { createSignal, For, Show } from 'solid-js' // Added Show
+import { createSignal, For } from 'solid-js' // Added Show
 
 interface DeploymentProps {
   id: string
@@ -87,7 +87,7 @@ export default function Deploy(props: DeployProps) {
   }
 
   return (
-    <div class="mx-auto flex w-full max-w-5xl flex-col">
+    <div class="mx-auto flex w-full flex-col">
       <div class="bg-background text-foreground p-6">
         <div class="mb-4 flex items-center justify-between">
           <div>
