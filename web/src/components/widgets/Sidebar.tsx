@@ -17,7 +17,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/Sidebar'
-import { cn } from '@/components/ui/utils'
 import { reposStore } from '@/store/repoStore'
 
 interface SidebarChild {

@@ -9,6 +9,6 @@ export const useSolidRoute = <T = unknown>() => {
   return {
     id,
     location,
-    stateRoute: location.state as T, // опционально, если хочешь вернуть только state
+    stateRoute: location.state as T,
   }
 }
