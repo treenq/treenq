@@ -72,11 +72,19 @@ export type DeployResponse = {
   updatedAt: string
 }
 
+export type GetDeploymentsRequest = {
+  repoID: string
+}
+
+export type GetDeploymentsResponse = {
+  deployments: DeployResponse[]
+}
+
 export type SetSecretRequest = { repoID: string; key: string; value: string }
 
 export type GetSecretsRequest = { repoID: string }
 
-export type GetSecretsResponse = { keys: string[] | null }
+export type GetSecretsResponse = { keys: string[] }
 
 export type RevealSecretRequest = { repoID: string; key: string }
 
@@ -187,6 +195,10 @@ class HttpClient {
 
   async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
     return await this.post('deploy', req)
+  }
+
+  async getDeployments(req: GetDeploymentsRequest): Promise<Result<GetDeploymentsResponse>> {
+    return await this.post('getDeployments', req)
   }
 
   async setSecret(req: SetSecretRequest): Promise<Result<undefined>> {

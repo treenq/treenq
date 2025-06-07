@@ -10,6 +10,11 @@ function createDeployStore() {
   const [store] = createStore(newDefaultDeployState())
 
   return mergeProps(store, {
+    getDeployments: async (repoID: string) => {
+      const res = await httpClient.getDeployments({ repoID })
+      if ('error' in res) return []
+      return res.data.deployments
+    },
     deploy: async (repoID: string) => {
       const res = await httpClient.deploy({ repoID })
       if ('error' in res) return ''
