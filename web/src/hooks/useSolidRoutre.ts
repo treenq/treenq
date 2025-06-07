@@ -1,17 +1,21 @@
 import { useLocation, useNavigate, useParams } from '@solidjs/router'
 
-export const useSolidRoute = <T = unknown>() => {
-  const params = useParams()
+export const useSolidRoute = <ParamKeys extends string, T = unknown>(
+  paramKeys: readonly ParamKeys[] = [],
+) => {
+  const routeParams = useParams()
   const location = useLocation<T>()
   const navigate = useNavigate()
 
-  const id = params.id
+  const params = {} as Record<ParamKeys, string>
+  for (const key of paramKeys) {
+    params[key] = routeParams[key]
+  }
 
   return {
-    id,
+    params,
     location,
-    stateRoute: location.state as T, // опционально, если хочешь вернуть только state
     navigate,
-    backPage: () => navigate(-1),
+    stateRoute: location.state as T,
   }
 }
