@@ -35,7 +35,7 @@ export default function ConsoleDeploy() {
 
   const getDeployment = async () => {
     const res = await httpClient.getDeployment(params.id)
-    if ('error' in res) throw redirect(ROUTES.auth)
+    if ('error' in res) return
 
     setDataDeployment(res.data)
   }
