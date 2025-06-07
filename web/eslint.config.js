@@ -25,6 +25,7 @@ export default ts.config(
   },
   {
     rules: {
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
       'no-restricted-syntax': [
         'error',
         {
