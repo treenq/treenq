@@ -102,6 +102,8 @@ export type RevealSecretRequest = { repoID: string; key: string }
 
 export type RevealSecretResponse = { value: string }
 
+export type RemoveSecretRequest = { repoID: string; key: string }
+
 export type GetBuildProgressMessage = {
   message: BuildProgressMessage
 }
@@ -224,6 +226,10 @@ class HttpClient {
 
   async revealSecret(req: RevealSecretRequest): Promise<Result<RevealSecretResponse>> {
     return await this.post('revealSecret', req)
+  }
+
+  async removeSecret(req: RemoveSecretRequest): Promise<Result<void>> {
+    return await this.post<void>('removeSecret', req)
   }
 
   async getDeployment(req: GetDeploymentRequest): Promise<Result<GetDeploymentResponse>> {

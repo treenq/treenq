@@ -76,7 +76,7 @@ const SecretTableRow = ({
           />
         </TextField>
         <Show when={type === 'edit'}>
-          <Button onClick={() => (visible() ? setVisible(false) : toggleVisible())}>
+          <Button variant="ghost" size="icon" onClick={() => (visible() ? setVisible(false) : toggleVisible())}>
             <Show when={visible()} fallback={<Eye />}>
               <EyeOff />
             </Show>
@@ -118,7 +118,15 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
     }
   }
 
-  const deleteSecret = () => setSecrets((secrets) => secrets.filter((_, i) => i !== index))
+  const deleteSecret = async () => {
+    const res = await httpClient.removeSecret({ repoID, key: secret().key })
+    if (!res.error) {
+      setSecrets((secrets) => secrets.filter((_, i) => i !== index))
+    } else {
+      // TODO: better error handling
+      console.error('Failed to delete secret:', res.error)
+    }
+  }
 
   return (
     <SecretTableRow
@@ -132,10 +140,10 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
       type="edit"
     >
       <div class="flex space-x-2">
-        <Show when={isEditing()} fallback={<Button onClick={toggleEditMode}>Edit</Button>}>
-          <Button onClick={updateSecret}>Save</Button>
+        <Show when={isEditing()} fallback={<Button variant="outline" onClick={toggleEditMode}>Edit</Button>}>
+          <Button variant="default" onClick={updateSecret}>Save</Button>
         </Show>
-        <Button onClick={deleteSecret}>Delete</Button>
+        <Button variant="destructive" onClick={deleteSecret}>Delete</Button>
       </div>
     </SecretTableRow>
   )
