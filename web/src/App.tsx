@@ -12,8 +12,8 @@ import RepoPage from '@/components/pages/RepoPage'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Header } from '@/components/widgets/Header'
 import { AppSidebar } from '@/components/widgets/Sidebar'
+import { Routes } from '@/routes'
 import { userStore } from '@/store/userStore'
-import { ROUTES } from './routes'
 
 type ProtectedRouterProps = {
   component: () => JSX.Element
@@ -55,7 +55,7 @@ function App(): JSX.Element {
   const requiresAuth = (component: () => JSX.Element) =>
     MakeProtectedComponent({
       satisfies: isAuthenticated,
-      redirectTo: ROUTES.auth,
+      redirectTo: Routes.auth.path,
       component: component,
     })
 
@@ -71,11 +71,11 @@ function App(): JSX.Element {
             <Router>
               <Route path="/">
                 <Route path="/" component={requiresAuth(Main)} />
-                <Route path={`/${ROUTES.repos}/:id`} component={requiresAuth(RepoPage)} />
-                <Route path={`/${ROUTES.deploy}/:id`} component={requiresAuth(DeployPage)} />
+                <Route path={Routes.repos.path} component={requiresAuth(RepoPage)} />
+                <Route path={Routes.deploy.path} component={requiresAuth(DeployPage)} />
               </Route>
               <Route
-                path={ROUTES.auth}
+                path={Routes.auth.path}
                 component={MakeProtectedComponent({
                   satisfies: isNotAuthenticated,
                   redirectTo: '/',
@@ -83,7 +83,7 @@ function App(): JSX.Element {
                 })}
               />
               <Route path="/githubPostInstall" component={RedirectPage} />
-              <Route path={`*${ROUTES.notFound}`} component={NotFound} />
+              <Route path={`*${Routes.notFound.path}`} component={NotFound} />
             </Router>
           </div>
         </Show>

@@ -5,12 +5,12 @@ import {
   BuildProgressMessage,
   type DeploymentStatus,
   type GetBuildProgressMessage,
-  type GetDeploymentResponse,
   httpClient,
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
+import { useParams } from '@solidjs/router'
 
-import { useSolidRoute } from '@/hooks/useSolidRoutre'
+import { Routes } from '@/routes'
 import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
 import { createEffect, createSignal } from 'solid-js'
@@ -26,7 +26,7 @@ type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
   const userName = userStore.user?.displayName
-  const { params } = useSolidRoute<GetDeploymentResponse>()
+  const params = Routes.deploy.params(useParams)
 
   createEffect(() => {
     if (!deployStore.deployment.id) {

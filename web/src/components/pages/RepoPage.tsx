@@ -2,16 +2,13 @@ import { Button } from '@/components/ui/Button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import Deploy from '@/components/widgets/Deploy'
 import Secrets from '@/components/widgets/Secrets'
-import { useSolidRoute } from '@/hooks/useSolidRoutre'
+import { useNavigate, useParams } from '@solidjs/router'
 
-import { createEffect } from 'solid-js'
+import { Routes } from '@/routes'
 
 export default function RepoPage() {
-  const { params, backPage } = useSolidRoute()
-
-  createEffect(() => {
-    console.log(params.id)
-  })
+  const reposRoute = Routes.repos
+  const repoID = reposRoute.params(useParams).id
 
   // get installation
   // no installation ? offer an installation button
@@ -22,7 +19,7 @@ export default function RepoPage() {
   return (
     <main class="bg-background flex min-h-screen w-full flex-col px-8 py-12">
       <div class="mb-6">
-        <Button onClick={() => backPage()} textContent="Back" variant="outline"></Button>
+        <Button onClick={() => useNavigate()(-1)} textContent="Back" variant="outline"></Button>
       </div>
       <div class="flex w-full flex-col gap-10">
         <Tabs defaultValue="deployments" class="w-full">
@@ -31,10 +28,10 @@ export default function RepoPage() {
             <TabsTrigger value="secrets">Secrets</TabsTrigger>
           </TabsList>
           <TabsContent value="deployments">
-            <Deploy repoID={params.id} />
+            <Deploy repoID={repoID} />
           </TabsContent>
           <TabsContent value="secrets">
-            <Secrets repoID={params.id} />
+            <Secrets repoID={repoID} />
           </TabsContent>
         </Tabs>
       </div>

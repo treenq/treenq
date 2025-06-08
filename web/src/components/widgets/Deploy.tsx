@@ -2,7 +2,7 @@ import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
-import { ROUTES } from '@/routes'
+import { Routes } from '@/routes'
 
 import { Deployment } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
@@ -17,13 +17,12 @@ type DeployProps = {
 export default function Deploy(props: DeployProps) {
   const [deployments, setDeployments] = createSignal<Deployment[]>([])
   const [repo, setRepo] = createSignal<Repo | undefined>()
-  const navigate = useNavigate()
 
   const deploy = async (fromDeploymentID: string = '') => {
     const deployment = await deployStore.deploy(props.repoID, fromDeploymentID)
     if (deployment) {
       deployStore.setDeployment(deployment)
-      navigate(`${ROUTES.deploy}/${deployment.id}`, {})
+      Routes.deploy.navigate(useNavigate, { id: deployment.id })
     }
   }
 
@@ -88,7 +87,10 @@ export default function Deploy(props: DeployProps) {
                       <div>
                         <span class="text-base font-medium">
                           Deploy
-                          <A class="text-primary" href={`${ROUTES.deploy}/${deployment.id}`}>
+                          <A
+                            class="text-primary"
+                            href={Routes.deploy.makeHref({ id: deployment.id })}
+                          >
                             #${deployment.id}
                           </A>{' '}
                           {deployment.status === 'run' ? 'live' : deployment.status}
