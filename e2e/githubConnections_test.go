@@ -5,15 +5,17 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/rs/xid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
+	"github.com/treenq/treenq/src/domain"
 )
 
 //go:embed testdata/appInstall.json
@@ -29,14 +31,15 @@ var repoRemoveRequestBody []byte
 var repoBranchMergeMainRequestBody []byte
 
 func TestGithubAppInstallation(t *testing.T) {
+	t.Parallel()
 	clearDatabase()
 
 	// create a user and obtain its token
-	user := client.UserInfo{ID: uuid.NewString(), Email: "test@mail.com", DisplayName: "testing"}
+	user := client.UserInfo{ID: xid.New().String(), Email: "test@mail.com", DisplayName: "testing"}
 	userToken, err := createUser(user)
 	require.NoError(t, err, "user must be created")
 
-	anotherUser := client.UserInfo{ID: uuid.NewString(), Email: "test2@mail.com", DisplayName: "testing2"}
+	anotherUser := client.UserInfo{ID: xid.New().String(), Email: "test2@mail.com", DisplayName: "testing2"}
 	anotherToken, err := createUser(anotherUser)
 	require.NoError(t, err, "user must be created")
 
@@ -63,7 +66,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NotEmpty(t, treenqInstallationID)
 	assert.Equal(t, client.GetReposResponse{
 		Installation: treenqInstallationID,
-		Repos: []client.Repository{
+		Repos: []client.GithubRepository{
 			{
 				TreenqID: reposResponse.Repos[0].TreenqID,
 				ID:       805585115,
@@ -85,7 +88,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -119,7 +122,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	require.NoError(t, err, "connect branch must succeed")
 	require.Equal(t, client.ConnectBranchResponse{
-		Repo: client.Repository{
+		Repo: client.GithubRepository{
 			TreenqID:       reposResponse.Repos[0].TreenqID,
 			InstallationID: reposResponse.Repos[0].InstallationID,
 			ID:             805585115,
@@ -138,7 +141,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after merge main")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -166,7 +169,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -193,7 +196,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, connectRepoResponse, client.ConnectBranchResponse{
-		Repo: client.Repository{
+		Repo: client.GithubRepository{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
 			FullName: "treenq/useless",
@@ -205,7 +208,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.Repository{
+	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -216,19 +219,157 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	secrets, err := apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err := apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
+	err = apiClient.SetSecret(ctx, client.SetSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+		Value:  "SUPER",
+	})
+	require.NoError(t, err, "no error expect on set secret")
+
+	secrets, err = apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Equal(t, []string{"SECRET"}, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.NoError(t, err, "must reveal a secret successfully")
+	require.Equal(t, "SUPER", revealSecretResponse.Value, "no revealed secret is expected")
+
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET2",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
+	secrets, err = anotherApiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	// secrets must not be available to the other users
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = anotherApiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = anotherApiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
+	err = apiClient.RemoveSecret(ctx, client.RemoveSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+	})
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
+
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
+
 	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.NotEmpty(t, createdDeployment.DeploymentID)
-	require.Equal(t, createdDeployment.Status, "init")
-	require.NotEmpty(t, createdDeployment.CreatedAt)
+	require.NotEmpty(t, createdDeployment.Deployment.ID)
+	require.Equal(t, createdDeployment.Deployment.Status, "run")
+	require.NotEmpty(t, createdDeployment.Deployment.CreatedAt)
 	require.NoError(t, err, "failed to deploys app")
 
 	// wait for deployment done
+	readProgress(t, ctx, createdDeployment, apiClient, userToken)
+	time.Sleep(time.Second * 5)
+	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+	require.NoError(t, err, "request for kube:80 must be created")
+	req.Host = "qwer.localhost"
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "no error must be from qwer.localhost")
+	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "body must be read from qwer.localhost")
+	resp.Body.Close()
+	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
+
+	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, createdDeployment.Deployment.ID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
+
+	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID:           reposResponse.Repos[0].TreenqID,
+		FromDeploymentID: deployments.Deployments[0].ID,
+	})
+	require.NotEqual(t, rollbackDeploy.Deployment.ID, createdDeployment.Deployment.ID, "rollback id must not be the same")
+	require.NotEmpty(t, rollbackDeploy.Deployment.ID)
+	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
+	// require.Equal(t, rollbackDeploy.Status, "run")
+	require.NotEmpty(t, rollbackDeploy.Deployment.CreatedAt)
+	require.NoError(t, err, "failed to deploys app")
+
+	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, rollbackDeploy.Deployment.ID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
+	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+}
+
+func readProgress(t *testing.T, ctx context.Context, createdDeployment client.GetDeploymentResponse, apiClient *client.Client, userToken string) {
+	t.Helper()
+
+	progressRead := false
 	for range 20 {
 		time.Sleep(time.Second * 2)
 		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
-			DeploymentID: createdDeployment.DeploymentID,
+			DeploymentID: createdDeployment.Deployment.ID,
 		})
 		require.NoError(t, err)
 		require.NotEqual(t, "failed", deployment.Deployment.Status)
@@ -236,7 +377,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			continue
 		}
 
-		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.DeploymentID, nil)
+		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.Deployment.ID, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		resp, err := http.DefaultClient.Do(req)
@@ -267,10 +408,9 @@ func TestGithubAppInstallation(t *testing.T) {
 		}
 
 		assert.True(t, hasFinalMessage, "progress build must have a final message")
-		return
-
+		progressRead = true
+		break
 	}
 
-	t.Log("status must be done to this moment")
-	t.FailNow()
+	require.True(t, progressRead, "progress must be read")
 }

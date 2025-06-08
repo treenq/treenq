@@ -13,7 +13,7 @@ type ConnectBranchRequest struct {
 }
 
 type ConnectBranchResponse struct {
-	Repo Repository `json:"repo"`
+	Repo GithubRepository `json:"repo"`
 }
 
 func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, *vel.Error) {

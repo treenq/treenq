@@ -76,6 +76,7 @@ func New(conf Config) (http.Handler, error) {
 		conf.AuthRedirectUrl,
 		conf.AuthTtl,
 		l,
+		conf.IsProd,
 	)
 	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l), vel.NewCorsMiddleware(conf.CorsAllowOrigin)).Mux(), nil
 }

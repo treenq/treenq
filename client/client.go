@@ -124,15 +124,15 @@ func (c *Client) AuthCallback(ctx context.Context, req CodeExchangeRequest) erro
 }
 
 type GithubWebhookRequest struct {
-	After               string       `json:"after"`
-	Installation        Installation `json:"installation"`
-	Sender              Sender       `json:"sender"`
-	Action              string       `json:"action"`
-	Repositories        []Repository `json:"repositories"`
-	RepositoriesAdded   []Repository `json:"repositories_added"`
-	RepositoriesRemoved []Repository `json:"repositories_removed"`
-	Ref                 string       `json:"ref"`
-	Repository          Repository   `json:"repository"`
+	After               string             `json:"after"`
+	Installation        Installation       `json:"installation"`
+	Sender              Sender             `json:"sender"`
+	Action              string             `json:"action"`
+	Repositories        []GithubRepository `json:"repositories"`
+	RepositoriesAdded   []GithubRepository `json:"repositories_added"`
+	RepositoriesRemoved []GithubRepository `json:"repositories_removed"`
+	Ref                 string             `json:"ref"`
+	Repository          GithubRepository   `json:"repository"`
 }
 
 type Installation struct {
@@ -150,7 +150,7 @@ type Sender struct {
 	Login string `json:"login"`
 }
 
-type Repository struct {
+type GithubRepository struct {
 	ID             int    `json:"id"`
 	FullName       string `json:"full_name"`
 	Private        bool   `json:"private"`
@@ -289,8 +289,8 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Installation string       `json:"installationID"`
-	Repos        []Repository `json:"repos"`
+	Installation string             `json:"installationID"`
+	Repos        []GithubRepository `json:"repos"`
 }
 
 func (c *Client) GetRepos(ctx context.Context) (GetReposResponse, error) {
@@ -404,7 +404,7 @@ type ConnectBranchRequest struct {
 }
 
 type ConnectBranchResponse struct {
-	Repo Repository `json:"repo"`
+	Repo GithubRepository `json:"repo"`
 }
 
 func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest) (ConnectBranchResponse, error) {
@@ -443,17 +443,57 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 }
 
 type DeployRequest struct {
-	RepoID string `json:"repoID"`
+	RepoID           string `json:"repoID"`
+	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
-type DeployResponse struct {
-	DeploymentID string    `json:"deploymentID"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"createdAt"`
+type GetDeploymentResponse struct {
+	Deployment AppDeployment `json:"deployment"`
 }
 
-func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
-	var res DeployResponse
+type AppDeployment struct {
+	ID               string    `json:"id"`
+	FromDeploymentID string    `json:"fromDeploymentID"`
+	RepoID           string    `json:"repoID"`
+	Space            Space     `json:"space"`
+	Sha              string    `json:"sha"`
+	Branch           string    `json:"branch"`
+	CommitMessage    string    `json:"commitMessage"`
+	BuildTag         string    `json:"buildTag"`
+	UserDisplayName  string    `json:"userDisplayName"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	Status           string    `json:"status"`
+}
+
+type Space struct {
+	Region  string
+	Service Service
+}
+
+type Service struct {
+	Key                 string
+	DockerfilePath      string
+	DockerignorePath    string
+	BuildEnvs           map[string]string
+	RuntimeEnvs         map[string]string
+	BuildSecrets        []string
+	RuntimeSecrets      []string
+	HttpPort            int
+	Replicas            int
+	Name                string
+	SizeSlug            string
+	ComputationResource ComputationResource
+}
+
+type ComputationResource struct {
+	CpuUnits   int
+	MemoryMibs int
+	DiskGibs   int
+}
+
+func (c *Client) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentResponse, error) {
+	var res GetDeploymentResponse
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
@@ -489,48 +529,6 @@ func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse,
 
 type GetDeploymentRequest struct {
 	DeploymentID string `json:"deploymentID"`
-}
-
-type GetDeploymentResponse struct {
-	Deployment AppDeployment `json:"deployment"`
-}
-
-type AppDeployment struct {
-	ID              string    `json:"id"`
-	RepoID          string    `json:"repoID"`
-	Space           Space     `json:"space"`
-	Sha             string    `json:"sha"`
-	BuildTag        string    `json:"buildTag"`
-	UserDisplayName string    `json:"userDisplayName"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	Status          string    `json:"status"`
-}
-
-type Space struct {
-	Key     string
-	Region  string
-	Service Service
-}
-
-type Service struct {
-	Key                 string
-	DockerfilePath      string
-	BuildEnvs           map[string]string
-	RuntimeEnvs         map[string]string
-	BuildSecrets        []string
-	RuntimeSecrets      []string
-	HttpPort            int
-	Replicas            int
-	Name                string
-	SizeSlug            string
-	ComputationResource ComputationResource
-}
-
-type ComputationResource struct {
-	CpuUnits   int
-	MemoryMibs int
-	DiskGibs   int
 }
 
 func (c *Client) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, error) {
@@ -577,10 +575,11 @@ type GetBuildProgressResponse struct {
 }
 
 type ProgressMessage struct {
-	Payload   string     `json:"payload"`
-	Level     slog.Level `json:"level"`
-	Final     bool       `json:"final"`
-	Timestamp time.Time  `json:"timestamp"`
+	Payload    string        `json:"payload"`
+	Level      slog.Level    `json:"level"`
+	Final      bool          `json:"final"`
+	Timestamp  time.Time     `json:"timestamp"`
+	Deployment AppDeployment `json:"deployment,omitzero"`
 }
 
 func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {
@@ -613,4 +612,201 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 	}
 
 	return res, nil
+}
+
+type GetDeploymentsRequest struct {
+	RepoID string `json:"repoID"`
+}
+
+type GetDeploymentsResponse struct {
+	Deployments []AppDeployment `json:"deployments"`
+}
+
+func (c *Client) GetDeployments(ctx context.Context, req GetDeploymentsRequest) (GetDeploymentsResponse, error) {
+	var res GetDeploymentsResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeployments", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getDeployments: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getDeployments response: %w", err)
+	}
+
+	return res, nil
+}
+
+type SetSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+}
+
+func (c *Client) SetSecret(ctx context.Context, req SetSecretRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/setSecret", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call setSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type GetSecretsRequest struct {
+	RepoID string `json:"repoID"`
+}
+
+type GetSecretsResponse struct {
+	Keys []string `json:"keys"`
+}
+
+func (c *Client) GetSecrets(ctx context.Context, req GetSecretsRequest) (GetSecretsResponse, error) {
+	var res GetSecretsResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getSecrets", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getSecrets: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getSecrets response: %w", err)
+	}
+
+	return res, nil
+}
+
+type RevealSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+}
+
+type RevealSecretResponse struct {
+	Value string `json:"value"`
+}
+
+func (c *Client) RevealSecret(ctx context.Context, req RevealSecretRequest) (RevealSecretResponse, error) {
+	var res RevealSecretResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/revealSecret", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call revealSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode revealSecret response: %w", err)
+	}
+
+	return res, nil
+}
+
+type RemoveSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+}
+
+func (c *Client) RemoveSecret(ctx context.Context, req RemoveSecretRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/removeSecret", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call removeSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

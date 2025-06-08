@@ -7,7 +7,7 @@ type ReposState = {
   repos: Repo[]
 }
 
-type Repo = {
+export type Repo = {
   treenqID: string
   fullName: string
   branch: string

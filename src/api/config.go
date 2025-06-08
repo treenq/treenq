@@ -59,6 +59,8 @@ type Config struct {
 
 	// HTTP settings
 	CorsAllowOrigin string `envconfig:"CORS_ALLOW_ORIGIN" required:"true"`
+
+	IsProd bool `envconfig:"IS_PROD" default:"true"`
 }
 
 type StringBase64 string

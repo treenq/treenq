@@ -149,7 +149,7 @@ type githubRepositoriesResponse struct {
 	Repositories []domain.InstalledRepository `json:"repositories"`
 }
 
-func (c *GithubClient) ListRepositories(ctx context.Context, installationID int) ([]domain.Repository, error) {
+func (c *GithubClient) ListRepositories(ctx context.Context, installationID int) ([]domain.GithubRepository, error) {
 	token, err := c.IssueAccessToken(installationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue an installation token: %w", err)

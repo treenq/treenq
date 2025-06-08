@@ -17,7 +17,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/Sidebar'
-import { cn } from '@/components/ui/utils'
 import { reposStore } from '@/store/repoStore'
 
 interface SidebarChild {
@@ -71,7 +70,7 @@ export function AppSidebar() {
 
   return (
     <SidebarProvider>
-      <Sidebar class="text-sidebar-foreground bg-sidebar border-r">
+      <Sidebar>
         <SidebarContent>
           <SidebarMenu>
             <For each={sidebarItems()}>
@@ -85,13 +84,7 @@ export function AppSidebar() {
                     when={(item as SidebarItemProps).children}
                     fallback={
                       <SidebarMenuItem>
-                        <SidebarMenuButton
-                          class={cn(
-                            'hover:bg-sidebar-primary',
-                            (item as SidebarItemProps).isActive &&
-                              'text-sidebar-primary-foreground bg-sidebar-primary',
-                          )}
-                        >
+                        <SidebarMenuButton>
                           <a href={(item as SidebarItemProps).href} class="flex items-center">
                             {(item as SidebarItemProps).icon({})}
                             <span>{(item as SidebarItemProps).label}</span>
@@ -103,13 +96,7 @@ export function AppSidebar() {
                     <Collapsible class="w-full">
                       <SidebarMenuItem>
                         <CollapsibleTrigger class="group flex w-full">
-                          <SidebarMenuButton
-                            class={cn(
-                              'hover:bg-sidebar-accent w-full justify-between',
-                              (item as SidebarItemProps).isActive &&
-                                'hover:bg-sidebar-primary text-sidebar-primary-foreground',
-                            )}
-                          >
+                          <SidebarMenuButton>
                             <div class="flex items-center">
                               {(item as SidebarItemProps).icon({})}
                               <span>{(item as SidebarItemProps).label}</span>
