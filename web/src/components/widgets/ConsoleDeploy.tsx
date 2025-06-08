@@ -15,8 +15,6 @@ import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
 import { createEffect, createSignal } from 'solid-js'
 
-import { Icon } from '../ui/Icon'
-
 const STATUS_DEPLOYMENT: Record<DeploymentStatus, BadgeVariant> = {
   run: 'default',
   failed: 'error',
@@ -74,7 +72,6 @@ export default function ConsoleDeploy() {
       </div>
 
       <Console classNames="mb-3" logs={logs()} />
-      <Icon name="iconUploadFile" />
     </Card>
   )
 }
