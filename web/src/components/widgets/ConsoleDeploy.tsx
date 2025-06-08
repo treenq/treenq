@@ -8,7 +8,6 @@ import {
   httpClient,
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
-import { useParams } from '@solidjs/router'
 
 import { Routes } from '@/routes'
 import { deployStore } from '@/store/deployStore'
@@ -26,7 +25,7 @@ type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
   const userName = userStore.user?.displayName
-  const params = Routes.deploy.params(useParams)
+  const params = Routes.deploy.params()
 
   createEffect(() => {
     if (!deployStore.deployment.id) {

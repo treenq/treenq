@@ -7,7 +7,6 @@ import { Routes } from '@/routes'
 import { Deployment } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
 import { reposStore, type Repo } from '@/store/repoStore'
-import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For } from 'solid-js'
 
 type DeployProps = {
@@ -18,11 +17,13 @@ export default function Deploy(props: DeployProps) {
   const [deployments, setDeployments] = createSignal<Deployment[]>([])
   const [repo, setRepo] = createSignal<Repo | undefined>()
 
+  const navigateToDeploy = Routes.deploy.navigate()
+
   const deploy = async (fromDeploymentID: string = '') => {
     const deployment = await deployStore.deploy(props.repoID, fromDeploymentID)
     if (deployment) {
       deployStore.setDeployment(deployment)
-      Routes.deploy.navigate(useNavigate, { id: deployment.id })
+      navigateToDeploy({ id: deployment.id })
     }
   }
 

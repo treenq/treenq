@@ -33,10 +33,13 @@ function createRoute<T extends readonly Segment[]>(...segments: T) {
   return {
     path,
     makeHref,
-    navigate: (useNavigateFunc: typeof useNavigate, params: ParamsFrom<T>) => {
-      const path = makeHref(params)
-      return useNavigateFunc()(path)
+    navigate: () => {
+      const nav = useNavigate()
+      return (params: ParamsFrom<T>) => {
+        const path = makeHref(params)
+        nav(path)
+      }
     },
-    params: (useParamsFunc: typeof useParams) => useParamsFunc() as ParamsFrom<T>,
+    params: () => useParams() as ParamsFrom<T>,
   }
 }
