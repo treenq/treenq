@@ -30,27 +30,20 @@ type SecretTableRowProps = {
   inputs: Accessor<Secret>
   setInputs: Setter<Secret>
   secret?: Accessor<Secret>
-  revealSecret: () => Promise<boolean>
+  visible: Accessor<boolean>
   children: JSX.Element
-  type: 'add' | 'edit'
 }
+
+const secretButtonSizeClass = 'w-16'
 
 const SecretTableRow = ({
   isEditing,
   inputs,
   setInputs,
   secret,
-  revealSecret,
   children,
-  type,
+  visible,
 }: SecretTableRowProps) => {
-  const [visible, setVisible] = createSignal(false)
-
-  const toggleVisible = async () => {
-    const revealed = await revealSecret()
-    setVisible(revealed)
-  }
-
   return (
     <TableRow>
       <TableCell>
@@ -75,13 +68,6 @@ const SecretTableRow = ({
             type={visible() || isEditing() ? 'text' : 'password'}
           />
         </TextField>
-        <Show when={type === 'edit'}>
-          <Button onClick={() => (visible() ? setVisible(false) : toggleVisible())}>
-            <Show when={visible()} fallback={<Eye />}>
-              <EyeOff />
-            </Show>
-          </Button>
-        </Show>
       </TableCell>
       <TableCell>{children}</TableCell>
     </TableRow>
@@ -91,6 +77,12 @@ const SecretTableRow = ({
 const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   const [inputs, setInputs] = createSignal<Secret>(secret())
   const [isEditing, setIsEditing] = createSignal(false)
+  const [visible, setVisible] = createSignal(false)
+
+  const toggleVisible = async () => {
+    const revealed = await revealSecret()
+    setVisible(revealed)
+  }
 
   const revealSecret = async () => {
     const response = await httpClient.revealSecret({ repoID, key: inputs().key })
@@ -118,7 +110,12 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
     }
   }
 
-  const deleteSecret = () => setSecrets((secrets) => secrets.filter((_, i) => i !== index))
+  const deleteSecret = async () => {
+    const res = await httpClient.removeSecret({ repoID, key: secret().key })
+    if (!('error' in res)) {
+      setSecrets((secrets) => secrets.filter((_, i) => i !== index))
+    }
+  }
 
   return (
     <SecretTableRow
@@ -128,14 +125,34 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
         setInputs,
         secret,
         revealSecret,
+        visible,
       }}
-      type="edit"
     >
       <div class="flex space-x-2">
-        <Show when={isEditing()} fallback={<Button onClick={toggleEditMode}>Edit</Button>}>
-          <Button onClick={updateSecret}>Save</Button>
+        <Show
+          when={isEditing()}
+          fallback={
+            <Button class={secretButtonSizeClass} variant="outline" onClick={toggleEditMode}>
+              Edit
+            </Button>
+          }
+        >
+          <Button class={secretButtonSizeClass} variant="default" onClick={updateSecret}>
+            Save
+          </Button>
         </Show>
-        <Button onClick={deleteSecret}>Delete</Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => (visible() ? setVisible(false) : toggleVisible())}
+        >
+          <Show when={visible()} fallback={<Eye />}>
+            <EyeOff />
+          </Show>
+        </Button>
+        <Button variant="destructive" onClick={deleteSecret}>
+          Delete
+        </Button>
       </div>
     </SecretTableRow>
   )
@@ -159,12 +176,15 @@ const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
   return (
     <SecretTableRow
       isEditing={() => true}
-      revealSecret={async () => false}
       inputs={inputs}
       setInputs={setInputs}
-      type="add"
+      visible={() => true}
     >
-      <Button disabled={!inputs().key || !inputs().value} onClick={addSecret}>
+      <Button
+        class={secretButtonSizeClass}
+        disabled={!inputs().key || !inputs().value}
+        onClick={addSecret}
+      >
         Add
       </Button>
     </SecretTableRow>

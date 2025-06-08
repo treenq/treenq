@@ -102,6 +102,8 @@ export type RevealSecretRequest = { repoID: string; key: string }
 
 export type RevealSecretResponse = { value: string }
 
+export type RemoveSecretRequest = { repoID: string; key: string }
+
 export type GetBuildProgressMessage = {
   message: BuildProgressMessage
 }
@@ -188,11 +190,11 @@ class HttpClient {
     return await this.post('getProfile')
   }
 
-  async logout(): Promise<Result<undefined>> {
+  async logout(): Promise<Result<void>> {
     return await this.post('logout')
   }
 
-  async connectBranch(repo: ConnectBranchRequest): Promise<Result<undefined>> {
+  async connectBranch(repo: ConnectBranchRequest): Promise<Result<void>> {
     return await this.post('connectRepoBranch', repo)
   }
   async getRepos(): Promise<Result<GetReposResponse>> {
@@ -214,7 +216,7 @@ class HttpClient {
     return await this.post('getDeployments', req)
   }
 
-  async setSecret(req: SetSecretRequest): Promise<Result<undefined>> {
+  async setSecret(req: SetSecretRequest): Promise<Result<void>> {
     return await this.post('setSecret', req)
   }
 
@@ -224,6 +226,10 @@ class HttpClient {
 
   async revealSecret(req: RevealSecretRequest): Promise<Result<RevealSecretResponse>> {
     return await this.post('revealSecret', req)
+  }
+
+  async removeSecret(req: RemoveSecretRequest): Promise<Result<void>> {
+    return await this.post('removeSecret', req)
   }
 
   async getDeployment(req: GetDeploymentRequest): Promise<Result<GetDeploymentResponse>> {
