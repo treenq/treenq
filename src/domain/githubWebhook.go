@@ -428,7 +428,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo R
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token)
+	gitRepo, err := h.git.Clone(repo.CloneUrl(), repo.InstallationID, repo.TreenqID, token, progress)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),

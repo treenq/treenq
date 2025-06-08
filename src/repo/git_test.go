@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/treenq/treenq/src/domain"
 )
 
 func TestClone(t *testing.T) {
@@ -29,7 +30,7 @@ func TestClone(t *testing.T) {
 
 	repoURL := "file://" + mockRepoPath
 
-	firstGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
+	firstGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token", &domain.ProgressBuf{})
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -39,7 +40,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	secondGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token")
+	secondGitRepo, err := git.Clone(repoURL, 1, "1", "dummy-access-token", &domain.ProgressBuf{})
 	require.NoError(t, err)
 	defer os.RemoveAll(secondGitRepo.Dir) // Clean up
 

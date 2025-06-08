@@ -20,7 +20,7 @@ func NewGit(dir string) *Git {
 	return &Git{dir: dir}
 }
 
-func (g *Git) Clone(urlStr string, installationID int, repoID string, accessToken string) (domain.GitRepo, error) {
+func (g *Git) Clone(urlStr string, installationID int, repoID string, accessToken string, progress *domain.ProgressBuf) (domain.GitRepo, error) {
 	dir := filepath.Join(g.dir, strconv.Itoa(installationID), repoID)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, os.ModePerm)
