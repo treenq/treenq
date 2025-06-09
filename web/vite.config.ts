@@ -3,7 +3,7 @@ import path from 'path'
 import devtools from 'solid-devtools/vite'
 import { defineConfig, ServerOptions } from 'vite'
 import solid from 'vite-plugin-solid'
-import IconSpritePlugin from './plugins/vite-plugin-icon-sprite'
+import IconSpritePlugin from './vite/icons'
 const useProxy = process.env.USE_VITE_PROXY == 'true'
 
 let proxyServer: ServerOptions | undefined
