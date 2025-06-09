@@ -53,14 +53,10 @@ services:
     privileged: true
     restart: always
     environment:
-      # - K3S_TOKEN=${K3S_PASSWORD_1} # Only required if we are running more than 1 node
-      # - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
       - K3S_KUBECONFIG_MODE=666
-      - K3S_URL=https://kube:6443
+      - K3S_URL=http://kube:6443
     volumes:
-      # - k3s:/var/lib/rancher/k3s
-      # - ./k3s_data/kubeconfig:/output
-      - ./k3s_data/docker_images:/var/lib/rancher/k3s/agent/images
+      - k3s:/var/lib/rancher/k3s
       - ./k3s_data/k3s/:/etc/rancher/k3s/
     expose:
       - "6443" # Kubernetes API Server
@@ -73,11 +69,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1000m
-          cpus: 0.5
+          memory: 1500m
+          cpus: 1.0
 
 volumes:
   pgdata:
     driver: local
-  # k3s:
-  #   driver: local
+  k3s:
+    driver: local

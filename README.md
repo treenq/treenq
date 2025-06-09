@@ -120,13 +120,11 @@ Dockerfile contains 4 staging:
 - build stage, to actually gather all the dependencies
 - build dev stage, it installs delve to be able to debug the app, compile without optimizations and starts
 - build prod builds with compiler optimizations
-- last stage runs it from prod build
+- last stage runs it from prod build, not ready yes, but supposed to run the binary in alpine (scratch image doesn't seem possible)
 
-TBD a diagram
-
-docker-compose represents a base setup, directly isn't used.
-docker-compose.local might be used if a database web ui require
-docker-compose.e2e is used to run e2e tests
+docker-compose represents a base setup, directly isn't used, only linux users capable running the service locally and can use this setup
+docker-compose.e2e can be used to run the setup locally, keep volumes and test it, also allows attaching a debugger
+docker-compose.e2e-ci is used to run e2e tests, doesn't have volumes and debugger
 docker-compose.staging is used to run a staging environment, doesn't include a database
 
 ### Run web locally
