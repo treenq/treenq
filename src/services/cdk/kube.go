@@ -174,6 +174,15 @@ func (k *Kube) newAppChart(scope constructs.Construct, id, nsName string, app tq
 
 	// define 3d level domain given from the existing domain
 	cdk8splus.NewIngress(chart, jsii.String("ingress"), &cdk8splus.IngressProps{
+		Metadata: &cdk8s.ApiObjectMetadata{
+			Name:      jsii.String("ingress"),
+			Namespace: ns,
+			Annotations: &map[string]*string{
+				// "kubernetes.io/ingress.class":    jsii.String("nginx"),
+				"cert-manager.io/cluster-issuer": jsii.String("letsencrypt-prod"),
+			},
+		},
+		ClassName: jsii.String("ingress"),
 		Rules: &[]*cdk8splus.IngressRule{{
 			Host:     jsii.String("qwer" + "." + k.host),
 			Path:     jsii.String("/"),
@@ -182,6 +191,14 @@ func (k *Kube) newAppChart(scope constructs.Construct, id, nsName string, app tq
 				Port: servicePort,
 			}),
 		}},
+		Tls: &[]*cdk8splus.IngressTls{
+			{
+				Hosts: &[]*string{
+					jsii.String(k.host),
+				},
+				Secret: cdk8splus.Secret_FromSecretName(chart, jsii.String(id), jsii.String("letsencrypt")),
+			},
+		},
 	})
 
 	return []cdk8s.Chart{chart, ingressChart}

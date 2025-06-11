@@ -38,7 +38,7 @@ export default defineConfig({
     }),
     solid(),
     tailwindcss(),
-    IconSpritePlugin(),
+    // IconSpritePlugin(),
   ],
   resolve: {
     alias: {
