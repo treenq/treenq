@@ -51,17 +51,17 @@ RUN --mount=type=cache,target=/go/pkg/mod/ --mount=type=cache,target="/root/.cac
 
 CMD ["/app/server"]
 
-FROM alpine:3.13
-
-# Create a non-root user and group for better security
-# RUN addgroup -S appgroup && adduser -S 1001 -G appgroup
-RUN addgroup -g 1001 appgroup && adduser -D -G appgroup -u 1001 appuser
-
-WORKDIR /app
-
-USER 1001
-
-COPY --from=prod /app/server server
-COPY ./migrations /app/migrations
-
-CMD ["/app/server"]
+# FROM alpine:3.13
+#
+# # Create a non-root user and group for better security
+# # RUN addgroup -S appgroup && adduser -S 1001 -G appgroup
+# RUN addgroup -g 1001 appgroup && adduser -D -G appgroup -u 1001 appuser
+#
+# WORKDIR /app
+#
+# USER 1001
+#
+# COPY --from=prod /app/server server
+# COPY ./migrations /app/migrations
+#
+# CMD ["/app/server"]
