@@ -1,9 +1,7 @@
 FROM ubuntu:25.04 AS builder
 
-RUN apt-get update
-RUN apt-get -y install curl gnupg
+RUN --mount=target=/var/lib/apt/lists,type=cache apt-get update && apt-get -y install curl gnupg nodejs buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc libbtrfs-dev wget fuse-overlayfs ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN curl -sL https://deb.nodesource.com/setup_23.x  | bash -
-RUN apt-get -y install nodejs buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc skopeo libbtrfs-dev wget fuse-overlayfs  && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /etc/containers && \
     mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers && \
     touch /var/lib/shared/overlay-images/images.lock && \
