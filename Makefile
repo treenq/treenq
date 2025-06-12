@@ -49,9 +49,9 @@ define START_ENV
 	docker compose -p treenq $(COMPOSE_FILES) up kube -d
 	sleep 1
 
-	$(SED) 's#https://127.0.0.1:6443#https://kube:6443#g' $(KUBECONFIG)
-	docker compose -p treenq $(COMPOSE_FILES) up -d --build
+	COMPOSE_BAKE=true docker compose -p treenq $(COMPOSE_FILES) up -d --build
 	while [ -z '$$(docker ps -q --filter "name=treenq-server")' ]; do sleep 1; done
+	$(SED) 's#https://127.0.0.1:6443#https://kube:6443#g' $(KUBECONFIG)
 	docker cp $(KUBECONFIG) $$(docker ps -q --filter "name=treenq-server"):/app/kubeconfig.yaml
 	docker compose -p treenq $(COMPOSE_FILES) restart server
 

@@ -17,8 +17,7 @@ func TestAppDefinition(t *testing.T) {
 	secretKeys := []string{"SECRET"}
 	k := NewKube("treenq.com", "registry:5000", "testuser", "testpassword")
 	ctx := context.Background()
-	res := k.DefineApp(ctx, "id-1234", tqsdk.Space{
-		Key: "space",
+	res := k.DefineApp(ctx, "id-1234", "space", tqsdk.Space{
 		Service: tqsdk.Service{
 			Name: "simple-app",
 			RuntimeEnvs: map[string]string{

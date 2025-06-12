@@ -15,7 +15,7 @@ func main() {
 		// VPC
 		vpc, err := digitalocean.NewVpc(ctx, "tq-kube-vpc", &digitalocean.VpcArgs{
 			Name:    pulumi.String("tq-kube-staging-vpc"),
-			Region:  pulumi.String("fra1"),
+			Region:  digitalocean.RegionFRA1,
 			IpRange: pulumi.String("10.10.0.0/16"),
 		})
 		if err != nil {
@@ -73,7 +73,17 @@ func main() {
 			return fmt.Errorf("failed to define letsencrypt issuer: %w", err)
 		}
 
+		containerRegistry, err := digitalocean.NewContainerRegistry(ctx, "tq-staging", &digitalocean.ContainerRegistryArgs{
+			Name:                 pulumi.String("tq-staging"),
+			SubscriptionTierSlug: pulumi.String("starter"),
+			Region:               digitalocean.RegionFRA1,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to define container registry: %w", err)
+		}
+
 		ctx.Export("kubeconfig", kubeconfig)
+		ctx.Export("registry_url", containerRegistry.Endpoint)
 		return nil
 	})
 }

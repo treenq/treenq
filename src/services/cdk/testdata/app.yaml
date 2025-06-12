@@ -57,7 +57,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: SECRET
-                  name: id-1234-SECRET
+                  name: id-1234-secret
           image: registry:5000/treenq:0.0.1
           imagePullPolicy: Always
           name: simple-app
@@ -109,7 +109,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: space-ingress-c8b831e1
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  name: ingress
   namespace: space-id-1234
 spec:
   rules:
@@ -123,3 +125,7 @@ spec:
                   number: 80
             path: /
             pathType: Prefix
+  tls:
+    - hosts:
+        - treenq.com
+      secretName: letsencrypt

@@ -182,7 +182,7 @@ func (k *Kube) newAppChart(scope constructs.Construct, id, nsName string, app tq
 				"cert-manager.io/cluster-issuer": jsii.String("letsencrypt-prod"),
 			},
 		},
-		ClassName: jsii.String("ingress"),
+		// ClassName: jsii.String("ingress"),
 		Rules: &[]*cdk8splus.IngressRule{{
 			Host:     jsii.String("qwer" + "." + k.host),
 			Path:     jsii.String("/"),
