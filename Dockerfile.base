@@ -1,6 +1,6 @@
 FROM ubuntu:25.04 AS builder
 
-RUN --mount=target=/var/lib/apt/lists,type=cache apt-get update && apt-get -y install gnupg nodejs buildah bats btrfs-progs git go-md2man golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc libbtrfs-dev wget fuse-overlayfs ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN --mount=target=/var/lib/apt/lists,type=cache apt-get update && apt-get -y install gnupg nodejs buildah btrfs-progs git golang libapparmor-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev make runc libbtrfs-dev wget fuse-overlayfs ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /etc/containers && \
     mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers && \
     touch /var/lib/shared/overlay-images/images.lock && \
