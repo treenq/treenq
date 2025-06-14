@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -30,7 +31,6 @@ var repoRemoveRequestBody []byte
 var repoBranchMergeMainRequestBody []byte
 
 func TestGithubAppInstallation(t *testing.T) {
-	t.Parallel()
 	clearDatabase()
 
 	// create a user and obtain its token
@@ -114,6 +114,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		Code: "REPO_IS_NOT_CONNECTED",
 	}, "a not connected repo must not be deployable")
 
+	// connect repo
 	branchName := "test-branch"
 	connectRepoRes, err := apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
@@ -218,6 +219,71 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	t.Run("test secrets api", func(t *testing.T) {
+		t.Parallel()
+		testSecretsApi(t, ctx, apiClient, anotherApiClient, connectRepoRes)
+	})
+
+	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.NotEmpty(t, createdDeployment.Deployment.ID)
+	require.Equal(t, createdDeployment.Deployment.Status, "run")
+	require.NotEmpty(t, createdDeployment.Deployment.CreatedAt)
+	require.NoError(t, err, "failed to deploys app")
+
+	// wait for deployment done
+	t.Run("read deployment progress", func(t *testing.T) {
+		readProgress(t, ctx, createdDeployment, apiClient, userToken)
+	})
+	t.Run("test qwer.localhost deployed", func(t *testing.T) {
+		t.Parallel()
+		testServiceResponds(t)
+	})
+
+	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, createdDeployment.Deployment.ID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
+
+	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
+		RepoID:           reposResponse.Repos[0].TreenqID,
+		FromDeploymentID: deployments.Deployments[0].ID,
+	})
+	require.NotEqual(t, rollbackDeploy.Deployment.ID, createdDeployment.Deployment.ID, "rollback id must not be the same")
+	require.NotEmpty(t, rollbackDeploy.Deployment.ID)
+	require.NotEmpty(t, rollbackDeploy.Deployment.CreatedAt)
+	require.NoError(t, err, "failed to deploys app")
+
+	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
+	require.NoError(t, err, "no error expected on deployment history")
+	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
+	assert.Equal(t, rollbackDeploy.Deployment.ID, deployments.Deployments[0].ID)
+	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
+	assert.NotEmpty(t, deployments.Deployments[0].Sha)
+	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
+	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
+	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	t.Run("read deployment progress", func(t *testing.T) {
+		t.Parallel()
+		readProgress(t, ctx, createdDeployment, apiClient, userToken)
+	})
+	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+}
+
+func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
 	secrets, err := apiClient.GetSecrets(ctx, client.GetSecretsRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 	})
@@ -264,66 +330,46 @@ func TestGithubAppInstallation(t *testing.T) {
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
-	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
+	// secrets must not be available to the other users
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = anotherApiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
 	})
-	require.NotEmpty(t, createdDeployment.DeploymentID)
-	require.Equal(t, createdDeployment.Status, "run")
-	require.NotEmpty(t, createdDeployment.CreatedAt)
-	require.NoError(t, err, "failed to deploys app")
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
-	// wait for deployment done
-	readProgress(t, ctx, createdDeployment, apiClient, userToken)
-
-	history, err := apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
+	revealSecretResponse, err = anotherApiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
 	})
-	require.Len(t, history.History, 1, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
-	assert.Equal(t, createdDeployment.DeploymentID, history.History[0].ID)
-	assert.NotEmpty(t, history.History[0].BuildTag)
-	assert.NotEmpty(t, history.History[0].Sha)
-	assert.NotEmpty(t, history.History[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
-	assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
 
-	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
-		RepoID:           reposResponse.Repos[0].TreenqID,
-		FromDeploymentID: history.History[0].ID,
+	err = apiClient.RemoveSecret(ctx, client.RemoveSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
 	})
-	require.NotEqual(t, rollbackDeploy.DeploymentID, createdDeployment.DeploymentID, "rollback id must not be the same")
-	require.NotEmpty(t, rollbackDeploy.DeploymentID)
-	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
-	// require.Equal(t, rollbackDeploy.Status, "run")
-	require.NotEmpty(t, rollbackDeploy.CreatedAt)
-	require.NoError(t, err, "failed to deploys app")
-
-	history, err = apiClient.GetDeploymentHistory(ctx, client.GetDeploymentHistoryRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
+	require.NoError(t, err, "secret must be removed successfully")
+	secrets, err = apiClient.GetSecrets(ctx, client.GetSecretsRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
 	})
-	require.Len(t, history.History, 2, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, history.History[0].RepoID)
-	assert.Equal(t, rollbackDeploy.DeploymentID, history.History[0].ID)
-	assert.NotEmpty(t, history.History[0].BuildTag)
-	assert.NotEmpty(t, history.History[0].Sha)
-	assert.NotEmpty(t, history.History[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, history.History[0].UserDisplayName)
-	// TODO: we don't konw yet, takes refactoring of waiting for a deployment
-	// assert.EqualValues(t, domain.DeployStatusDone, history.History[0].Status)
+	require.NoError(t, err, "no error expected on empty secrets list")
+	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
-	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+	revealSecretResponse, err = apiClient.RevealSecret(ctx, client.RevealSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "SECRET",
+	})
+	require.Equal(t, err, &client.Error{Code: "SECRET_DOESNT_EXIST"})
+	require.Empty(t, revealSecretResponse.Value, "no revealed secret is expected")
 }
 
-func readProgress(t *testing.T, ctx context.Context, createdDeployment client.DeployResponse, apiClient *client.Client, userToken string) {
-	t.Helper()
-
+func readProgress(t *testing.T, ctx context.Context, createdDeployment client.GetDeploymentResponse, apiClient *client.Client, userToken string) {
 	progressRead := false
 	for range 20 {
 		time.Sleep(time.Second * 2)
 		deployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
-			DeploymentID: createdDeployment.DeploymentID,
+			DeploymentID: createdDeployment.Deployment.ID,
 		})
 		require.NoError(t, err)
 		require.NotEqual(t, "failed", deployment.Deployment.Status)
@@ -331,7 +377,7 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.De
 			continue
 		}
 
-		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.DeploymentID, nil)
+		req, err := http.NewRequest("GET", "http://localhost:8000/getBuildProgress?deploymentID="+createdDeployment.Deployment.ID, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		resp, err := http.DefaultClient.Do(req)
@@ -367,4 +413,18 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.De
 	}
 
 	require.True(t, progressRead, "progress must be read")
+}
+
+func testServiceResponds(t *testing.T) {
+	time.Sleep(time.Second * 2)
+	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+	require.NoError(t, err, "request for kube:80 must be created")
+	req.Host = "qwer.localhost"
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "no error must be from qwer.localhost")
+	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "body must be read from qwer.localhost")
+	resp.Body.Close()
+	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
 }

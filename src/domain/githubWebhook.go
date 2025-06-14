@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -108,6 +109,7 @@ type BuildArtifactRequest struct {
 	Name         string
 	Path         string
 	Dockerfile   string
+	Dockerignore string
 	Tag          string
 	DeploymentID string
 }
@@ -149,6 +151,8 @@ type AppDeployment struct {
 	Space tqsdk.Space `json:"space"`
 	// Sha is a commit sha a user requested to deploy or given from a github webhook
 	Sha string `json:"sha"`
+	// Branch is a git branch deployed if sha is not specified directly
+	Branch string `json:"branch"`
 	// CommitMessage defines a commit message
 	CommitMessage string `json:"commitMessage"`
 	// BuildTag is a docker build image or an image created using buildpacks
@@ -160,6 +164,10 @@ type AppDeployment struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Status describes the status of the deployment
 	Status DeployStatus `json:"status"`
+}
+
+func (d AppDeployment) IsZero() bool {
+	return d.ID == ""
 }
 
 type DeployStatus string
@@ -249,6 +257,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 		UserDisplayName:  userDisplayName,
 		Status:           DeployStatusRunning,
 		Space:            tqsdk.Space{},
+		Branch:           repo.Branch,
 		FromDeploymentID: fromDeploymentID,
 	}
 
@@ -266,6 +275,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 			}
 		}
 		deployment.Sha = fromDeployment.Sha
+		deployment.Branch = fromDeployment.Branch
 		deployment.CommitMessage = fromDeployment.CommitMessage
 		deployment.BuildTag = fromDeployment.BuildTag
 		deployment.Space = fromDeployment.Space
@@ -322,10 +332,11 @@ type buf struct {
 }
 
 type ProgressMessage struct {
-	Payload   string     `json:"payload"`
-	Level     slog.Level `json:"level"`
-	Final     bool       `json:"final"`
-	Timestamp time.Time  `json:"timestamp"`
+	Payload    string        `json:"payload"`
+	Level      slog.Level    `json:"level"`
+	Final      bool          `json:"final"`
+	Timestamp  time.Time     `json:"timestamp"`
+	Deployment AppDeployment `json:"deployment,omitzero"`
 }
 
 type Subscriber struct {
@@ -347,11 +358,10 @@ func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan Progr
 			select {
 			case out <- m:
 				if m.Final {
-					close(out)
 					return
 				}
 			case <-ctx.Done():
-				close(out)
+				return
 			}
 		}
 		buf.Subs = append(buf.Subs, Subscriber{
@@ -372,21 +382,23 @@ func (b *ProgressBuf) Append(deploymentID string, m ProgressMessage) {
 	buf := b.Bufs[deploymentID]
 	buf.WriteAt = time.Now()
 	buf.Content = append(buf.Content, m)
-	for _, sub := range buf.Subs {
+	for i, sub := range buf.Subs {
 		select {
 		case <-sub.done:
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
+			continue
 		case <-time.After(time.Second):
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
+			continue
 		case sub.out <- m:
-
 		}
 
 		if m.Final {
 			close(sub.out)
-			sub.closed = true
+			buf.Subs[i].closed = true
+			continue
 		}
 	}
 
@@ -511,9 +523,12 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 			Err:     err,
 		}
 	}
+	deployment.Sha = gitRepo.Sha
+	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "cloned github repository",
-		Level:   slog.LevelInfo,
+		Payload:    "cloned github repository",
+		Level:      slog.LevelInfo,
+		Deployment: deployment,
 	})
 
 	defer os.RemoveAll(gitRepo.Dir)
@@ -547,17 +562,31 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 				Err:     err,
 			}
 		}
+		deployment.Space = appSpace
 		progress.Append(deployment.ID, ProgressMessage{
-			Payload: "extracted treenq config",
-			Level:   slog.LevelInfo,
+			Payload:    "extracted treenq config",
+			Level:      slog.LevelInfo,
+			Deployment: deployment,
+		})
+	}
+	marshalledSpaceConfig, err := json.Marshal(deployment.Space)
+	if err == nil {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: string(marshalledSpaceConfig),
+			Level:   slog.LevelDebug,
 		})
 	}
 
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
+	dockerignorePath := ""
+	if appSpace.Service.DockerignorePath != "" {
+		dockerignorePath = filepath.Join(gitRepo.Dir, appSpace.Service.DockerignorePath)
+	}
 	buildRequest := BuildArtifactRequest{
 		Name:         appSpace.Service.Name,
 		Path:         gitRepo.Dir,
 		Dockerfile:   dockerFilePath,
+		Dockerignore: dockerignorePath,
 		Tag:          gitRepo.Sha,
 		DeploymentID: deployment.ID,
 	}
@@ -580,21 +609,15 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 			Err:     err,
 		}
 	}
+	deployment.BuildTag = image.Tag
 	progress.Append(deployment.ID, ProgressMessage{
-		Payload: "built image",
-		Level:   slog.LevelInfo,
+		Payload:    "built image: " + image.FullPath(),
+		Level:      slog.LevelInfo,
+		Deployment: deployment,
 	})
 
-	deployment.Space = appSpace
-	deployment.BuildTag = image.Tag
-	deployment.Sha = gitRepo.Sha
-	deployment.CommitMessage = gitRepo.Message
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "updating deployment state",
-		Level:   slog.LevelDebug,
-	})
-	progress.Append(deployment.ID, ProgressMessage{
-		Payload: fmt.Sprintf("%+v", deployment),
 		Level:   slog.LevelDebug,
 	})
 	err = h.db.UpdateDeployment(ctx, deployment)
@@ -642,14 +665,24 @@ func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppD
 		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
+	appKubeDef, err := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
+	if err != nil {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to define app" + err.Error(),
+			Level:   slog.LevelError,
+		})
+		return AppDeployment{}, &vel.Error{
+			Message: "failed to define app",
+			Err:     err,
+		}
+	}
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to apply new image" + err.Error(),
 			Level:   slog.LevelError,
 		})
 		return AppDeployment{}, &vel.Error{
-			Message: "failed to apply kube definition",
+			Message: "failed to apply app definition",
 			Err:     err,
 		}
 	}

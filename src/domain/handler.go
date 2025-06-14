@@ -73,7 +73,7 @@ type Database interface {
 	SaveDeployment(ctx context.Context, def AppDeployment) (AppDeployment, error)
 	UpdateDeployment(ctx context.Context, def AppDeployment) error
 	GetDeployment(ctx context.Context, deploymentID string) (AppDeployment, error)
-	GetDeploymentHistory(ctx context.Context, repoID string) ([]AppDeployment, error)
+	GetDeployments(ctx context.Context, repoID string) ([]AppDeployment, error)
 
 	// Github repos domain
 	// //////////////////////
@@ -93,6 +93,7 @@ type Database interface {
 	SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error
 	GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error)
 	RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error)
+	RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error
 }
 
 type GithubClient interface {
@@ -117,10 +118,11 @@ type DockerArtifactory interface {
 }
 
 type Kube interface {
-	DefineApp(ctx context.Context, id, nsName string, app tqsdk.Space, image Image, secretKeys []string) string
+	DefineApp(ctx context.Context, id, nsName string, app tqsdk.Space, image Image, secretKeys []string) (string, error)
 	Apply(ctx context.Context, rawConig, data string) error
 	StoreSecret(ctx context.Context, rawConfig, nsName, repoID, key, value string) error
 	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
+	RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error
 }
 
 type OauthProvider interface {

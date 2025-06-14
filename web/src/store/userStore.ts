@@ -1,3 +1,4 @@
+import { Routes } from '@/routes'
 import { httpClient, type UserInfo } from '@/services/client'
 import { redirect } from '@solidjs/router'
 
@@ -15,8 +16,9 @@ function createUserStore() {
 
   const getProfile = async () => {
     const res = await httpClient.getProfile()
-    if ('error' in res) throw redirect('/auth')
+    if ('error' in res) throw redirect(Routes.auth.path)
     setStore({ user: res.data.userInfo })
+
     return res.data.userInfo
   }
 

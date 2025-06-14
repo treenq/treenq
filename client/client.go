@@ -447,14 +447,53 @@ type DeployRequest struct {
 	FromDeploymentID string `json:"fromDeploymentID"`
 }
 
-type DeployResponse struct {
-	DeploymentID string    `json:"deploymentID"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"createdAt"`
+type GetDeploymentResponse struct {
+	Deployment AppDeployment `json:"deployment"`
 }
 
-func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse, error) {
-	var res DeployResponse
+type AppDeployment struct {
+	ID               string    `json:"id"`
+	FromDeploymentID string    `json:"fromDeploymentID"`
+	RepoID           string    `json:"repoID"`
+	Space            Space     `json:"space"`
+	Sha              string    `json:"sha"`
+	Branch           string    `json:"branch"`
+	CommitMessage    string    `json:"commitMessage"`
+	BuildTag         string    `json:"buildTag"`
+	UserDisplayName  string    `json:"userDisplayName"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	Status           string    `json:"status"`
+}
+
+type Space struct {
+	Region  string
+	Service Service
+}
+
+type Service struct {
+	Key                 string
+	DockerfilePath      string
+	DockerignorePath    string
+	BuildEnvs           map[string]string
+	RuntimeEnvs         map[string]string
+	BuildSecrets        []string
+	RuntimeSecrets      []string
+	HttpPort            int
+	Replicas            int
+	Name                string
+	SizeSlug            string
+	ComputationResource ComputationResource
+}
+
+type ComputationResource struct {
+	CpuUnits   int
+	MemoryMibs int
+	DiskGibs   int
+}
+
+func (c *Client) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentResponse, error) {
+	var res GetDeploymentResponse
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
@@ -490,49 +529,6 @@ func (c *Client) Deploy(ctx context.Context, req DeployRequest) (DeployResponse,
 
 type GetDeploymentRequest struct {
 	DeploymentID string `json:"deploymentID"`
-}
-
-type GetDeploymentResponse struct {
-	Deployment AppDeployment `json:"deployment"`
-}
-
-type AppDeployment struct {
-	ID               string    `json:"id"`
-	FromDeploymentID string    `json:"fromDeploymentID"`
-	RepoID           string    `json:"repoID"`
-	Space            Space     `json:"space"`
-	Sha              string    `json:"sha"`
-	CommitMessage    string    `json:"commitMessage"`
-	BuildTag         string    `json:"buildTag"`
-	UserDisplayName  string    `json:"userDisplayName"`
-	CreatedAt        time.Time `json:"createdAt"`
-	UpdatedAt        time.Time `json:"updatedAt"`
-	Status           string    `json:"status"`
-}
-
-type Space struct {
-	Region  string
-	Service Service
-}
-
-type Service struct {
-	Key                 string
-	DockerfilePath      string
-	BuildEnvs           map[string]string
-	RuntimeEnvs         map[string]string
-	BuildSecrets        []string
-	RuntimeSecrets      []string
-	HttpPort            int
-	Replicas            int
-	Name                string
-	SizeSlug            string
-	ComputationResource ComputationResource
-}
-
-type ComputationResource struct {
-	CpuUnits   int
-	MemoryMibs int
-	DiskGibs   int
 }
 
 func (c *Client) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, error) {
@@ -579,10 +575,11 @@ type GetBuildProgressResponse struct {
 }
 
 type ProgressMessage struct {
-	Payload   string     `json:"payload"`
-	Level     slog.Level `json:"level"`
-	Final     bool       `json:"final"`
-	Timestamp time.Time  `json:"timestamp"`
+	Payload    string        `json:"payload"`
+	Level      slog.Level    `json:"level"`
+	Final      bool          `json:"final"`
+	Timestamp  time.Time     `json:"timestamp"`
+	Deployment AppDeployment `json:"deployment,omitzero"`
 }
 
 func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {
@@ -617,16 +614,16 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 	return res, nil
 }
 
-type GetDeploymentHistoryRequest struct {
-	RepoID string
+type GetDeploymentsRequest struct {
+	RepoID string `json:"repoID"`
 }
 
-type GetDeploymentHistoryResponse struct {
-	History []AppDeployment
+type GetDeploymentsResponse struct {
+	Deployments []AppDeployment `json:"deployments"`
 }
 
-func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHistoryRequest) (GetDeploymentHistoryResponse, error) {
-	var res GetDeploymentHistoryResponse
+func (c *Client) GetDeployments(ctx context.Context, req GetDeploymentsRequest) (GetDeploymentsResponse, error) {
+	var res GetDeploymentsResponse
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
@@ -634,7 +631,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 	}
 	body := bytes.NewBuffer(bodyBytes)
 
-	r, err := http.NewRequest("POST", c.baseUrl+"/getDeploymentHistory", body)
+	r, err := http.NewRequest("POST", c.baseUrl+"/getDeployments", body)
 	if err != nil {
 		return res, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -643,7 +640,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 
 	resp, err := c.client.Do(r)
 	if err != nil {
-		return res, fmt.Errorf("failed to call getDeploymentHistory: %w", err)
+		return res, fmt.Errorf("failed to call getDeployments: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -654,7 +651,7 @@ func (c *Client) GetDeploymentHistory(ctx context.Context, req GetDeploymentHist
 
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return res, fmt.Errorf("failed to decode getDeploymentHistory response: %w", err)
+		return res, fmt.Errorf("failed to decode getDeployments response: %w", err)
 	}
 
 	return res, nil
@@ -779,4 +776,37 @@ func (c *Client) RevealSecret(ctx context.Context, req RevealSecretRequest) (Rev
 	}
 
 	return res, nil
+}
+
+type RemoveSecretRequest struct {
+	RepoID string `json:"repoID"`
+	Key    string `json:"key"`
+}
+
+func (c *Client) RemoveSecret(ctx context.Context, req RemoveSecretRequest) error {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/removeSecret", body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("failed to call removeSecret: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -17,18 +17,20 @@ func TestAppDefinition(t *testing.T) {
 	secretKeys := []string{"SECRET"}
 	k := NewKube("treenq.com", "registry:5000", "testuser", "testpassword")
 	ctx := context.Background()
-	res := k.DefineApp(ctx, "id-1234", tqsdk.Space{
-		Key: "space",
+	res, err := k.DefineApp(ctx, "id-1234", "space", tqsdk.Space{
 		Service: tqsdk.Service{
 			Name: "simple-app",
 			RuntimeEnvs: map[string]string{
-				"DO_TOKEN":                     "111",
-				"DOCKER_REGISTRY":              "registry:5000",
-				"GITHUB_WEBHOOK_SECRET_ENABLE": "false",
+				"DO_TOKEN": "111",
 			},
 			HttpPort: 8000,
 			Replicas: 1,
 			SizeSlug: tqsdk.SizeSlugS,
+			ComputationResource: tqsdk.ComputationResource{
+				CpuUnits:   250,
+				MemoryMibs: 512,
+				DiskGibs:   1,
+			},
 		},
 	}, domain.Image{
 		Registry:   "registry:5000",
@@ -37,4 +39,5 @@ func TestAppDefinition(t *testing.T) {
 	}, secretKeys)
 
 	assert.Equal(t, appYaml, res)
+	assert.NoError(t, err)
 }

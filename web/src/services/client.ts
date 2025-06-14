@@ -57,20 +57,52 @@ export type GetBranchesResponse = {
 
 export type DeployRequest = {
   repoID: string
+  fromDeploymentID: string
 }
 
-export type DeployResponse = {
-  deploymentID: string
+export type Deployment = {
+  id: string
   fromDeploymentID: string
   repoID: string
+  space: unknown
   sha: string
   commitMessage: string
   buildTag: string
   userDisplayName: string
-  status: 'run' | 'failed' | 'done'
   createdAt: string
   updatedAt: string
+  status: DeploymentStatus
+  branch: string
 }
+
+export type DeploymentStatus = 'run' | 'failed' | 'done'
+export type GetDeploymentsRequest = {
+  repoID: string
+}
+
+export type GetDeploymentsResponse = {
+  deployments: Deployment[]
+}
+
+export type GetDeploymentRequest = {
+  deploymentID: string
+}
+
+export type GetDeploymentResponse = {
+  deployment: Deployment
+}
+
+export type SetSecretRequest = { repoID: string; key: string; value: string }
+
+export type GetSecretsRequest = { repoID: string }
+
+export type GetSecretsResponse = { keys: string[] }
+
+export type RevealSecretRequest = { repoID: string; key: string }
+
+export type RevealSecretResponse = { value: string }
+
+export type RemoveSecretRequest = { repoID: string; key: string }
 
 export type GetBuildProgressMessage = {
   message: BuildProgressMessage
@@ -83,6 +115,7 @@ export type BuildProgressMessage = {
   level: TLevelMessage
   final: boolean
   timestamp: string
+  deployment: Deployment
 }
 
 class HttpClient {
@@ -157,11 +190,11 @@ class HttpClient {
     return await this.post('getProfile')
   }
 
-  async logout(): Promise<Result<undefined>> {
+  async logout(): Promise<Result<void>> {
     return await this.post('logout')
   }
 
-  async connectBranch(repo: ConnectBranchRequest): Promise<Result<undefined>> {
+  async connectBranch(repo: ConnectBranchRequest): Promise<Result<void>> {
     return await this.post('connectRepoBranch', repo)
   }
   async getRepos(): Promise<Result<GetReposResponse>> {
@@ -175,14 +208,38 @@ class HttpClient {
     return await this.post('getBranches', req)
   }
 
-  async deploy(req: DeployRequest): Promise<Result<DeployResponse>> {
+  async deploy(req: DeployRequest): Promise<Result<GetDeploymentResponse>> {
     return await this.post('deploy', req)
+  }
+
+  async getDeployments(req: GetDeploymentsRequest): Promise<Result<GetDeploymentsResponse>> {
+    return await this.post('getDeployments', req)
+  }
+
+  async setSecret(req: SetSecretRequest): Promise<Result<void>> {
+    return await this.post('setSecret', req)
+  }
+
+  async getSecrets(req: GetSecretsRequest): Promise<Result<GetSecretsResponse>> {
+    return await this.post('getSecrets', req)
+  }
+
+  async revealSecret(req: RevealSecretRequest): Promise<Result<RevealSecretResponse>> {
+    return await this.post('revealSecret', req)
+  }
+
+  async removeSecret(req: RemoveSecretRequest): Promise<Result<void>> {
+    return await this.post('removeSecret', req)
+  }
+
+  async getDeployment(req: GetDeploymentRequest): Promise<Result<GetDeploymentResponse>> {
+    return await this.post('getDeployment', req)
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
     const url = this.buildUrl('getBuildProgress', { deploymentID })
 
-    const eventSource = new EventSource(url)
+    const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.addEventListener('message', (event) => {
       const data: GetBuildProgressMessage = JSON.parse(event.data)

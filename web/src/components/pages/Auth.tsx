@@ -1,9 +1,10 @@
 import { GitHub } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
+import { Routes } from '@/routes'
 
 export default function Auth() {
   function handleAuth() {
-    window.location.href = `${import.meta.env.APP_API_HOST}/auth`
+    window.location.replace(`${import.meta.env.APP_API_HOST}${Routes.auth.path}`)
   }
 
   return (

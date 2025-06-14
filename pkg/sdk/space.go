@@ -9,12 +9,11 @@ type Space struct {
 type Service struct {
 	Key string
 	// The path to a Dockerfile relative to the root of the repo. If set, overrides usage of buildpacks.
-	DockerfilePath string
-	BuildEnvs      map[string]string
-	RuntimeEnvs    map[string]string
+	DockerfilePath   string
+	DockerignorePath string
+	BuildEnvs        map[string]string
+	RuntimeEnvs      map[string]string
 
-	BuildSecrets   []string
-	RuntimeSecrets []string
 	// The internal port on which this service's run command will listen.
 	HttpPort int
 	// An image to use as the component's source. Only one of `git`, `github`, `gitlab`, or `image` may be set.

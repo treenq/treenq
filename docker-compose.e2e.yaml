@@ -1,22 +1,28 @@
 services:
   postgres:
-    volumes: !reset []
-    tmpfs:
-      - /var/lib/postgresql/data
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql/data
+
+  kube:
+    volumes:
+      # ignore only kube state itself
+      - type: tmpfs
+        target: /var/lib/rancher/k3s/
 
   server:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    ports:
-      - "8000:8000"
-      - "40000:40000"
     privileged: true
     security_opt:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
+    ports:
+      - "8000:8000"
+      - "40000:40000"
     env_file: e2e.env
     depends_on:
       postgres:
@@ -27,5 +33,5 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500m
-          cpus: 0.3
+          memory: 1000m
+          cpus: 0.5

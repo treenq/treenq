@@ -6,26 +6,29 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aws/constructs-go/constructs/v10"
-	"github.com/aws/jsii-runtime-go"
-	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	cdk8splus "github.com/cdk8s-team/cdk8s-plus-go/cdk8splus31/v2"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/domain"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	kyaml "sigs.k8s.io/yaml"
+)
+
+const (
+	defaultReplicas = 1
 )
 
 type Kube struct {
-	// host holds a main app host, used to create sub hosts for a quick app preview
 	host           string
 	dockerRegistry string
 	userName       string
@@ -38,151 +41,236 @@ func NewKube(
 	return &Kube{host: host, dockerRegistry: dockerRegistry, userName: userName, userPassword: userPassword}
 }
 
-func (k *Kube) DefineApp(ctx context.Context, id string, nsName string, app tqsdk.Space, image domain.Image, secretKeys []string) string {
-	a := cdk8s.NewApp(nil)
-	k.newAppChart(a, id, nsName, app, image, secretKeys)
-	out := a.SynthYaml()
-	return *out
+// DefineApp generates a Kubernetes manifest string for an application.
+// It calls generateKubeResources to create Kubernetes objects and then serializes them to YAML.
+// The ctx parameter is currently unused but kept for potential future use (e.g. logging, cancellation).
+func (k *Kube) DefineApp(_ context.Context, id string, nsName string, app tqsdk.Space, image domain.Image, secretKeys []string) (string, error) {
+	resources := k.generateKubeResources(id, nsName, app, image, secretKeys)
+
+	var finalYamlElements []string
+	for _, res := range resources {
+		yamlBytes, err := kyaml.Marshal(res)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal resource to YAML: %w", err)
+		}
+		finalYamlElements = append(finalYamlElements, string(yamlBytes))
+	}
+
+	return strings.Join(finalYamlElements, "---\n"), nil
 }
 
+// ns generates the namespace name. Kept for other functions that might use it.
 func ns(space, repoID string) string {
 	return space + "-" + repoID
 }
 
+// secretName generates the secret object name. Kept for other functions that might use it.
 func secretName(repoID, key string) string {
 	return repoID + "-" + strings.ToLower(key)
 }
 
-func (k *Kube) newAppChart(scope constructs.Construct, id, nsName string, app tqsdk.Space, image domain.Image, secretKeys []string) []cdk8s.Chart {
-	ns := jsii.String(ns(nsName, id))
-	chart := cdk8s.NewChart(scope, jsii.String(nsName), &cdk8s.ChartProps{
-		Namespace: ns,
-	})
-	ingressChart := cdk8s.NewChart(scope, jsii.String(nsName+"-ingress"), &cdk8s.ChartProps{})
+// generateKubeResources creates the Kubernetes resource objects for an application.
+func (k *Kube) generateKubeResources(id, nsName string, app tqsdk.Space, image domain.Image, secretKeys []string) []any {
+	fullNsName := ns(nsName, id)
+	labels := map[string]string{"tq/name": app.Service.Name}
 
-	cdk8splus.NewNamespace(chart, jsii.String(id+"-ns"), &cdk8splus.NamespaceProps{
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name:      ns,
-			Namespace: jsii.String(""),
+	// 1. Namespace
+	namespace := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fullNsName,
 		},
-	})
-
-	envs := make(map[string]cdk8splus.EnvValue)
-	for k, v := range app.Service.RuntimeEnvs {
-		envs[k] = cdk8splus.EnvValue_FromValue(jsii.String(v))
 	}
-	for i := range secretKeys {
-		secretObjectName := secretName(id, secretKeys[i])
-		envs[secretKeys[i]] = cdk8splus.EnvValue_FromSecretValue(&cdk8splus.SecretValue{
-			Key:    jsii.String(secretKeys[i]),
-			Secret: cdk8splus.Secret_FromSecretName(scope, jsii.String(id), &secretObjectName),
-		}, &cdk8splus.EnvValueFromSecretOptions{})
+
+	// 2. Registry Secret
+	registrySecretName := "registry-credentials"
+	authStr := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", k.userName, k.userPassword)))
+	dockerConfigJSON := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, k.dockerRegistry, authStr)
+	registrySecret := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      registrySecretName,
+			Namespace: fullNsName,
+		},
+		StringData: map[string]string{
+			".dockerconfigjson": dockerConfigJSON,
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}
+
+	// 3. Deployment
+	replicas := int32(defaultReplicas)
+	if app.Service.Replicas > 0 {
+		replicas = int32(app.Service.Replicas)
+	}
+
+	var envVars []corev1.EnvVar
+	for key, value := range app.Service.RuntimeEnvs {
+		envVars = append(envVars, corev1.EnvVar{Name: key, Value: value})
+	}
+	for _, key := range secretKeys {
+		secretObjNameForRef := secretName(id, key)
+		envVars = append(envVars, corev1.EnvVar{
+			Name: strings.ToUpper(key),
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretObjNameForRef},
+					Key:                  key,
+				},
+			},
+		})
 	}
 
 	computeRes := app.Service.ComputationResource
+	readOnlyRootFilesystem := true
+	runAsNonRoot := true
+	runAsUser := int64(1000)
 
-	// tmpVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-volume-tmp"), jsii.String("tmp"), nil)
-	// nginxVolume := cdk8splus.Volume_FromEmptyDir(chart, jsii.String(app.Service.Name+"-nginx"), jsii.String("nginx"), nil)
+	cpuReqStr := "0m"
+	memReqStr := "0Mi"
+	ephemeralStorageReqStr := "0Gi"
 
-	registrySecret := cdk8splus.NewSecret(chart, jsii.String("registry-secret"), &cdk8splus.SecretProps{
-		Metadata: &cdk8s.ApiObjectMetadata{
-			Name: jsii.String("registry-credentials"),
+	if computeRes.CpuUnits > 0 {
+		cpuReqStr = fmt.Sprintf("%dm", computeRes.CpuUnits)
+	}
+	if computeRes.MemoryMibs > 0 {
+		memReqStr = fmt.Sprintf("%dMi", computeRes.MemoryMibs)
+	}
+	if computeRes.DiskGibs > 0 {
+		ephemeralStorageReqStr = fmt.Sprintf("%dGi", computeRes.DiskGibs)
+	}
+
+	deployment := &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{APIVersion: "apps/v1", Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      app.Service.Name,
+			Namespace: fullNsName,
 		},
-		StringData: &map[string]*string{
-			".dockerconfigjson": jsii.String(fmt.Sprintf(`{
-		                "auths": {
-		                    "%s": {
-		                        "auth": "%s"
-		                    }
-		                }
-		            }`, k.dockerRegistry, base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", k.userName, k.userPassword)))),
+		Spec: appsv1.DeploymentSpec{
+			Replicas: int32Ptr(replicas),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:            app.Service.Name,
+						Image:           image.FullPath(),
+						ImagePullPolicy: corev1.PullAlways,
+						Ports: []corev1.ContainerPort{{
+							Name:          "http",
+							ContainerPort: int32(app.Service.HttpPort),
+						}},
+						Env: envVars,
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse(cpuReqStr),
+								corev1.ResourceMemory:           resource.MustParse(memReqStr),
+								corev1.ResourceEphemeralStorage: resource.MustParse(ephemeralStorageReqStr),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse(cpuReqStr),
+								corev1.ResourceMemory:           resource.MustParse(memReqStr),
+								corev1.ResourceEphemeralStorage: resource.MustParse(ephemeralStorageReqStr),
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+							RunAsNonRoot:           &runAsNonRoot,
+							RunAsUser:              &runAsUser,
+						},
+					}},
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: registrySecretName}},
+					RestartPolicy:    corev1.RestartPolicyAlways,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:    &runAsUser,
+						RunAsNonRoot: &runAsNonRoot,
+						FSGroupChangePolicy: func() *corev1.PodFSGroupChangePolicy {
+							p := corev1.FSGroupChangeAlways
+							return &p
+						}(),
+					},
+				},
+			},
 		},
-		Type: jsii.String("kubernetes.io/dockerconfigjson"),
-	})
+	}
 
-	deployment := cdk8splus.NewDeployment(chart, jsii.String(app.Service.Name+"-deployment"), &cdk8splus.DeploymentProps{
-		Replicas: jsii.Number(app.Service.Replicas),
-		Containers: &[]*cdk8splus.ContainerProps{{
-			Name:  jsii.String(app.Service.Name),
-			Image: jsii.String(image.FullPath()),
-			Ports: &[]*cdk8splus.ContainerPort{{
-				Number: jsii.Number(app.Service.HttpPort),
-				Name:   jsii.String("http"),
+	// 4. Service
+	serviceTargetPort := int32(app.Service.HttpPort)
+	serviceExposedPort := int32(80)
+
+	service := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Service"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      app.Service.Name,
+			Namespace: fullNsName,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Name:       "http",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       serviceExposedPort,
+				TargetPort: intstr.FromInt(int(serviceTargetPort)),
 			}},
-			EnvVariables: &envs,
-			// VolumeMounts: &[]*cdk8splus.VolumeMount{
-			// 	{
-			// 		Path:   jsii.String("/tmp"),
-			// 		Volume: tmpVolume,
-			// 	},
-			// 	{
-			// 		Path:   jsii.String("/var"),
-			// 		Volume: nginxVolume,
-			// 	},
-			// },
-			Resources: &cdk8splus.ContainerResources{
-				Cpu: &cdk8splus.CpuResources{
-					Limit:   cdk8splus.Cpu_Millis(jsii.Number(computeRes.CpuUnits)),
-					Request: cdk8splus.Cpu_Millis(jsii.Number(computeRes.CpuUnits)),
-				},
-				EphemeralStorage: &cdk8splus.EphemeralStorageResources{
-					Limit:   cdk8s.Size_Gibibytes(jsii.Number(computeRes.DiskGibs)),
-					Request: cdk8s.Size_Gibibytes(jsii.Number(computeRes.DiskGibs)),
-				},
-				Memory: &cdk8splus.MemoryResources{
-					Limit:   cdk8s.Size_Mebibytes(jsii.Number(computeRes.MemoryMibs)),
-					Request: cdk8s.Size_Mebibytes(jsii.Number(computeRes.MemoryMibs)),
-				},
-			},
-			SecurityContext: &cdk8splus.ContainerSecurityContextProps{
-				AllowPrivilegeEscalation: jsii.Bool(false),
-				EnsureNonRoot:            jsii.Bool(true),
-				Privileged:               jsii.Bool(false),
-				ReadOnlyRootFilesystem:   jsii.Bool(true),
-				User:                     jsii.Number(1000),
-			},
-		}},
-		// Volumes: &[]cdk8splus.Volume{tmpVolume, nginxVolume},
-		SecurityContext: &cdk8splus.PodSecurityContextProps{
-			EnsureNonRoot:       jsii.Bool(true),
-			FsGroupChangePolicy: cdk8splus.FsGroupChangePolicy_ALWAYS,
-			User:                jsii.Number(1000),
+			Selector: map[string]string{"tq/name": app.Service.Name},
+			Type:     corev1.ServiceTypeClusterIP,
 		},
-	})
+	}
 
-	deployment.ApiObject().AddJsonPatch(cdk8s.JsonPatch_Add(
-		jsii.String("/spec/template/spec/imagePullSecrets"),
-		[]map[string]string{{"name": *registrySecret.Name()}},
-	))
+	// 5. Ingress
+	ingressName := "ingress"
+	pathTypePrefix := networkingv1.PathTypePrefix
+	ingressRuleHost := "qwer." + k.host
+	ingressTLSHost := k.host
 
-	servicePort := jsii.Number(80)
-
-	service := cdk8splus.NewService(chart, jsii.String(app.Service.Name+"-service"), &cdk8splus.ServiceProps{
-		Ports: &[]*cdk8splus.ServicePort{{
-			Name:       jsii.String("http"),
-			Port:       servicePort,
-			TargetPort: jsii.Number(app.Service.HttpPort),
-		}},
-		Selector: deployment,
-	})
-
-	// define 3d level domain given from the existing domain
-	cdk8splus.NewIngress(chart, jsii.String("ingress"), &cdk8splus.IngressProps{
-		Rules: &[]*cdk8splus.IngressRule{{
-			Host:     jsii.String("qwer" + "." + k.host),
-			Path:     jsii.String("/"),
-			PathType: cdk8splus.HttpIngressPathType_PREFIX,
-			Backend: cdk8splus.IngressBackend_FromService(service, &cdk8splus.ServiceIngressBackendOptions{
-				Port: servicePort,
-			}),
-		}},
-	})
-
-	return []cdk8s.Chart{chart, ingressChart}
+	ingress := &networkingv1.Ingress{
+		TypeMeta: metav1.TypeMeta{APIVersion: "networking.k8s.io/v1", Kind: "Ingress"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ingressName,
+			Namespace: fullNsName,
+			Annotations: map[string]string{
+				"cert-manager.io/cluster-issuer": "letsencrypt",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: ingressRuleHost,
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{
+								Path:     "/",
+								PathType: &pathTypePrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: app.Service.Name,
+										Port: networkingv1.ServiceBackendPort{Number: serviceExposedPort},
+									},
+								},
+							},
+						},
+					},
+				},
+			}},
+			TLS: []networkingv1.IngressTLS{{
+				Hosts:      []string{ingressTLSHost},
+				SecretName: "letsencrypt",
+			}},
+		},
+	}
+	return []any{namespace, registrySecret, deployment, service, ingress}
 }
 
+// Helper functions for pointer types
+func int32Ptr(i int32) *int32 { return &i }
+func int64Ptr(i int64) *int64 { return &i }
+func boolPtr(b bool) *bool    { return &b }
+
 func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {
-	decoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+	decoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme) // Stays yaml for this generic Apply func
 	conf, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConig))
 	if err != nil {
 		return err
@@ -194,22 +282,42 @@ func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {
 	}
 
 	dataChunks := strings.Split(data, "---")
+	var validObjs []*unstructured.Unstructured // Initialize empty slice
 
-	objs := make([]*unstructured.Unstructured, len(dataChunks))
-	for i, chunk := range dataChunks {
-		var obj unstructured.Unstructured
-		_, _, err = decoder.Decode([]byte(chunk), nil, &obj)
-		if err != nil {
-			return fmt.Errorf("failed to decode YAML: %w", err)
+	for _, chunk := range dataChunks {
+		trimmedChunk := strings.TrimSpace(chunk)
+		if trimmedChunk == "" {
+			continue
 		}
-		objs[i] = &obj
+		var obj unstructured.Unstructured
+		_, _, err = decoder.Decode([]byte(trimmedChunk), nil, &obj)
+		if err != nil {
+			// If there's an error decoding (e.g. empty or malformed), skip this chunk.
+			// This can happen with comments or empty lines between '---'
+			fmt.Printf("Warning: skipping decoding of chunk due to error: %v\nChunk content:\n%s\n", err, trimmedChunk)
+			continue
+		}
+		// Ensure that we only add non-empty objects.
+		// Decoding an empty string might still produce an object with no GVK.
+		if obj.GetKind() == "" && obj.GetAPIVersion() == "" {
+			continue
+		}
+		validObjs = append(validObjs, &obj)
 	}
-	for _, obj := range objs {
+
+	for _, obj := range validObjs {
 		gvr, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
 		resourceClient := dynamicClient.Resource(gvr).Namespace(obj.GetNamespace())
 
 		_, err = resourceClient.Create(ctx, obj, metav1.CreateOptions{})
 		if errors.IsAlreadyExists(err) {
+			// Attempt to get the existing object to retrieve its ResourceVersion for Update
+			existingObj, getErr := resourceClient.Get(ctx, obj.GetName(), metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("failed to get existing object for update: %w", getErr)
+			}
+			obj.SetResourceVersion(existingObj.GetResourceVersion())
+
 			_, err = resourceClient.Update(ctx, obj, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to update object: %w", err)
@@ -220,100 +328,4 @@ func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {
 	}
 
 	return nil
-}
-
-func (k *Kube) StoreSecret(ctx context.Context, rawConfig string, space, repoID, key, value string) error {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig))
-	if err != nil {
-		return fmt.Errorf("failed to parse kubeconfig: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return fmt.Errorf("failed to create kubernetes clientset: %w", err)
-	}
-
-	namespace := ns(space, repoID)
-	secretObjectName := secretName(repoID, key)
-	secretClient := clientset.CoreV1().Secrets(namespace)
-
-	// Check if namespace exists, create if not
-	_, err = clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			_, createErr := clientset.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-			if createErr != nil {
-				return fmt.Errorf("failed to create namespace %s: %w", namespace, createErr)
-			}
-		} else {
-			return fmt.Errorf("failed to get namespace %s: %w", namespace, err)
-		}
-	}
-
-	existingSecret, err := secretClient.Get(ctx, secretObjectName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			newSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretObjectName,
-					Namespace: namespace,
-				},
-				Data: map[string][]byte{
-					key: []byte(value),
-				},
-			}
-			_, err = secretClient.Create(ctx, newSecret, metav1.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to create secret %s in namespace %s: %w", secretObjectName, namespace, err)
-			}
-			return nil
-		}
-		return fmt.Errorf("failed to get secret %s in namespace %s: %w", secretObjectName, namespace, err)
-	}
-
-	if existingSecret.Data == nil {
-		existingSecret.Data = make(map[string][]byte)
-	}
-	existingSecret.Data[key] = []byte(value)
-
-	_, err = secretClient.Update(ctx, existingSecret, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update secret %s in namespace %s: %w", secretObjectName, namespace, err)
-	}
-
-	return nil
-}
-
-func (k *Kube) GetSecret(ctx context.Context, rawConfig string, space, repoID, key string) (string, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig))
-	if err != nil {
-		return "", fmt.Errorf("failed to parse kubeconfig: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("failed to create kubernetes clientset: %w", err)
-	}
-
-	namespace := ns(space, repoID)
-	secretObjectName := secretName(repoID, key)
-	secretClient := clientset.CoreV1().Secrets(namespace)
-
-	secret, err := secretClient.Get(ctx, secretObjectName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return "", domain.ErrSecretNotFound
-		}
-		return "", fmt.Errorf("failed to get secret %s in namespace %s: %w", secretObjectName, namespace, err)
-	}
-	if secret.Data == nil {
-		secret.Data = make(map[string][]byte)
-	}
-
-	value, ok := secret.Data[key]
-	if !ok {
-		return "", domain.ErrSecretNotFound
-	}
-
-	return string(value), nil
 }

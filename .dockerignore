@@ -26,3 +26,5 @@ certs/
 client/
 k3s_data/
 tq/
+docker-compose*
+
