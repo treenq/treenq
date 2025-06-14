@@ -14,8 +14,6 @@ type Service struct {
 	BuildEnvs        map[string]string
 	RuntimeEnvs      map[string]string
 
-	BuildSecrets   []string
-	RuntimeSecrets []string
 	// The internal port on which this service's run command will listen.
 	HttpPort int
 	// An image to use as the component's source. Only one of `git`, `github`, `gitlab`, or `image` may be set.
