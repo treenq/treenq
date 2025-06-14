@@ -3,6 +3,7 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 
@@ -46,7 +47,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 
 	r, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL:      u.String(),
-		Progress: os.Stdout,
+		Progress: progress.AsWriter(repo.CloneURL(), slog.LevelInfo),
 	})
 	var w *git.Worktree
 	if err != nil {
