@@ -3,6 +3,7 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 
@@ -19,7 +20,8 @@ func NewGit(dir string) *Git {
 	return &Git{dir: dir}
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string) (domain.GitRepo, error) {
+
+func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string, progress *domain.ProgressBuf) (domain.GitRepo, error) {
 	if branch == "" && sha == "" {
 		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
 	}
@@ -45,7 +47,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 
 	r, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL:      u.String(),
-		Progress: os.Stdout,
+		Progress: progress.AsWriter(repo.CloneURL(), slog.LevelInfo),
 	})
 	var w *git.Worktree
 	if err != nil {
