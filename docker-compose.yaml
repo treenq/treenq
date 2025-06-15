@@ -32,6 +32,15 @@ services:
           memory: 500m
           cpus: 0.2
 
+  buildkit:
+    image: moby/buildkit:v0.22.0
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "buildctl debug workers"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
   kube:
     image: rancher/k3s:v1.31.1-k3s1
     command:
