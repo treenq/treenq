@@ -41,13 +41,12 @@ func New(conf Config) (http.Handler, error) {
 	gitDir := filepath.Join(wd, "gits")
 	gitClient := repo.NewGit(gitDir)
 	docker, err := artifacts.NewDockerArtifactory(
+		conf.BuildkitHost,
 		conf.DockerRegistry,
 		conf.RegistryTLSVerify,
 		conf.RegistryCertDir,
-		conf.RegistryAuthType,
 		conf.RegistryUsername,
 		conf.RegistryPassword,
-		conf.RegistryToken,
 	)
 	if err != nil {
 		return nil, err

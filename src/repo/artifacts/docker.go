@@ -1,97 +1,57 @@
-//go:build !no_buildah
-// +build !no_buildah
-
 package artifacts
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 
-	"github.com/containers/buildah"
-	"github.com/containers/buildah/define"
-	"github.com/containers/buildah/imagebuildah"
-	"github.com/containers/image/v5/transports/alltransports"
-	"github.com/containers/image/v5/types"
-	"github.com/containers/storage"
-	"github.com/docker/distribution/registry/api/errcode"
+	"github.com/pkg/errors"
+	"github.com/tonistiigi/fsutil"
+
+	"github.com/docker/cli/cli/config/configfile"
+	"github.com/docker/cli/cli/config/types"
+
+	"github.com/moby/buildkit/client"
+
+	gateway "github.com/moby/buildkit/frontend/gateway/client"
+	"github.com/moby/buildkit/identity"
+	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth/authprovider"
+	"github.com/moby/buildkit/util/progress/progressui"
+	"github.com/moby/buildkit/util/progress/progresswriter"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/treenq/treenq/src/domain"
 )
 
 var ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
 
 type DockerArtifact struct {
-	registry string
+	buildkitHost string
+	registry     string
 
-	store             storage.Store
 	registryTLSVerify bool
-	registryCertDir   string
-	registryAuthType  string
+	registryCert      string
 	registryUsername  string
 	registryPassword  string
-	registryToken     string
 }
 
 func NewDockerArtifactory(
+	buildkitHost string,
 	registry string,
 	registryTLSVerify bool,
-	registryCertDir,
-	registryAuthType,
-	registryUsername,
-	registryPassword,
-	registryToken string,
+	registryCert string,
+	registryUsername string,
+	registryPassword string,
 ) (*DockerArtifact, error) {
-	buildStoreOptions, err := storage.DefaultStoreOptions()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build buildah storage option: %w", err)
-	}
-
-	buildStore, err := storage.GetStore(buildStoreOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build buildah store: %w", err)
-	}
-
 	return &DockerArtifact{
+		buildkitHost:      buildkitHost,
 		registry:          registry,
-		store:             buildStore,
 		registryTLSVerify: registryTLSVerify,
-		registryCertDir:   registryCertDir,
-		registryAuthType:  registryAuthType,
+		registryCert:      registryCert,
 		registryUsername:  registryUsername,
 		registryPassword:  registryPassword,
-		registryToken:     registryToken,
-	}, nil
-}
-
-func (a *DockerArtifact) getAuth() (*types.DockerAuthConfig, error) {
-	// TODO: reuse api.Oci constant values isntead of hardcoding auth type constants
-	switch a.registryAuthType {
-	case "basic":
-		return &types.DockerAuthConfig{
-			Username: a.registryUsername,
-			Password: a.registryPassword,
-		}, nil
-	case "token":
-		return &types.DockerAuthConfig{
-			IdentityToken: a.registryToken,
-		}, nil
-	case "noauth":
-		return nil, nil
-	default:
-		return nil, ErrUnknownDockerAuthType
-	}
-}
-
-func (a *DockerArtifact) systemContext() (*types.SystemContext, error) {
-	auth, err := a.getAuth()
-	if err != nil {
-		return nil, err
-	}
-	return &types.SystemContext{
-		DockerCertPath:              a.registryCertDir,
-		DockerInsecureSkipTLSVerify: types.NewOptionalBool(!a.registryTLSVerify),
-		DockerAuthConfig:            auth,
 	}, nil
 }
 
@@ -103,42 +63,118 @@ func (a *DockerArtifact) Image(name, tag string) domain.Image {
 	}
 }
 
+func parseLocal(locals map[string]string) (map[string]fsutil.FS, error) {
+	mounts := make(map[string]fsutil.FS, len(locals))
+
+	var err error
+	for k, v := range locals {
+		mounts[k], err = fsutil.NewFS(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to mew docker local fs: %w", err)
+		}
+	}
+
+	return mounts, nil
+}
+
+type fakeFile struct {
+	io.Writer
+}
+
+func (fakeFile) Read(_ []byte) (int, error) {
+	return 1, nil
+}
+func (fakeFile) Close() error { return nil }
+func (fakeFile) Fd() uintptr  { return 1 }
+func (fakeFile) Name() string { return "" }
+
 func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest, progress *domain.ProgressBuf) (domain.Image, error) {
 	image := a.Image(args.Name, args.Tag)
 	out := progress.AsWriter(args.DeploymentID, slog.LevelInfo)
-	errOut := progress.AsWriter(args.DeploymentID, slog.LevelError)
-	reportOut := progress.AsWriter(args.DeploymentID, slog.LevelDebug)
 
-	id, _, err := imagebuildah.BuildDockerfiles(ctx, a.store, define.BuildOptions{
-		ContextDirectory: args.Path,
-		Registry:         a.registry,
-		Output:           args.Name,
-		Out:              out,
-		Err:              errOut,
-		ReportWriter:     reportOut,
-		IgnoreFile:     args.Dockerignore,
-		AdditionalTags: []string{image.FullPath()},
-	}, args.Dockerfile)
+	c, err := client.New(ctx, a.buildkitHost, client.WithServerConfig(a.registry, a.registryCert))
 	if err != nil {
-		return image, fmt.Errorf("failed to build a docker container: %w", err)
+		return image, err
 	}
 
-	storeRef, err := alltransports.ParseImageName("docker://" + image.FullPath())
-	if err != nil {
-		return image, fmt.Errorf("failed to parse store reference: %w", err)
+	dockerConfig := &configfile.ConfigFile{
+		AuthConfigs: map[string]types.AuthConfig{
+			a.registry: {
+				Username: a.registryUsername,
+				Password: a.registryPassword,
+			},
+		},
 	}
 
-	systemContext, err := a.systemContext()
-	if err != nil {
-		return image, fmt.Errorf("failed to get auth type: %w", err)
+	tlsConfig := map[string]*authprovider.AuthTLSConfig{
+		a.registry: {
+			Insecure: !a.registryTLSVerify,
+			RootCAs: []string{
+				a.registryCert,
+			},
+		},
 	}
 
-	_, _, err = buildah.Push(ctx, id, storeRef, buildah.PushOptions{
-		Store:         a.store,
-		SystemContext: systemContext,
+	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+		ConfigFile: dockerConfig,
+		TLSConfigs: tlsConfig,
+	})}
+	localMounts, err := parseLocal(map[string]string{
+		"context":    args.DockerContext,
+		"dockerfile": args.Dockerfile,
 	})
 	if err != nil {
-		return image, fmt.Errorf("failed to push image: %w", err)
+		return image, errors.Wrap(err, "invalid local")
+	}
+
+	pw, err := progresswriter.NewPrinter(ctx, &fakeFile{out}, string(progressui.PlainMode))
+	if err != nil {
+		return image, err
+	}
+
+	eg, ctx := errgroup.WithContext(ctx)
+
+	solveOpt := client.SolveOpt{
+		Exports: []client.ExportEntry{{
+			Type: "image",
+			Attrs: map[string]string{
+				"push": "true",
+				"name": image.FullPath(),
+			},
+		}},
+		Frontend:    "dockerfile.v1",
+		Session:     attachable,
+		Ref:         identity.NewID(),
+		LocalMounts: localMounts,
+	}
+
+	eg.Go(func() error {
+		sreq := gateway.SolveRequest{
+			Frontend:    solveOpt.Frontend,
+			FrontendOpt: solveOpt.FrontendAttrs,
+		}
+
+		_, err := c.Build(ctx, solveOpt, "buildctl", func(ctx context.Context, c gateway.Client) (*gateway.Result, error) {
+			res, err := c.Solve(ctx, sreq)
+			if err != nil {
+				return nil, err
+			}
+			return res, err
+		}, progresswriter.ResetTime(pw).Status())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	eg.Go(func() error {
+		<-pw.Done()
+		return pw.Err()
+	})
+
+	if err := eg.Wait(); err != nil {
+		return image, err
 	}
 
 	return image, nil
@@ -146,24 +182,5 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 
 func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeployment) (domain.Image, error) {
 	image := a.Image(deployment.Space.Service.Name, deployment.BuildTag)
-
-	storeRef, err := alltransports.ParseImageName("docker://" + image.FullPath())
-	if err != nil {
-		return image, fmt.Errorf("failed to parse store reference: %w", err)
-	}
-	systemContext, err := a.systemContext()
-	if err != nil {
-		return image, fmt.Errorf("failed to get auth type: %w", err)
-	}
-
-	src, err := storeRef.NewImageSource(ctx, systemContext)
-	if err != nil {
-		var e errcode.Error
-		if errors.As(err, &e) && e.Message == "manifest unknown" {
-			return image, domain.ErrImageNotFound
-		}
-		return image, fmt.Errorf("failed to get iamge source: %w", err)
-	}
-	defer src.Close()
-	return image, nil
+	return image, domain.ErrImageNotFound
 }
