@@ -50,6 +50,8 @@ type Config struct {
 	// Host is a main app host to provide a quick preview for the deployed apps
 	Host string `envconfig:"HOST" required:"true"`
 
+	BuildkitHost string `envconfig:"BUILDKIT_HOST" required:"true"`
+
 	RegistryTLSVerify bool   `envconfig:"REGISTRY_TLS_VERIFY" default:"true"`
 	RegistryCertDir   string `envconfig:"REGISTRY_CERT_DIR" required:"false"`
 	RegistryAuthType  string `envconfig:"REGISTRY_AUTH_TYPE" required:"true"`

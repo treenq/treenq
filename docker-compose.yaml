@@ -70,8 +70,22 @@ services:
           memory: 1500m
           cpus: 1.0
 
+  buildkitd:
+    image: moby/buildkit:v0.12.5
+    privileged: true
+    volumes:
+      - buildkit_cache:/var/lib/buildkit
+    networks:
+      - default # Or your specific network
+    expose:
+      - "1234" # Default buildkit port
+    ports:
+      - "1234:1234"
+
 volumes:
   pgdata:
     driver: local
   k3s:
+    driver: local
+  buildkit_cache:
     driver: local
