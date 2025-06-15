@@ -11,6 +11,7 @@ type Service struct {
 	// The path to a Dockerfile relative to the root of the repo. If set, overrides usage of buildpacks.
 	DockerfilePath   string
 	DockerignorePath string
+	DockerContext    string
 	BuildEnvs        map[string]string
 	RuntimeEnvs      map[string]string
 

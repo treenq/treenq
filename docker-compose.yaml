@@ -35,6 +35,8 @@ services:
   buildkit:
     image: moby/buildkit:v0.22.0
     privileged: true
+    ports:
+      - "1234:1234"
     healthcheck:
       test: ["CMD-SHELL", "buildctl debug workers"]
       interval: 3s
