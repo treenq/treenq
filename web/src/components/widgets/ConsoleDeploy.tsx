@@ -9,6 +9,7 @@ import {
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
 
+import { useTimer } from '@/hooks/useTimer'
 import { Routes } from '@/routes'
 import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
@@ -28,7 +29,7 @@ export default function ConsoleDeploy() {
   const [timeDeploy, setTimeDeploy] = createSignal('0')
   const userName = userStore.user?.displayName
   const params = Routes.deploy.params()
-
+  const { startTimer, time, finishTimer } = useTimer()
   createEffect(() => {
     if (!deployStore.deployment.id) {
       deployStore.getDeployment(params.id)
@@ -40,27 +41,15 @@ export default function ConsoleDeploy() {
       setShowEmptyState(true)
       return
     }
-              if (isFinish) {
-        getTimeDeploy(logs()[0].timestamp, logs()[logs().length - 1].timestamp)
-      }
+    if (isFinish) {
+      getTimeDeploy(logs()[0].timestamp, logs()[logs().length - 1].timestamp)
+      return
+    }
 
     setLogs((listMessage) => {
       return [...listMessage, data.message]
     })
   })
-          const getTimeDeploy = (start: string, finish: string) => {
-    const startDate: Date = new Date(start)
-    const finishDate: Date = new Date(finish)
-
-    const totalSeconds: number = Math.floor((finishDate.getTime() - startDate.getTime()) / 1000)
-
-    const seconds = totalSeconds % 60
-    const minutes = Math.round(totalSeconds > 60 ? (totalSeconds - seconds) / 60 : 0)
-
-    setTimeDeploy(`${minutes} m ${seconds} s`)
-  }
-
-=======
   const getTimeDeploy = (start: string, finish: string) => {
     const startDate: Date = new Date(start)
     const finishDate: Date = new Date(finish)
@@ -73,20 +62,6 @@ export default function ConsoleDeploy() {
     setTimeDeploy(`${minutes} m ${seconds} s`)
   }
 
-  httpClient.listenProgress(
-    params.id,
-    (data: GetBuildProgressMessage, isFinish: boolean = false) => {
-      if (isFinish) {
-        getTimeDeploy(logs()[0].timestamp, logs()[logs().length - 1].timestamp)
-      }
-
-      setLogs((listMessage) => {
-        return [...listMessage, data.message]
-      })
-    },
-  )
->>>>>>> 01f7274 (fix:add time console depoy)
-
   return (
     <Card class="p-6">
       <div class="mb-3 flex items-center gap-2">
@@ -98,7 +73,7 @@ export default function ConsoleDeploy() {
       <div class="border-b-border mb-3 grid grid-cols-4 justify-between border-b border-solid pb-3">
         <div>
           <CardDescription>Duration</CardDescription>
-          <CardDescription class="mt-0">{timeDeploy()}</CardDescription>
+          <CardDescription class="mt-0">{`${time().minute} m ${time().second} s`}</CardDescription>
         </div>
         <div>
           <CardDescription>Branch</CardDescription>
