@@ -665,14 +665,24 @@ func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppD
 		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	appKubeDef := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
+	appKubeDef, err := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
+	if err != nil {
+		progress.Append(deployment.ID, ProgressMessage{
+			Payload: "failed to define app" + err.Error(),
+			Level:   slog.LevelError,
+		})
+		return AppDeployment{}, &vel.Error{
+			Message: "failed to define app",
+			Err:     err,
+		}
+	}
 	if err := h.kube.Apply(ctx, h.kubeConfig, appKubeDef); err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to apply new image" + err.Error(),
 			Level:   slog.LevelError,
 		})
 		return AppDeployment{}, &vel.Error{
-			Message: "failed to apply kube definition",
+			Message: "failed to apply app definition",
 			Err:     err,
 		}
 	}

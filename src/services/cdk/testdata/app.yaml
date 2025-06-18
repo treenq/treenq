@@ -1,125 +1,117 @@
 apiVersion: v1
 kind: Namespace
 metadata:
+  creationTimestamp: null
   name: space-id-1234
-  namespace: ""
 spec: {}
+status: {}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
+  creationTimestamp: null
   name: registry-credentials
   namespace: space-id-1234
-immutable: false
 stringData:
-  .dockerconfigjson: |-
-    {
-    		                "auths": {
-    		                    "registry:5000": {
-    		                        "auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"
-    		                    }
-    		                }
-    		            }
+  .dockerconfigjson: '{"auths":{"registry:5000":{"auth":"dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}'
 type: kubernetes.io/dockerconfigjson
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: space-simple-app-deployment-c84e8755
+  creationTimestamp: null
+  name: simple-app
   namespace: space-id-1234
 spec:
-  minReadySeconds: 0
-  progressDeadlineSeconds: 600
   replicas: 1
   selector:
     matchLabels:
-      cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+      tq/name: simple-app
+  strategy: {}
   template:
     metadata:
+      creationTimestamp: null
       labels:
-        cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
+        tq/name: simple-app
     spec:
-      automountServiceAccountToken: false
       containers:
-        - env:
-            - name: DOCKER_REGISTRY
-              value: registry:5000
-            - name: DO_TOKEN
-              value: "111"
-            - name: GITHUB_WEBHOOK_SECRET_ENABLE
-              value: "false"
-            - name: SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: SECRET
-                  name: id-1234-SECRET
-          image: registry:5000/treenq:0.0.1
-          imagePullPolicy: Always
-          name: simple-app
-          ports:
-            - containerPort: 8000
-              name: http
-          resources:
-            limits:
-              cpu: 0m
-              ephemeral-storage: 0Gi
-              memory: 0Mi
-            requests:
-              cpu: 0m
-              ephemeral-storage: 0Gi
-              memory: 0Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            privileged: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 1000
-      dnsPolicy: ClusterFirst
-      hostNetwork: false
+      - env:
+        - name: DO_TOKEN
+          value: "111"
+        - name: SECRET
+          valueFrom:
+            secretKeyRef:
+              key: SECRET
+              name: id-1234-secret
+        image: registry:5000/treenq:0.0.1
+        imagePullPolicy: Always
+        name: simple-app
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          limits:
+            cpu: 250m
+            ephemeral-storage: 1Gi
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            ephemeral-storage: 1Gi
+            memory: 512Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
       imagePullSecrets:
-        - name: registry-credentials
+      - name: registry-credentials
       restartPolicy: Always
       securityContext:
         fsGroupChangePolicy: Always
         runAsNonRoot: true
         runAsUser: 1000
-      setHostnameAsFQDN: false
-      terminationGracePeriodSeconds: 30
+status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: space-simple-app-service-c88a2c28
+  creationTimestamp: null
+  name: simple-app
   namespace: space-id-1234
 spec:
-  externalIPs: []
   ports:
-    - name: http
-      port: 80
-      targetPort: 8000
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8000
   selector:
-    cdk8s.io/metadata.addr: space-simple-app-deployment-c89d9f35
+    tq/name: simple-app
   type: ClusterIP
+status:
+  loadBalancer: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: space-ingress-c8b831e1
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  creationTimestamp: null
+  name: ingress
   namespace: space-id-1234
 spec:
   rules:
-    - host: qwer.treenq.com
-      http:
-        paths:
-          - backend:
-              service:
-                name: space-simple-app-service-c88a2c28
-                port:
-                  number: 80
-            path: /
-            pathType: Prefix
+  - host: qwer.treenq.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: simple-app
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - treenq.com
+    secretName: letsencrypt
+status:
+  loadBalancer: {}

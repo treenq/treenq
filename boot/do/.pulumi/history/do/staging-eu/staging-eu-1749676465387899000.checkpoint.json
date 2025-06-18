@@ -1,0 +1,711 @@
+{
+    "version": 3,
+    "checkpoint": {
+        "stack": "organization/do/staging-eu",
+        "latest": {
+            "manifest": {
+                "time": "2025-06-11T23:14:25.37404+02:00",
+                "magic": "4eae86ecf9bebc8e257c5684d437d5afbdcda970166ea624c603237617383797",
+                "version": "v3.160.0"
+            },
+            "secrets_providers": {
+                "type": "passphrase",
+                "state": {
+                    "salt": "v1:ly0E40Oi8Bk=:v1:ODkwtHs93bAbnts5:Z9MPQCw70vp8dbZkYHkNtos6F2AZUQ=="
+                }
+            },
+            "resources": [
+                {
+                    "urn": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "custom": false,
+                    "type": "pulumi:pulumi:Stack",
+                    "outputs": {
+                        "kubeconfig": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:/tUbVm12FojaUWbo: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"
+                        },
+                        "registry_url": "registry.digitalocean.com/tq-staging"
+                    },
+                    "created": "2025-06-11T19:51:15.533619Z",
+                    "modified": "2025-06-11T19:51:15.533619Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::pulumi:providers:digitalocean::default_4_29_0",
+                    "custom": true,
+                    "id": "971d545c-fdb5-4b66-9b3e-5cde458d065c",
+                    "type": "pulumi:providers:digitalocean",
+                    "inputs": {
+                        "__internal": {},
+                        "token": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:Kai5aWjiZ+hh0nqi:WQ9AXV/FpKncTZHID3EXYIPpPngDqu2MR8CU6icZMysbNiaRxWQNy8h5O3LUeqSKgFid3fhEZUtW6wZ0pYRB4P7q4aNyX0Qdn7fbjS3I1X1ErpOBOZQHUUs="
+                        },
+                        "version": "4.29.0"
+                    },
+                    "outputs": {
+                        "token": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:djWaRBNlu8XbVhmr:1Z5KBhiF0qm3dUPxOmPxp5mRj+0kdsdtcORIhtAQfvkuqWY4Caw1/GKIT5XQZbWtvONmKMwQ8XVAE4hjE56gKaP9nyr51f5CNG+IfkNNEyQcT6xGD/vVVWM="
+                        },
+                        "version": "4.29.0"
+                    },
+                    "created": "2025-06-11T19:51:15.623684Z",
+                    "modified": "2025-06-11T19:51:15.623684Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::digitalocean:index/vpc:Vpc::tq-kube-vpc",
+                    "custom": true,
+                    "id": "2412f480-71be-4243-96a9-581748ccb074",
+                    "type": "digitalocean:index/vpc:Vpc",
+                    "inputs": {
+                        "__defaults": [],
+                        "ipRange": "10.10.0.0/16",
+                        "name": "tq-kube-staging-vpc",
+                        "region": "fra1"
+                    },
+                    "outputs": {
+                        "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"delete\":120000000000}}",
+                        "createdAt": "2025-06-11 19:51:16 +0000 UTC",
+                        "default": false,
+                        "description": "",
+                        "id": "2412f480-71be-4243-96a9-581748ccb074",
+                        "ipRange": "10.10.0.0/16",
+                        "name": "tq-kube-staging-vpc",
+                        "region": "fra1",
+                        "vpcUrn": "do:vpc:2412f480-71be-4243-96a9-581748ccb074"
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:digitalocean::default_4_29_0::971d545c-fdb5-4b66-9b3e-5cde458d065c",
+                    "propertyDependencies": {
+                        "ipRange": [],
+                        "name": [],
+                        "region": []
+                    },
+                    "created": "2025-06-11T19:51:17.191172Z",
+                    "modified": "2025-06-11T19:51:17.191172Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::digitalocean:index/kubernetesCluster:KubernetesCluster::my-cluster",
+                    "custom": true,
+                    "id": "8f3f0143-627e-4deb-a82a-c637d28f2696",
+                    "type": "digitalocean:index/kubernetesCluster:KubernetesCluster",
+                    "inputs": {
+                        "__defaults": [
+                            "destroyAllAssociatedResources",
+                            "ha",
+                            "name",
+                            "registryIntegration",
+                            "surgeUpgrade"
+                        ],
+                        "destroyAllAssociatedResources": false,
+                        "ha": false,
+                        "name": "my-cluster-5367962",
+                        "nodePool": {
+                            "__defaults": [
+                                "autoScale"
+                            ],
+                            "autoScale": false,
+                            "name": "tq-staging-node-pool",
+                            "nodeCount": 1,
+                            "size": "s-1vcpu-2gb"
+                        },
+                        "region": "fra1",
+                        "registryIntegration": false,
+                        "surgeUpgrade": true,
+                        "version": "1.32.2-do.3",
+                        "vpcUuid": "2412f480-71be-4243-96a9-581748ccb074"
+                    },
+                    "outputs": {
+                        "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":1800000000000},\"schema_version\":\"3\"}",
+                        "autoUpgrade": false,
+                        "clusterSubnet": "10.244.0.0/16",
+                        "clusterUrn": "do:kubernetes:8f3f0143-627e-4deb-a82a-c637d28f2696",
+                        "createdAt": "2025-06-11 19:51:18 +0000 UTC",
+                        "destroyAllAssociatedResources": false,
+                        "endpoint": "https://8f3f0143-627e-4deb-a82a-c637d28f2696.k8s.ondigitalocean.com",
+                        "ha": false,
+                        "id": "8f3f0143-627e-4deb-a82a-c637d28f2696",
+                        "ipv4Address": "",
+                        "kubeConfigs": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:YnifHN7zSjs81YXn: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"
+                        },
+                        "maintenancePolicy": {
+                            "day": "any",
+                            "duration": "4h0m0s",
+                            "startTime": "5:00"
+                        },
+                        "name": "my-cluster-5367962",
+                        "nodePool": {
+                            "actualNodeCount": 1,
+                            "autoScale": false,
+                            "id": "cdcd1dad-d958-4ddb-8359-32ecb4b29810",
+                            "labels": {},
+                            "maxNodes": 0,
+                            "minNodes": 0,
+                            "name": "tq-staging-node-pool",
+                            "nodeCount": 1,
+                            "nodes": [
+                                {
+                                    "createdAt": "2025-06-11 19:51:18 +0000 UTC",
+                                    "dropletId": "501701595",
+                                    "id": "b361acec-1755-492e-afb1-563cf5e43726",
+                                    "name": "tq-staging-node-pool-tkdsh",
+                                    "status": "running",
+                                    "updatedAt": "2025-06-11 19:55:27 +0000 UTC"
+                                }
+                            ],
+                            "size": "s-1vcpu-2gb",
+                            "tags": [],
+                            "taints": []
+                        },
+                        "region": "fra1",
+                        "registryIntegration": false,
+                        "serviceSubnet": "10.245.0.0/16",
+                        "status": "running",
+                        "surgeUpgrade": true,
+                        "tags": [],
+                        "updatedAt": "2025-06-11 19:57:28 +0000 UTC",
+                        "version": "1.32.2-do.3",
+                        "vpcUuid": "2412f480-71be-4243-96a9-581748ccb074"
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "dependencies": [
+                        "urn:pulumi:staging-eu::do::digitalocean:index/vpc:Vpc::tq-kube-vpc"
+                    ],
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:digitalocean::default_4_29_0::971d545c-fdb5-4b66-9b3e-5cde458d065c",
+                    "propertyDependencies": {
+                        "nodePool": [],
+                        "region": [],
+                        "version": [],
+                        "vpcUuid": [
+                            "urn:pulumi:staging-eu::do::digitalocean:index/vpc:Vpc::tq-kube-vpc"
+                        ]
+                    },
+                    "additionalSecretOutputs": [
+                        "kubeConfigs"
+                    ],
+                    "created": "2025-06-11T19:57:29.650854Z",
+                    "modified": "2025-06-11T19:57:29.650854Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::pulumi:providers:kubernetes::k8s",
+                    "custom": true,
+                    "id": "8f4d17fa-cce6-411c-8da3-af32c45abccc",
+                    "type": "pulumi:providers:kubernetes",
+                    "inputs": {
+                        "__internal": {},
+                        "kubeconfig": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:DPEWq+PQMRgkM/PB:d9iisiMQlcvdVwDBKqaS7rsT5KvVu6/fLYaBlrJp+JjoC0MwyQnME/K4n2xOdKCimDk6gttyBmhpl284nZkn81wImdQn9/NE+HAoj16E6k5lmNLX0zh8T3KzcbZ/C0PkoBNMErEqqBc5lNNQO9gS16VV5SLH9fhOPNxwc77VNrD2wnu5Rt0YzkJAaC4SVYwdDL1OTdHwIqDcgvLb4u7QI4MGGEQUpJySG3VVvWn3yvyLgg89uS86synEjdQ+2b7s/v9HQcmhauxpBbqzWovBNEUqi3hpRsWQP0sLbcJc+KSgHHJ1K2eFrJuNN/bmxYqEp0+5pfgmH2IIl3Ri8CPdLw2tXKJ0CRrwnoCPnzkHjsCyb6Jnb4hex40eUXR9LwOK4X2YMm+uXGJ3BXeU6zTQuRLw+LD4t+Lp0qirlyVMU6sz87Nl1XF4q/Od8Tj7fCDOSXpnEM1J0DsSrFPqc9wwPliP9Y5XaPHJsuT0Dkw3TMK1ezfztUYGPUlpgN5XbuAZsFgJIyxUnzLYfrQn4z7Y8nl/xOSYDhOP4OjnxpBkjR7Yf/E1P7WuO5ObVtiz2OAGPBnPn/GkzkS1n7hTEt48cXPaw5WnLoRz/YcfZvsNGMy5Qs7831ositiMOzw7C3IRj2+dDllte7uKVusjrwbiE0iOpjPce5hBMi/otoDa9nywlv8OygaCd38m/944wu6fnhs4MAXKEJYSyxcc8mNMe0lcKmtSKdKN53rvcv1SZKjnxjCcglJzW8KfutUY/bGWpqAoY6VTFq167pOTLsDa8en2pELAg11cRco8DU4CDsHV6p5vSenz4cSn+g+y6EP3J57SlX5PWg0c+E50rStiLmNTOPyRGCDO1zogxDA2xKNV3uCXa2NFXTLwbCsXkI/c0nvBOLFim47otCXX9413Cx7UQ3tHFFhUjDlGs15K38qvgA6DebuyASljTuBs/+qF3y9EdnkBQSbvz7ZgbH2XoB0ci+v6AWa7HmkvZxwEd5lGj1lAOtfJRJr4optwZ2fgeksyPyd46IG02k+crAJKb7X3UABfs8aDh8NhY+xJtTQqypsJG+77iycXL1K8FwEyQADV0R1ofAwnGorky4QDoIeQt7Dw7pytAndoMecXxAzPD1aWORjXuf33ltPRCJicaAkJuHfzLYtUm7mQoMxewe0hURU7tFrKLAr34vPtRBk7tUrvDs2NkelliM4g039mf4o1LybDIU0ghcZm6GazGcu3a5VwJWfGO2km6dR9CEwlBai/AppQ7lBG4PMaTBP3xj1llf+lkIQVcXEYSezTbU9IeBohG6aO3onQwoPd82VQM/U8SCz3tr728ZS8IFdbHOWJOeVbp9IvIhQ2Dpov2cqYZOh4pIp0x/9CnazY9m03C/klt/H3ae/XykIjC026QozmgcBVB+mfXAlBVxqLHJWOU129wxDENAX+oweOdsIyYxKrGLHAD6aFIsXhOBc8Yhu517ibfDdFtDnc7InBpH7t4OGMwB/vhTnCn5vlnjaMoV19fjC13h9Di/2d6CA1CHYpYLOsg6L2nDRmpAm6Oe+CmcqbN6aJx7J1kJeh0MLOTUydx4Kxlx/Zls2uLaPjyULps8kfQCTV4SOPpF5BbZWn+CZzOl2uQPCcWSLG6dbo05LsF92CQ7VjOKuOyC/ISCmi5///sG9kYSQ1jLjvzyGWBxgQwCKeY5A774PnWPEihgqS7AdWUCWT7CoFeKwgaZ1ki4j1zrs4BKBdlao0/yTGe+Vqo0Ju23xin0bWclfd8+Ywjg4eIAivrUWsB7+wajw1PWmkhoY8qo+zIS2WWWSmvdcdzA0B37gm7vlv4MZeuMY4M/XnspVhkVRyuNRct+fjskxCfry1xHLfA2TDQg9B49qMizmtwzWPyTyB/deHzGKJIWXQhp+qMvloLpted7otaTnfRSxl6ICEI44hfbDmytv275ySzju1ujLOio8KB91OgTHsiBcTCPSMFQBEYgrt0Lk2V7fXnB8XPKi5UNj+UzVzDNiUJSSfW4jcSKCScGGl9tMdcPJbSY3qn9GpFumCGl/cuDABeWO+NdM6zy56lt9Lt/OemjqDQuZz4dhTA8i/nL6hoPqPWVqGhAtyjvwFkavRA/QGK4S2UNgiO6Fwsgm5MKGuRTycxoaxyBw4JjYw7IIfZJ2PkuLB8/ARBT7IQGpNRGdF918f7/PcemoS4hiOtGYjhacnpGgX63JKtWBeaMrSivvep7xT6V13OlaBLT7oyudAd46KKC0x6ZxTFw7XmG0aN+dluSN+WCl7OX1U4rZGZCuon2gnkzL+CId8SxVBOqSua9tPL+23navX9AdCNdj8gYKC8FMruFbtsO9sZh9CkHcHv0KFWF6Eyxbza70jquFjNTAzj6fyeFYuge3feroEHDEef9Zb2d8jYD7xfTXAWSV8dYo5M1aU+cKifB/5Yw7gn6AdSgYFQsLuxbr2VRexe65oThItzcR+87PdfKxQDR4LupZPVu7n5mVFAnWFxjp2LxjJ6cs1KZxSFYUVIlknhQz4MJI5tEm9T0rtEV5Ld+RMtae3YbUl+iVVWM6hD3gtzY9/dAN8sjMZxGhCbMnS4VpIcYZzC//D3hk0bCTu5zr5r8x5+/Bg1iS8sZZF5CTh7xCykkE1aYRnVBdzMX5ATijaj6UTgooPgiIt7RZtzQRRlLSU4KdDxq/12oGI1oeabIMUyix4eFfoLE/9/MjPq/vliPPcmYeYU5tb+SrANNssGUUIuSVVof0NSjXFHLo/Y90Ddqfl/K2u7ZCzyjACycqpACrb"
+                        },
+                        "version": "4.23.0"
+                    },
+                    "outputs": {
+                        "kubeconfig": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:gH+IqnAd8sR1nDch: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"
+                        },
+                        "version": "4.23.0"
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "dependencies": [
+                        "urn:pulumi:staging-eu::do::digitalocean:index/kubernetesCluster:KubernetesCluster::my-cluster"
+                    ],
+                    "propertyDependencies": {
+                        "kubeconfig": [
+                            "urn:pulumi:staging-eu::do::digitalocean:index/kubernetesCluster:KubernetesCluster::my-cluster"
+                        ]
+                    },
+                    "created": "2025-06-11T19:57:30.396772Z",
+                    "modified": "2025-06-11T19:57:30.396772Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::kubernetes:yaml:ConfigFile::letsencrypt-issuer",
+                    "custom": false,
+                    "type": "kubernetes:yaml:ConfigFile",
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "created": "2025-06-11T19:57:35.720928Z",
+                    "modified": "2025-06-11T19:57:35.720928Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::kubernetes:helm.sh/v3:Release::cert-manager",
+                    "custom": true,
+                    "id": "cert-manager/cert-manager-ff8b4d0c",
+                    "type": "kubernetes:helm.sh/v3:Release",
+                    "inputs": {
+                        "allowNullValues": false,
+                        "atomic": false,
+                        "chart": "cert-manager",
+                        "cleanupOnFail": false,
+                        "createNamespace": true,
+                        "dependencyUpdate": false,
+                        "description": "",
+                        "devel": false,
+                        "disableCRDHooks": false,
+                        "disableOpenapiValidation": false,
+                        "disableWebhooks": false,
+                        "forceUpdate": false,
+                        "keyring": "",
+                        "lint": false,
+                        "name": "cert-manager-ff8b4d0c",
+                        "namespace": "cert-manager",
+                        "postrender": "",
+                        "recreatePods": false,
+                        "renderSubchartNotes": false,
+                        "replace": false,
+                        "repositoryOpts": {
+                            "caFile": "",
+                            "certFile": "",
+                            "keyFile": "",
+                            "password": "",
+                            "repo": "https://charts.jetstack.io",
+                            "username": ""
+                        },
+                        "resetValues": false,
+                        "reuseValues": false,
+                        "skipAwait": false,
+                        "skipCrds": false,
+                        "timeout": 300,
+                        "values": {
+                            "installCRDs": true
+                        },
+                        "verify": false,
+                        "version": "v1.18.0",
+                        "waitForJobs": false
+                    },
+                    "outputs": {
+                        "__inputs": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:rBbf3dPftDwUYgxU:fkS3pis9gatvp6P54Ug2sKbPiMVlt5848Fo8gdwudVoTWv1lbdRwX44mdVvXvQRkG1vNmhQxnNfvs8oIt5R3Gug77dAjl+AmT/rabn4DWTJG+6URD3VNfuE0+RKQfU2NBjKYCRXvzGW/Qti4nkwfNsx5kn3eC+xC3IRh2dxuCvkz2uHplW3H9X2gUd1YduuVz21utCGSo6RCE+NvVRTxxvP8M38jUVeUrQ5aj0SWt6HV/EMyF37x1bKBwaio02A5XBx79c8OPxgPLIvcGGO5mBOJh3wMo64JDjnsdAlWzsgaL0EAGYKW+Jh/MdA7VNBaX7FqktYZYeQ1GYC+ln6Zv17vqFoCEc+DCAKELgASLUpyP0cQqgWWft9MHV0/aQ25vJNOYCDC1xylV+mWRnKrX9CzjfEkjssC59jySUDu5GXe9blbkR+rhYceGKivvpQZNn8i6ddVG7ZHDnM+DXaEUGFjislNqWLA0yxK2vdbFCtT4KgHoxI9Quwy4bMzVq4cnDlcvBZQJpgU+yQTVsSPFwo9jdUFQftDFacF8PQxUlkWlCwMfEl+1Ce6cvq4pqZci+B4Fsveruy1gO+IL8YjG+3TMccSlPXaH75CMW8c3T2D3ceS17o996zCt7ysRhf7XGxPGKJPAqoLjNcQOjRAGqz6bHICnBb4inAcw0IWY7DdO0X6jQacrWPA85IxfvJABrMO5zGnKcd8dmTKU0uC2vHaPJkxDoC4E9cS88NCEwmwS0n30j4B9n7OP/mYZE8qNo9Vz1AxerEcFCyHql5ugjHJCd6hf7ODKN1sg50XZWOcW2KCw/FFwM9R/jFMOZEc5YlmwfpdrdFyRYbd60FwjPgwt6Y0ZSy7GN7wJkN1cGNBQmg4y/OGTEdDmZ71dblvBVkShs/qKFiPmri+kA0DqBYaCzHS3GhmpMumcXn9phKfWhjZi05ZJhyHSR2G3jy6InMn5wvPS+pVKsJ3RvCuUZl+TcibFQ=="
+                        },
+                        "allowNullValues": false,
+                        "atomic": false,
+                        "chart": "cert-manager",
+                        "cleanupOnFail": false,
+                        "createNamespace": true,
+                        "dependencyUpdate": false,
+                        "description": "",
+                        "devel": false,
+                        "disableCRDHooks": false,
+                        "disableOpenapiValidation": false,
+                        "disableWebhooks": false,
+                        "forceUpdate": false,
+                        "keyring": "",
+                        "lint": false,
+                        "name": "cert-manager-ff8b4d0c",
+                        "namespace": "cert-manager",
+                        "postrender": "",
+                        "recreatePods": false,
+                        "renderSubchartNotes": false,
+                        "replace": false,
+                        "repositoryOpts": {
+                            "caFile": "",
+                            "certFile": "",
+                            "keyFile": "",
+                            "password": "",
+                            "repo": "https://charts.jetstack.io",
+                            "username": ""
+                        },
+                        "resetValues": false,
+                        "resourceNames": {
+                            "ClusterRole.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "cert-manager-ff8b4d0c-cainjector",
+                                "cert-manager-ff8b4d0c-cluster-view",
+                                "cert-manager-ff8b4d0c-controller-approve:cert-manager-io",
+                                "cert-manager-ff8b4d0c-controller-certificates",
+                                "cert-manager-ff8b4d0c-controller-certificatesigningrequests",
+                                "cert-manager-ff8b4d0c-controller-clusterissuers",
+                                "cert-manager-ff8b4d0c-controller-ingress-shim",
+                                "cert-manager-ff8b4d0c-controller-issuers",
+                                "cert-manager-ff8b4d0c-controller-orders",
+                                "cert-manager-ff8b4d0c-dns01-controller-challenges",
+                                "cert-manager-ff8b4d0c-edit",
+                                "cert-manager-ff8b4d0c-http01-controller-challenges",
+                                "cert-manager-ff8b4d0c-view",
+                                "cert-manager-ff8b4d0c-webhook:subjectaccessreviews"
+                            ],
+                            "ClusterRoleBinding.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "cert-manager-ff8b4d0c-cainjector",
+                                "cert-manager-ff8b4d0c-controller-approve:cert-manager-io",
+                                "cert-manager-ff8b4d0c-controller-certificates",
+                                "cert-manager-ff8b4d0c-controller-certificatesigningrequests",
+                                "cert-manager-ff8b4d0c-controller-clusterissuers",
+                                "cert-manager-ff8b4d0c-controller-ingress-shim",
+                                "cert-manager-ff8b4d0c-controller-issuers",
+                                "cert-manager-ff8b4d0c-controller-orders",
+                                "cert-manager-ff8b4d0c-dns01-controller-challenges",
+                                "cert-manager-ff8b4d0c-http01-controller-challenges",
+                                "cert-manager-ff8b4d0c-webhook:subjectaccessreviews"
+                            ],
+                            "CustomResourceDefinition.apiextensions.k8s.io/apiextensions.k8s.io/v1": [
+                                "certificaterequests.cert-manager.io",
+                                "certificates.cert-manager.io",
+                                "challenges.acme.cert-manager.io",
+                                "clusterissuers.cert-manager.io",
+                                "issuers.cert-manager.io",
+                                "orders.acme.cert-manager.io"
+                            ],
+                            "Deployment.apps/apps/v1": [
+                                "cert-manager/cert-manager-ff8b4d0c",
+                                "cert-manager/cert-manager-ff8b4d0c-cainjector",
+                                "cert-manager/cert-manager-ff8b4d0c-webhook"
+                            ],
+                            "MutatingWebhookConfiguration.admissionregistration.k8s.io/admissionregistration.k8s.io/v1": [
+                                "cert-manager-ff8b4d0c-webhook"
+                            ],
+                            "Role.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "cert-manager/cert-manager-ff8b4d0c-tokenrequest",
+                                "cert-manager/cert-manager-ff8b4d0c-webhook:dynamic-serving",
+                                "kube-system/cert-manager-ff8b4d0c-cainjector:leaderelection",
+                                "kube-system/cert-manager-ff8b4d0c:leaderelection"
+                            ],
+                            "RoleBinding.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "cert-manager/cert-manager-ff8b4d0c-cert-manager-ff8b4d0c-tokenrequest",
+                                "cert-manager/cert-manager-ff8b4d0c-webhook:dynamic-serving",
+                                "kube-system/cert-manager-ff8b4d0c-cainjector:leaderelection",
+                                "kube-system/cert-manager-ff8b4d0c:leaderelection"
+                            ],
+                            "Service/v1": [
+                                "cert-manager/cert-manager-ff8b4d0c",
+                                "cert-manager/cert-manager-ff8b4d0c-cainjector",
+                                "cert-manager/cert-manager-ff8b4d0c-webhook"
+                            ],
+                            "ServiceAccount/v1": [
+                                "cert-manager/cert-manager-ff8b4d0c",
+                                "cert-manager/cert-manager-ff8b4d0c-cainjector",
+                                "cert-manager/cert-manager-ff8b4d0c-webhook"
+                            ],
+                            "ValidatingWebhookConfiguration.admissionregistration.k8s.io/admissionregistration.k8s.io/v1": [
+                                "cert-manager-ff8b4d0c-webhook"
+                            ]
+                        },
+                        "reuseValues": false,
+                        "skipAwait": false,
+                        "skipCrds": false,
+                        "status": {
+                            "appVersion": "v1.18.0",
+                            "chart": "cert-manager",
+                            "name": "cert-manager-ff8b4d0c",
+                            "namespace": "cert-manager",
+                            "revision": 2,
+                            "status": "deployed",
+                            "version": "v1.18.0"
+                        },
+                        "timeout": 300,
+                        "values": {
+                            "installCRDs": true
+                        },
+                        "verify": false,
+                        "version": "v1.18.0",
+                        "waitForJobs": false
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:kubernetes::k8s::8f4d17fa-cce6-411c-8da3-af32c45abccc",
+                    "propertyDependencies": {
+                        "chart": [],
+                        "compat": [],
+                        "createNamespace": [],
+                        "namespace": [],
+                        "repositoryOpts": [],
+                        "values": []
+                    },
+                    "created": "2025-06-11T20:04:39.512155Z",
+                    "modified": "2025-06-11T20:16:01.635353Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::kubernetes:helm.sh/v3:Release::ingress-nginx",
+                    "custom": true,
+                    "id": "ingress-nginx/ingress-nginx-e4922bd3",
+                    "type": "kubernetes:helm.sh/v3:Release",
+                    "inputs": {
+                        "allowNullValues": false,
+                        "atomic": false,
+                        "chart": "ingress-nginx",
+                        "cleanupOnFail": false,
+                        "createNamespace": true,
+                        "dependencyUpdate": false,
+                        "description": "",
+                        "devel": false,
+                        "disableCRDHooks": false,
+                        "disableOpenapiValidation": false,
+                        "disableWebhooks": false,
+                        "forceUpdate": false,
+                        "keyring": "",
+                        "lint": false,
+                        "name": "ingress-nginx-e4922bd3",
+                        "namespace": "ingress-nginx",
+                        "postrender": "",
+                        "recreatePods": false,
+                        "renderSubchartNotes": false,
+                        "replace": false,
+                        "repositoryOpts": {
+                            "caFile": "",
+                            "certFile": "",
+                            "keyFile": "",
+                            "password": "",
+                            "repo": "https://kubernetes.github.io/ingress-nginx",
+                            "username": ""
+                        },
+                        "resetValues": false,
+                        "reuseValues": false,
+                        "skipAwait": false,
+                        "skipCrds": false,
+                        "timeout": 300,
+                        "values": {},
+                        "verify": false,
+                        "version": "4.12.3",
+                        "waitForJobs": false
+                    },
+                    "outputs": {
+                        "__inputs": {
+                            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                            "ciphertext": "v1:qbAmo5Rbz1JSSPAa:krNWoP+Voa4PtzQwigKWVusrFinQKW0Y1eUFPx56Zuc08Z8Ns+kGfkWmDKbfHwGY9tHb7kJeuEwU31y+dCLVPBpf8Y1vWa56WCD5+PNsw68yfI39TOg6iOr7oRk9hSqvn59waKGxtocUD+h9azY7PHsYCs+f3ICqhVBud6upg9LsXrjI9z1qsuEJNQm9UjMLwer64tlThbLqS4H42ov16G3ml+vLR+glUfnLrqKA2LTQ33d4uXedGOnEwubIdo3gQpOlqx2ZmlyP53vDDVl1wE4FCns1r8Td7dIe3YMwdZXStlHNVrlWSzyssMuV4F9SxiLIiQuMgvB4mSTDuizXRX5HZgCiVK/x9L2Tg+dq/DECkaRUc1z7G3dx2qqrgx2jAjjPgwapYgbZgd4IFBPzoWZQ+noJB8cGoPB3EsQT22MuxkO5irxJcRGn1BIvkS9R/Z1irhBgTabpiQ/U/ryEy3/FUh9LZD7KFzcK0xO2ATuYY87YLlYBRHRwc4yEl4uawI+vP8xcEv1rTf+URaOlFyGPk63y+Upc9a0QdvndIwQhB5Y5B/fWNia3lWupGnxG+exiNpeHO9B/mhsijuhArY0RQCH1eGCeVssEsug2RJJ8c/O7V1LY38t4PrnIlE1aRd6ySQj/hDmfaLy3KF98PtEobgGHTKaodUqIrB1AUK9cOEPhQmPGXJ0WGLNWpIPdxtzhC2gSswzfZk2Ewh+C4bnnoWBNnIE1V/37Ujrj+fmjR51Ncz2FY+64fmKwv0YlC6HB0yayRz2zOOQhIhEE1ukwj4eLQKL/UhPKuKLJhOdAZ0bOnfBWjyTbgoXkNZ1+Pcnvfi7NLib/7ta/hIvhE8csfq8AByrr9MRKwQ8ba0rsMrPbxIluEFKr3xp7aLCFXobn7NvgxeBwCTTyegmtFDoqwUf2mo4M3qcPralxEiz3Fx4YO6+NPrEiHWsWwb4XPYfTssNO4pQb13K7Yjfn7Txgs64B3A=="
+                        },
+                        "allowNullValues": false,
+                        "atomic": false,
+                        "chart": "ingress-nginx",
+                        "cleanupOnFail": false,
+                        "createNamespace": true,
+                        "dependencyUpdate": false,
+                        "description": "",
+                        "devel": false,
+                        "disableCRDHooks": false,
+                        "disableOpenapiValidation": false,
+                        "disableWebhooks": false,
+                        "forceUpdate": false,
+                        "keyring": "",
+                        "lint": false,
+                        "name": "ingress-nginx-e4922bd3",
+                        "namespace": "ingress-nginx",
+                        "postrender": "",
+                        "recreatePods": false,
+                        "renderSubchartNotes": false,
+                        "replace": false,
+                        "repositoryOpts": {
+                            "caFile": "",
+                            "certFile": "",
+                            "keyFile": "",
+                            "password": "",
+                            "repo": "https://kubernetes.github.io/ingress-nginx",
+                            "username": ""
+                        },
+                        "resetValues": false,
+                        "resourceNames": {
+                            "ClusterRole.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "ingress-nginx-e4922bd3"
+                            ],
+                            "ClusterRoleBinding.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "ingress-nginx-e4922bd3"
+                            ],
+                            "ConfigMap/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3-controller"
+                            ],
+                            "Deployment.apps/apps/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3-controller"
+                            ],
+                            "IngressClass.networking.k8s.io/networking.k8s.io/v1": [
+                                "nginx"
+                            ],
+                            "Role.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3"
+                            ],
+                            "RoleBinding.rbac.authorization.k8s.io/rbac.authorization.k8s.io/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3"
+                            ],
+                            "Service/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3-controller",
+                                "ingress-nginx/ingress-nginx-e4922bd3-controller-admission"
+                            ],
+                            "ServiceAccount/v1": [
+                                "ingress-nginx/ingress-nginx-e4922bd3"
+                            ],
+                            "ValidatingWebhookConfiguration.admissionregistration.k8s.io/admissionregistration.k8s.io/v1": [
+                                "ingress-nginx-e4922bd3-admission"
+                            ]
+                        },
+                        "reuseValues": false,
+                        "skipAwait": false,
+                        "skipCrds": false,
+                        "status": {
+                            "appVersion": "1.12.3",
+                            "chart": "ingress-nginx",
+                            "name": "ingress-nginx-e4922bd3",
+                            "namespace": "ingress-nginx",
+                            "revision": 1,
+                            "status": "deployed",
+                            "version": "4.12.3"
+                        },
+                        "timeout": 300,
+                        "values": {},
+                        "verify": false,
+                        "version": "4.12.3",
+                        "waitForJobs": false
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:kubernetes::k8s::8f4d17fa-cce6-411c-8da3-af32c45abccc",
+                    "propertyDependencies": {
+                        "chart": [],
+                        "compat": [],
+                        "createNamespace": [],
+                        "namespace": [],
+                        "repositoryOpts": []
+                    },
+                    "created": "2025-06-11T20:02:04.480471Z",
+                    "modified": "2025-06-11T20:02:04.480471Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::kubernetes:yaml:ConfigFile$kubernetes:cert-manager.io/v1:ClusterIssuer::letsencrypt",
+                    "custom": true,
+                    "id": "letsencrypt",
+                    "type": "kubernetes:cert-manager.io/v1:ClusterIssuer",
+                    "inputs": {
+                        "apiVersion": "cert-manager.io/v1",
+                        "kind": "ClusterIssuer",
+                        "metadata": {
+                            "name": "letsencrypt"
+                        },
+                        "spec": {
+                            "acme": {
+                                "email": "you@example.com",
+                                "privateKeySecretRef": {
+                                    "name": "letsencrypt"
+                                },
+                                "server": "https://acme-v02.api.letsencrypt.org/directory",
+                                "solvers": [
+                                    {
+                                        "http01": {
+                                            "ingress": {
+                                                "class": "nginx"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "outputs": {
+                        "__fieldManager": "pulumi-kubernetes-3bfce48d",
+                        "__initialApiVersion": "cert-manager.io/v1",
+                        "__inputs": {
+                            "apiVersion": "cert-manager.io/v1",
+                            "kind": "ClusterIssuer",
+                            "metadata": {
+                                "name": "letsencrypt",
+                                "namespace": "default"
+                            },
+                            "spec": {
+                                "acme": {
+                                    "email": "you@example.com",
+                                    "privateKeySecretRef": {
+                                        "name": "letsencrypt"
+                                    },
+                                    "server": "https://acme-v02.api.letsencrypt.org/directory",
+                                    "solvers": [
+                                        {
+                                            "http01": {
+                                                "ingress": {
+                                                    "class": "nginx"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "apiVersion": "cert-manager.io/v1",
+                        "kind": "ClusterIssuer",
+                        "metadata": {
+                            "creationTimestamp": "2025-06-11T20:16:06Z",
+                            "generation": 1,
+                            "managedFields": [
+                                {
+                                    "apiVersion": "cert-manager.io/v1",
+                                    "fieldsType": "FieldsV1",
+                                    "fieldsV1": {
+                                        "f:spec": {
+                                            "f:acme": {
+                                                "f:email": {},
+                                                "f:privateKeySecretRef": {
+                                                    "f:name": {}
+                                                },
+                                                "f:server": {},
+                                                "f:solvers": {}
+                                            }
+                                        }
+                                    },
+                                    "manager": "pulumi-kubernetes-3bfce48d",
+                                    "operation": "Apply",
+                                    "time": "2025-06-11T20:16:06Z"
+                                }
+                            ],
+                            "name": "letsencrypt",
+                            "resourceVersion": "6130",
+                            "uid": "aa88d2d5-2dd3-4d5f-b47e-d442c889a566"
+                        },
+                        "spec": {
+                            "acme": {
+                                "email": "you@example.com",
+                                "privateKeySecretRef": {
+                                    "name": "letsencrypt"
+                                },
+                                "server": "https://acme-v02.api.letsencrypt.org/directory",
+                                "solvers": [
+                                    {
+                                        "http01": {
+                                            "ingress": {
+                                                "class": "nginx"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::kubernetes:yaml:ConfigFile::letsencrypt-issuer",
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:kubernetes::k8s::8f4d17fa-cce6-411c-8da3-af32c45abccc",
+                    "propertyDependencies": {
+                        "apiVersion": [],
+                        "kind": [],
+                        "metadata": [],
+                        "spec": []
+                    },
+                    "created": "2025-06-11T20:16:06.829815Z",
+                    "modified": "2025-06-11T20:16:06.829815Z"
+                },
+                {
+                    "urn": "urn:pulumi:staging-eu::do::digitalocean:index/containerRegistry:ContainerRegistry::tq-staging",
+                    "custom": true,
+                    "id": "tq-staging",
+                    "type": "digitalocean:index/containerRegistry:ContainerRegistry",
+                    "inputs": {
+                        "__defaults": [],
+                        "name": "tq-staging",
+                        "region": "fra1",
+                        "subscriptionTierSlug": "starter"
+                    },
+                    "outputs": {
+                        "createdAt": "2025-06-11 21:14:24 +0000 UTC",
+                        "endpoint": "registry.digitalocean.com/tq-staging",
+                        "id": "tq-staging",
+                        "name": "tq-staging",
+                        "region": "fra1",
+                        "serverUrl": "registry.digitalocean.com",
+                        "storageUsageBytes": 0,
+                        "subscriptionTierSlug": "starter"
+                    },
+                    "parent": "urn:pulumi:staging-eu::do::pulumi:pulumi:Stack::do-staging-eu",
+                    "provider": "urn:pulumi:staging-eu::do::pulumi:providers:digitalocean::default_4_29_0::971d545c-fdb5-4b66-9b3e-5cde458d065c",
+                    "propertyDependencies": {
+                        "name": [],
+                        "region": [],
+                        "subscriptionTierSlug": []
+                    },
+                    "created": "2025-06-11T21:14:25.03219Z",
+                    "modified": "2025-06-11T21:14:25.03219Z"
+                }
+            ],
+            "metadata": {}
+        }
+    }
+}

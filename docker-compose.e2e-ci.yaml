@@ -1,0 +1,6 @@
+services:
+  server:
+    build:
+      target: prod
+    security_opt: !reset []
+    cap_add: !reset []

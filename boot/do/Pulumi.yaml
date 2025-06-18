@@ -1,0 +1,7 @@
+name: do
+description: Treenq bootstrap on Digitalocean
+runtime: go
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: digitalocean-go

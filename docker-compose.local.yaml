@@ -1,8 +1,0 @@
-services:
-  postgres-ui:
-    image: sosedoff/pgweb:0.16.2
-    environment:
-      - PGWEB_DATABASE_URL=postgres://postgres@postgres:5432/tq?sslmode=disable
-    ports:
-      - 8082:8081
-    restart: on-failure

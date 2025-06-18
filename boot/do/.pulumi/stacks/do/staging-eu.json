@@ -1,0 +1,20 @@
+{
+    "version": 3,
+    "checkpoint": {
+        "Stack": "organization/do/staging-eu",
+        "Latest": {
+            "manifest": {
+                "time": "2025-06-02T22:06:16.866962+02:00",
+                "magic": "4eae86ecf9bebc8e257c5684d437d5afbdcda970166ea624c603237617383797",
+                "version": "v3.160.0"
+            },
+            "secrets_providers": {
+                "type": "passphrase",
+                "state": {
+                    "salt": "v1:ly0E40Oi8Bk=:v1:ODkwtHs93bAbnts5:Z9MPQCw70vp8dbZkYHkNtos6F2AZUQ=="
+                }
+            },
+            "metadata": {}
+        }
+    }
+}

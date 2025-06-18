@@ -43,39 +43,41 @@ migrate_fix:
 migrate_v:
 	migrate -path migrations -database ${DB_DSN} version
 
-start-e2e-test-env:
-	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.yaml -f docker-compose.e2e.yaml up kube -d 
+KUBECONFIG ?= "k3s_data/k3s/k3s.yaml"
+
+define START_ENV
+	docker compose -p treenq $(COMPOSE_FILES) up kube -d
 	sleep 1
-	$(SED) 's#https://127.0.0.1:6443#https://kube:6443#g' k3s_data/k3s/k3s.yaml
-	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.yaml -f docker-compose.e2e.yaml up -d --build
-	while [ -z '$$(docker ps -q --filter "name=treenq-server")' ]; do sleep 1; done	
-	docker cp k3s_data/k3s/k3s.yaml $$(docker ps -q --filter "name=treenq-server"):/app/kubeconfig.yaml
-	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.yaml -f docker-compose.e2e.yaml restart server 
-	@echo "Checking e2e test environment is running..."
+
+	COMPOSE_BAKE=true docker compose -p treenq $(COMPOSE_FILES) up -d --build
+	while [ -z '$$(docker ps -q --filter "name=treenq-server")' ]; do sleep 1; done
+	$(SED) 's#https://127.0.0.1:6443#https://kube:6443#g' $(KUBECONFIG)
+	docker cp $(KUBECONFIG) $$(docker ps -q --filter "name=treenq-server"):/app/kubeconfig.yaml
+	docker compose -p treenq $(COMPOSE_FILES) restart server
+
+	@echo "Checking $(ENV_NAME) environment is running..."
 	until $$(curl --output /dev/null --silent --fail http://localhost:8000/healthz); do printf '.'; sleep 1; done && echo "Service Ready!"
 	echo 'Service has been started'
+endef
+
+start-e2e-env:
+	$(eval COMPOSE_FILES=-f docker-compose.yaml -f docker-compose.e2e.yaml)
+	$(eval ENV_NAME=e2e test)
+	$(START_ENV)
+
+start-e2eci-env:
+	$(eval COMPOSE_FILES=-f docker-compose.yaml -f docker-compose.e2e.yaml -f docker-compose.e2e-ci.yaml)
+	$(eval ENV_NAME=e2e-ci test)
+	$(START_ENV)
 
 run-staging-env:
-	COMPOSE_BAKE=true docker compose -p treenq  -f docker-compose.staging.yaml up kube -d
-	sleep 1
-	$(SED) 's#https://127.0.0.1:6443#https://kube:6443#g' k3s_data/k3s/k3s.yaml
-	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.staging.yaml up -d --build
-	while [ -z '$$(docker ps -q --filter "name=treenq-server")' ]; do sleep 1; done
-	docker cp k3s_data/k3s/k3s.yaml $$(docker ps -q --filter "name=treenq-server"):/app/kubeconfig.yaml
-	COMPOSE_BAKE=true docker compose -p treenq -f docker-compose.staging.yaml restart server
-	@echo "Checking e2e test environment is running..."
-	until $$(curl --output /dev/null --silent --fail http://localhost:8000/healthz); do printf '.'; sleep 1; done && echo "Service Ready!"
-	echo 'Service has been started'
+	$(eval COMPOSE_FILES=-f docker-compose.staging.yaml)
+	$(eval ENV_NAME=staging)
+	$(START_ENV)
 
-stop-e2e-test-env:
-	docker compose -f docker-compose.yaml -f docker-compose.e2e.yaml down
-
-run-e2e-tests: start-e2e-test-env
+run-e2e-tests:
 	go test -v -count=1 -race ./e2e/...
-	make stop-e2e-test-env
-
-start-local-tools:
-	COMPOSE_BAKE=true docker-compose -p treenq -f docker-compose.local.yaml up -d --build
 
 unit-tests:
 	go test $$(go list ./... | grep -v e2e)
+
