@@ -10,7 +10,7 @@ export const useTimer = () => {
 
     const timer = setInterval(() => {
       setTime((prev) => {
-        if (prev.second >= 10) {
+        if (prev.second >= 60) {
           return {
             minute: prev.minute + 1,
             second: 0,
