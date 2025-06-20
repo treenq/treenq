@@ -4,9 +4,8 @@ debug = true
 address = ["tcp://0.0.0.0:1234"]
 
 [grpc.tls]
-cert = ""
-key = ""
-ca = ""
+cert = "/buildkit/server.crt"
+key = "/buildkit/server.key"
 
 [registry."registry:5000"]
 http = false

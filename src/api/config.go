@@ -38,7 +38,8 @@ type Config struct {
 
 	HttpPort string `envconfig:"HTTP_PORT" default:"8000"`
 
-	BuildkitHost string `envconfig:"BUILDKIT_HOST" required:"true"`
+	BuildkitHost  string `envconfig:"BUILDKIT_HOST" required:"true"`
+	BuildkitTLSCA string `envconfig:"BUILDKIT_TLS_CA" required:"false"`
 
 	KubeConfig FileSource `envconfig:"KUBE_CONFIG" required:"true"`
 

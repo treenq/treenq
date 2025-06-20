@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -29,7 +30,8 @@ import (
 var ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
 
 type DockerArtifact struct {
-	buildkitHost string
+	buildkitHost  string
+	buildkitTLSCA string
 
 	registry          string
 	registryTLSVerify bool
@@ -40,6 +42,7 @@ type DockerArtifact struct {
 
 func NewDockerArtifactory(
 	buildkitHost string,
+	buildkitTLSCA string,
 	registry string,
 	registryTLSVerify bool,
 	registryCert string,
@@ -48,6 +51,7 @@ func NewDockerArtifactory(
 ) (*DockerArtifact, error) {
 	return &DockerArtifact{
 		buildkitHost:      buildkitHost,
+		buildkitTLSCA:     buildkitTLSCA,
 		registry:          registry,
 		registryTLSVerify: registryTLSVerify,
 		registryCert:      registryCert,
@@ -93,7 +97,17 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	image := a.Image(args.Name, args.Tag)
 	out := progress.AsWriter(args.DeploymentID, slog.LevelInfo)
 
-	c, err := client.New(ctx, a.buildkitHost)
+	var clientOpts []client.ClientOpt
+	if a.buildkitTLSCA != "" {
+		u, err := url.Parse(a.buildkitHost)
+		if err != nil {
+			return image, fmt.Errorf("given invalid buildkit host: %w", err)
+		}
+		host := u.Hostname()
+		clientOpts = append(clientOpts, client.WithServerConfig(host, a.buildkitTLSCA))
+	}
+
+	c, err := client.New(ctx, a.buildkitHost, clientOpts...)
 	if err != nil {
 		return image, err
 	}

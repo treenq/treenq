@@ -26,8 +26,8 @@ services:
       REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
       REGISTRY_HTTP_TLS_KEY: /certs/registry.key
     volumes:
-      - ./auth:/auth
-      - ./certs:/certs
+      - ./registry/auth:/auth
+      - ./registry/certs:/certs
     deploy:
       resources:
         limits:
@@ -41,9 +41,10 @@ services:
     ports:
       - "1234:1234"
     volumes:
-      - ./buildkit-entrypoint.sh:/entrypoint.sh
-      - ./buildkitd.toml:/etc/buildkit/buildkitd.toml
-      - ./certs:/certs
+      - ./buildkit/entrypoint.sh:/entrypoint.sh
+      - ./buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
+      - ./registry/certs:/certs
+      - ./buildkit/certs:/buildkit
     entrypoint: ["/entrypoint.sh"]
     healthcheck:
       test: ["CMD-SHELL", "buildctl --addr tcp://localhost:1234 debug workers"]

@@ -42,6 +42,7 @@ func New(conf Config) (http.Handler, error) {
 	gitClient := repo.NewGit(gitDir)
 	docker, err := artifacts.NewDockerArtifactory(
 		conf.BuildkitHost,
+		conf.BuildkitTLSCA,
 		conf.DockerRegistry,
 		conf.RegistryTLSVerify,
 		conf.RegistryCert,
