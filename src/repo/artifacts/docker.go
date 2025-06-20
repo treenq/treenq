@@ -2,9 +2,11 @@ package artifacts
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
@@ -15,7 +17,6 @@ import (
 	"github.com/moby/buildkit/client"
 
 	gateway "github.com/moby/buildkit/frontend/gateway/client"
-	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/util/progress/progressui"
@@ -29,8 +30,8 @@ var ErrUnknownDockerAuthType = errors.New("unknown docker auth type")
 
 type DockerArtifact struct {
 	buildkitHost string
-	registry     string
 
+	registry          string
 	registryTLSVerify bool
 	registryCert      string
 	registryUsername  string
@@ -82,17 +83,17 @@ type fakeFile struct {
 }
 
 func (fakeFile) Read(_ []byte) (int, error) {
-	return 1, nil
+	return 0, nil
 }
 func (fakeFile) Close() error { return nil }
-func (fakeFile) Fd() uintptr  { return 1 }
+func (fakeFile) Fd() uintptr  { return 0 }
 func (fakeFile) Name() string { return "" }
 
 func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactRequest, progress *domain.ProgressBuf) (domain.Image, error) {
 	image := a.Image(args.Name, args.Tag)
 	out := progress.AsWriter(args.DeploymentID, slog.LevelInfo)
 
-	c, err := client.New(ctx, a.buildkitHost, client.WithServerConfig(a.registry, a.registryCert))
+	c, err := client.New(ctx, a.buildkitHost)
 	if err != nil {
 		return image, err
 	}
@@ -100,8 +101,10 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	dockerConfig := &configfile.ConfigFile{
 		AuthConfigs: map[string]types.AuthConfig{
 			a.registry: {
-				Username: a.registryUsername,
-				Password: a.registryPassword,
+				Username:      a.registryUsername,
+				Password:      a.registryPassword,
+				Auth:          base64.StdEncoding.EncodeToString([]byte(a.registryUsername + ":" + a.registryPassword)),
+				ServerAddress: a.registry,
 			},
 		},
 	}
@@ -109,10 +112,10 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	tlsConfig := map[string]*authprovider.AuthTLSConfig{
 		a.registry: {
 			Insecure: !a.registryTLSVerify,
-			RootCAs: []string{
-				a.registryCert,
-			},
 		},
+	}
+	if a.registryTLSVerify {
+		tlsConfig[a.registry].RootCAs = []string{a.registryCert}
 	}
 
 	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
@@ -121,10 +124,15 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	})}
 	localMounts, err := parseLocal(map[string]string{
 		"context":    args.DockerContext,
-		"dockerfile": args.Dockerfile,
+		"dockerfile": filepath.Dir(args.Dockerfile),
 	})
 	if err != nil {
 		return image, errors.Wrap(err, "invalid local")
+	}
+
+	frontendAttrs := make(map[string]string)
+	if args.Dockerfile != "" {
+		frontendAttrs["filename"] = filepath.Base(args.Dockerfile)
 	}
 
 	pw, err := progresswriter.NewPrinter(ctx, &fakeFile{out}, string(progressui.PlainMode))
@@ -142,10 +150,10 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 				"name": image.FullPath(),
 			},
 		}},
-		Frontend:    "dockerfile.v1",
-		Session:     attachable,
-		Ref:         identity.NewID(),
-		LocalMounts: localMounts,
+		Frontend:      "dockerfile.v0",
+		FrontendAttrs: frontendAttrs,
+		Session:       attachable,
+		LocalMounts:   localMounts,
 	}
 
 	eg.Go(func() error {

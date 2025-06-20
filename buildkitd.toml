@@ -1,0 +1,20 @@
+debug = true
+
+[grpc]
+address = ["tcp://0.0.0.0:1234"]
+
+[grpc.tls]
+cert = ""
+key = ""
+ca = ""
+
+[registry."registry:5000"]
+http = false
+insecure = false
+ca = ["/certs/registry.crt"]
+
+[registry."localhost:5005"]
+http = false
+insecure = true
+ca = ["/certs/registry.crt"]
+

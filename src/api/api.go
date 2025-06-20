@@ -44,7 +44,7 @@ func New(conf Config) (http.Handler, error) {
 		conf.BuildkitHost,
 		conf.DockerRegistry,
 		conf.RegistryTLSVerify,
-		conf.RegistryCertDir,
+		conf.RegistryCert,
 		conf.RegistryUsername,
 		conf.RegistryPassword,
 	)

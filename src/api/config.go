@@ -51,7 +51,7 @@ type Config struct {
 	Host string `envconfig:"HOST" required:"true"`
 
 	RegistryTLSVerify bool   `envconfig:"REGISTRY_TLS_VERIFY" default:"true"`
-	RegistryCertDir   string `envconfig:"REGISTRY_CERT_DIR" required:"false"`
+	RegistryCert      string `envconfig:"REGISTRY_CERT" required:"false"`
 	RegistryAuthType  string `envconfig:"REGISTRY_AUTH_TYPE" required:"true"`
 	RegistryUsername  string `envconfig:"REGISTRY_AUTH_USERNAME" required:"false"`
 	RegistryPassword  string `envconfig:"REGISTRY_AUTH_PASSWORD" required:"false"`

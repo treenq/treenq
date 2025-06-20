@@ -17,6 +17,8 @@ services:
 
   registry:
     image: registry:2.8.3
+    ports:
+      - "5005:5000"
     environment:
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
@@ -33,15 +35,23 @@ services:
           cpus: 0.2
 
   buildkit:
-    image: moby/buildkit:v0.22.0
+    image: moby/buildkit:v0.23.0
     privileged: true
+    container_name: buildkit
     ports:
       - "1234:1234"
+    volumes:
+      - ./buildkit-entrypoint.sh:/entrypoint.sh
+      - ./buildkitd.toml:/etc/buildkit/buildkitd.toml
+      - ./certs:/certs
+    entrypoint: ["/entrypoint.sh"]
     healthcheck:
-      test: ["CMD-SHELL", "buildctl debug workers"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
+      test: ["CMD-SHELL", "buildctl --addr tcp://localhost:1234 debug workers"]
+      interval: 5s
+      timeout: 30s
+      retries: 3
+    extra_hosts:
+      - "localhost:host-gateway"
 
   kube:
     image: rancher/k3s:v1.31.1-k3s1
@@ -65,8 +75,10 @@ services:
       - K3S_KUBECONFIG_MODE=666
       - K3S_URL=http://kube:6443
     volumes:
-      - k3s:/var/lib/rancher/k3s
       - ./k3s_data/k3s/:/etc/rancher/k3s/
+      - type: tmpfs
+        target: /var/lib/rancher/k3s/
+
     expose:
       - "6443" # Kubernetes API Server
       - "80" # Ingress controller port 80
@@ -75,6 +87,8 @@ services:
       - 6443:6443
       - 8080:80
       - 8081:443
+    extra_hosts:
+      - "localhost:host-gateway"
     deploy:
       resources:
         limits:
@@ -83,6 +97,4 @@ services:
 
 volumes:
   pgdata:
-    driver: local
-  k3s:
     driver: local
