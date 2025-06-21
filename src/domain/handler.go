@@ -97,7 +97,7 @@ type GithubClient interface {
 }
 
 type Git interface {
-	Clone(repo Repository, accesstoken, branch, sha string) (GitRepo, error)
+	Clone(repo Repository, progressBuf *ProgressBuf, accesstoken, branch, sha string) (GitRepo, error)
 }
 
 type Extractor interface {

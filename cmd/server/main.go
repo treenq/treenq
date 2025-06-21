@@ -7,7 +7,6 @@ import (
 	"github.com/containers/buildah"
 	"github.com/containers/storage/pkg/unshare"
 	"github.com/treenq/treenq/src/api"
-	"github.com/treenq/treenq/src/domain"
 )
 
 func main() {
@@ -21,8 +20,7 @@ func main() {
 		log.Fatalln("failed to load config:", err)
 	}
 
-	progressBuf := domain.NewProgressBuf()
-	m, err := api.New(conf, progressBuf)
+	m, err := api.New(conf)
 	if err != nil {
 		log.Fatalln("failed to build api:", err)
 	}

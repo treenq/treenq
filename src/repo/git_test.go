@@ -40,7 +40,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 	reposDir := filepath.Join(wd, "repos")
 	progressBuf := domain.NewProgressBuf()
-	gitComponent := NewGit(reposDir, progressBuf)
+	gitComponent := NewGit(reposDir)
 
 	repo := TestingRepository{
 		ID:   "1",
@@ -48,13 +48,13 @@ func TestClone(t *testing.T) {
 	}
 	os.RemoveAll(repo.Location(reposDir))
 
-	_, err = gitComponent.Clone(repo, "", "", "")
+	_, err = gitComponent.Clone(repo, progressBuf, "", "", "")
 	assert.Equal(t, domain.ErrNoGitCheckoutSpecified, err, "must give an error if no branch or sha passed")
 
-	_, err = gitComponent.Clone(repo, "", "main", "1234")
+	_, err = gitComponent.Clone(repo, progressBuf, "", "main", "1234")
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND sha passed")
 
-	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	firstGitRepo, err := gitComponent.Clone(repo, progressBuf, "dummy-access-token", "master", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -65,7 +65,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	sameGitRepo, err := gitComponent.Clone(repo, progressBuf, "dummy-access-token", "master", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(sameGitRepo.Dir) // Clean up
 	latestSHA := sameGitRepo.Sha
@@ -76,7 +76,7 @@ func TestClone(t *testing.T) {
 	assert.Equal(t, len(sameGitRepo.Sha), 40)
 
 	// --- Checkout to the initial commit and verify ---
-	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA)
+	checkoutRepo, err := gitComponent.Clone(repo, progressBuf, "dummy-access-token", "", initialSHA)
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, initialSHA, checkoutRepo.Sha)
@@ -93,7 +93,7 @@ func TestClone(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	// --- Checkout to a master branch
-	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	checkoutRepo, err = gitComponent.Clone(repo, progressBuf, "dummy-access-token", "master", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, latestSHA, checkoutRepo.Sha)

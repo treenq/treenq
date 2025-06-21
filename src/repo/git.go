@@ -14,18 +14,20 @@ import (
 )
 
 type Git struct {
-	dir         string
-	progressBuf *domain.ProgressBuf
+	dir string
 }
 
-func NewGit(dir string, progressBuf *domain.ProgressBuf) *Git {
+func NewGit(dir string) *Git {
 	return &Git{
-		dir:         dir,
-		progressBuf: progressBuf,
+		dir: dir,
 	}
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string) (domain.GitRepo, error) {
+func (g *Git) Clone(
+	repo domain.Repository,
+	progressBuf *domain.ProgressBuf,
+	accessToken, branch, sha string,
+) (domain.GitRepo, error) {
 	if branch == "" && sha == "" {
 		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
 	}
@@ -51,8 +53,8 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 
 	// Create a progress writer using the deployment ID from the repository
 	// Using the repository TreenqID as the deployment ID
-	progressWriter := g.progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo)
-	g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+	progressWriter := progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo)
+	progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 		Payload: fmt.Sprintf("Cloning repository from %s", repo.CloneURL()),
 		Level:   slog.LevelInfo,
 	})
@@ -65,14 +67,14 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 	if err != nil {
 		if !errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			errMsg := fmt.Sprintf("error while cloning the repo: %s", err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
 			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
 
-		g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 			Payload: "Repository already exists, opening and pulling latest changes",
 			Level:   slog.LevelInfo,
 		})
@@ -80,7 +82,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		r, err = git.PlainOpen(dir)
 		if err != nil {
 			errMsg := fmt.Sprintf("error while opening the repo: %s", err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
@@ -89,7 +91,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		w, err = r.Worktree()
 		if err != nil {
 			errMsg := fmt.Sprintf("error while getting worktree: %s", err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
@@ -97,17 +99,17 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		}
 		err = w.Pull(&git.PullOptions{
 			RemoteName: "origin",
-			Progress:   g.progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo),
+			Progress:   progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo),
 		})
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 			errMsg := fmt.Sprintf("error while pulling latest: %s", err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
 			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		} else if errors.Is(err, git.NoErrAlreadyUpToDate) {
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: "Repository already up-to-date",
 				Level:   slog.LevelInfo,
 			})
@@ -117,7 +119,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		w, err = r.Worktree()
 		if err != nil {
 			errMsg := fmt.Sprintf("error while getting worktree: %s", err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
@@ -125,7 +127,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		}
 	}
 	if sha != "" {
-		g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 			Payload: fmt.Sprintf("Checking out commit: %s", sha),
 			Level:   slog.LevelInfo,
 		})
@@ -134,14 +136,14 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		})
 		if err != nil {
 			errMsg := fmt.Sprintf("error while checking out commit %s: %s", sha, err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
 			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
 	} else {
-		g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 			Payload: fmt.Sprintf("Checking out branch: %s", branch),
 			Level:   slog.LevelInfo,
 		})
@@ -150,7 +152,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		})
 		if err != nil {
 			errMsg := fmt.Sprintf("error while checking out branch %s: %s", branch, err)
-			g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 				Payload: errMsg,
 				Level:   slog.LevelError,
 			})
@@ -160,7 +162,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 	ref, err := r.Head()
 	if err != nil {
 		errMsg := fmt.Sprintf("error while getting HEAD reference: %s", err)
-		g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 			Payload: errMsg,
 			Level:   slog.LevelError,
 		})
@@ -169,7 +171,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 	commit, err := r.CommitObject(ref.Hash())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get a repo commit: %s", err)
-		g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 			Payload: errMsg,
 			Level:   slog.LevelError,
 		})
@@ -181,12 +183,12 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		Sha:     ref.Hash().String(),
 		Message: commit.Message,
 	}
-	
-	g.progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+
+	progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
 		Payload: fmt.Sprintf("Successfully cloned repository at commit %s: %s", result.Sha, result.Message),
 		Level:   slog.LevelInfo,
 		Final:   true,
 	})
-	
+
 	return result, nil
 }

@@ -503,7 +503,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo, token, repo.Branch, deployment.Sha)
+	gitRepo, err := h.git.Clone(repo, progress, token, repo.Branch, deployment.Sha)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),
