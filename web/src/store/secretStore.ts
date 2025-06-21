@@ -2,7 +2,7 @@ import { httpClient } from '@/services/client'
 import { mergeProps } from 'solid-js'
 import { createStore } from 'solid-js/store'
 
-type Secret = { key: string; value: string }
+export type Secret = { key: string; value: string }
 
 type SecretState = { secrets: Secret[] }
 
@@ -14,7 +14,7 @@ function createSecretStore() {
   return mergeProps(store, {
     setSecret: async (repoID: string, key: string, value: string) => {
       const res = await httpClient.setSecret({ repoID, key, value })
-      if ('error' in res) return
+      if ('error' in res) throw res.error
       setStore({
         secrets: store.secrets.map((s) =>
           s.key === key
@@ -29,7 +29,11 @@ function createSecretStore() {
     getSecrets: async (repoID: string) => {
       const res = await httpClient.getSecrets({ repoID })
       if ('error' in res) return []
-      const secrets = res.data.keys.map((k) => ({ key: k, value: '******' }))
+      const secrets =
+        res.data.keys?.map((k) => ({
+          key: k,
+          value: '******',
+        })) || []
       setStore({ secrets })
       return secrets
     },
@@ -40,7 +44,7 @@ function createSecretStore() {
     },
     removeSecret: async (repoID: string, key: string) => {
       const res = await httpClient.removeSecret({ repoID, key })
-      if ('error' in res) return
+      if ('error' in res) throw res.error
       setStore({ secrets: store.secrets.filter((s) => s.key !== key) })
     },
   })
