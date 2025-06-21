@@ -325,6 +325,10 @@ type ProgressBuf struct {
 	mx sync.RWMutex
 }
 
+func NewProgressBuf() *ProgressBuf {
+	return &ProgressBuf{Bufs: make(map[string]buf)}
+}
+
 type buf struct {
 	WriteAt time.Time
 	Content []ProgressMessage
@@ -512,7 +516,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo, token, repo.Branch, deployment.Sha)
+	gitRepo, err := h.git.Clone(repo, progress, token, repo.Branch, deployment.Sha)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),

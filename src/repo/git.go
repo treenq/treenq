@@ -3,11 +3,13 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+
 	"github.com/treenq/treenq/src/domain"
 )
 
@@ -16,10 +18,16 @@ type Git struct {
 }
 
 func NewGit(dir string) *Git {
-	return &Git{dir: dir}
+	return &Git{
+		dir: dir,
+	}
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string) (domain.GitRepo, error) {
+func (g *Git) Clone(
+	repo domain.Repository,
+	progressBuf *domain.ProgressBuf,
+	accessToken, branch, sha string,
+) (domain.GitRepo, error) {
 	if branch == "" && sha == "" {
 		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
 	}
@@ -43,56 +51,144 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		u.User = url.UserPassword("x-access-token", accessToken)
 	}
 
+	// Create a progress writer using the deployment ID from the repository
+	// Using the repository TreenqID as the deployment ID
+	progressWriter := progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo)
+	progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		Payload: fmt.Sprintf("Cloning repository from %s", repo.CloneURL()),
+		Level:   slog.LevelInfo,
+	})
+
 	r, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL:      u.String(),
-		Progress: os.Stdout,
+		Progress: progressWriter,
 	})
 	var w *git.Worktree
 	if err != nil {
 		if !errors.Is(err, git.ErrRepositoryAlreadyExists) {
-			return domain.GitRepo{}, fmt.Errorf("error while cloning the repo: %s", err)
+			errMsg := fmt.Sprintf("error while cloning the repo: %s", err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
+
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			Payload: "Repository already exists, opening and pulling latest changes",
+			Level:   slog.LevelInfo,
+		})
 
 		r, err = git.PlainOpen(dir)
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while opening the repo: %s", err)
+			errMsg := fmt.Sprintf("error while opening the repo: %s", err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
 		w, err = r.Worktree()
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %s", err)
+			errMsg := fmt.Sprintf("error while getting worktree: %s", err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
-		err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+		err = w.Pull(&git.PullOptions{
+			RemoteName: "origin",
+			Progress:   progressBuf.AsWriter(fmt.Sprintf("repo-%s", dir), slog.LevelInfo),
+		})
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-			return domain.GitRepo{}, fmt.Errorf("error while pulling latest: %s", err)
+			errMsg := fmt.Sprintf("error while pulling latest: %s", err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
+		} else if errors.Is(err, git.NoErrAlreadyUpToDate) {
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: "Repository already up-to-date",
+				Level:   slog.LevelInfo,
+			})
 		}
 	}
 	if w == nil {
 		w, err = r.Worktree()
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %s", err)
+			errMsg := fmt.Sprintf("error while getting worktree: %s", err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
 		}
 	}
 	if sha != "" {
-		w.Checkout(&git.CheckoutOptions{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			Payload: fmt.Sprintf("Checking out commit: %s", sha),
+			Level:   slog.LevelInfo,
+		})
+		err = w.Checkout(&git.CheckoutOptions{
 			Hash: plumbing.NewHash(sha),
 		})
+		if err != nil {
+			errMsg := fmt.Sprintf("error while checking out commit %s: %s", sha, err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
+		}
 	} else {
-		w.Checkout(&git.CheckoutOptions{
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			Payload: fmt.Sprintf("Checking out branch: %s", branch),
+			Level:   slog.LevelInfo,
+		})
+		err = w.Checkout(&git.CheckoutOptions{
 			Branch: plumbing.NewBranchReferenceName(branch),
 		})
+		if err != nil {
+			errMsg := fmt.Sprintf("error while checking out branch %s: %s", branch, err)
+			progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+				Payload: errMsg,
+				Level:   slog.LevelError,
+			})
+			return domain.GitRepo{}, fmt.Errorf(errMsg)
+		}
 	}
 	ref, err := r.Head()
 	if err != nil {
-		return domain.GitRepo{}, nil
+		errMsg := fmt.Sprintf("error while getting HEAD reference: %s", err)
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			Payload: errMsg,
+			Level:   slog.LevelError,
+		})
+		return domain.GitRepo{}, fmt.Errorf(errMsg)
 	}
 	commit, err := r.CommitObject(ref.Hash())
 	if err != nil {
-		return domain.GitRepo{}, fmt.Errorf("failed to get a repo commit", err)
+		errMsg := fmt.Sprintf("failed to get a repo commit: %s", err)
+		progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+			Payload: errMsg,
+			Level:   slog.LevelError,
+		})
+		return domain.GitRepo{}, fmt.Errorf(errMsg)
 	}
 
-	return domain.GitRepo{
+	result := domain.GitRepo{
 		Dir:     dir,
 		Sha:     ref.Hash().String(),
 		Message: commit.Message,
-	}, nil
+	}
+
+	progressBuf.Append(fmt.Sprintf("repo-%s", dir), domain.ProgressMessage{
+		Payload: fmt.Sprintf("Successfully cloned repository at commit %s: %s", result.Sha, result.Message),
+		Level:   slog.LevelInfo,
+		Final:   true,
+	})
+
+	return result, nil
 }

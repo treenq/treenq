@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/containers/buildah"
-    "github.com/containers/storage/pkg/unshare"
+	"github.com/containers/storage/pkg/unshare"
 	"github.com/treenq/treenq/src/api"
 )
 
@@ -19,6 +19,7 @@ func main() {
 	if err != nil {
 		log.Fatalln("failed to load config:", err)
 	}
+
 	m, err := api.New(conf)
 	if err != nil {
 		log.Fatalln("failed to build api:", err)
