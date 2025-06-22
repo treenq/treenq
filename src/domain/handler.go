@@ -78,6 +78,7 @@ type Database interface {
 	// Github repos domain
 	// //////////////////////
 	LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) (string, error)
+	LinkAllGithubInstallations(ctx context.Context, profile UserInfo, installationsRepos map[int][]GithubRepository) error
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
 	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, error)
@@ -99,7 +100,10 @@ type Database interface {
 type GithubClient interface {
 	IssueAccessToken(installationID int) (string, error)
 	GetUserInstallation(ctx context.Context, displayName string) (int, error)
+	GetUserAccessibleInstallations(ctx context.Context, userGithubToken string) ([]int, error)
 	ListRepositories(ctx context.Context, installationID int) ([]GithubRepository, error)
+	ListAllRepositoriesForInstallations(ctx context.Context, installationIDs []int) (map[int][]GithubRepository, error)
+	ListAllRepositoriesForUser(ctx context.Context, userGithubToken string) (map[int][]GithubRepository, error)
 	GetBranches(ctx context.Context, installationID int, owner string, repoName string, fresh bool) ([]string, error)
 }
 
@@ -128,6 +132,7 @@ type Kube interface {
 type OauthProvider interface {
 	AuthUrl(string) string
 	ExchangeUser(ctx context.Context, code string) (UserInfo, error)
+	GetUserGithubToken(userDisplayName string) (string, error)
 }
 
 type JwtIssuer interface {

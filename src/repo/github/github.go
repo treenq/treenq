@@ -1,4 +1,4 @@
-package repo
+package github
 
 import (
 	"context"
@@ -87,7 +87,14 @@ func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
 }
 
 type githubInstallation struct {
-	ID int `json:"id"`
+	ID      int                       `json:"id"`
+	Account githubInstallationAccount `json:"account"`
+}
+
+type githubInstallationAccount struct {
+	ID    int    `json:"id"`
+	Login string `json:"login"`
+	Type  string `json:"type"`
 }
 
 // GetUserInstallation gets a user's installation for the authenticated app
@@ -149,6 +156,78 @@ type githubRepositoriesResponse struct {
 	Repositories []domain.InstalledRepository `json:"repositories"`
 }
 
+// ListAllRepositoriesForUser fetches repositories from all installations accessible to a user
+func (c *GithubClient) ListAllRepositoriesForUser(ctx context.Context, userGithubToken string) (map[int][]domain.GithubRepository, error) {
+	accessibleInstallations, err := c.GetUserAccessibleInstallations(ctx, userGithubToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user accessible installations: %w", err)
+	}
+
+	if len(accessibleInstallations) == 0 {
+		return nil, fmt.Errorf("no accessible installations found for user")
+	}
+
+	return c.ListAllRepositoriesForInstallations(ctx, accessibleInstallations)
+}
+
+// GetUserAccessibleInstallations gets installations accessible to a specific user using their GitHub access token
+// This uses the GitHub API endpoint /user/installations which requires a user access token
+func (c *GithubClient) GetUserAccessibleInstallations(ctx context.Context, userGithubToken string) ([]int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user/installations", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("Authorization", "Bearer "+userGithubToken)
+	req.Header.Add("Accept", "application/vnd.github+json")
+	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("unauthorized: user token may be invalid or expired")
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API responded with %d trying to get user installations", response.StatusCode)
+	}
+
+	var userInstallationsResponse struct {
+		TotalCount    int                  `json:"total_count"`
+		Installations []githubInstallation `json:"installations"`
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&userInstallationsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode user installations response: %w", err)
+	}
+
+	installationIDs := make([]int, len(userInstallationsResponse.Installations))
+	for i, installation := range userInstallationsResponse.Installations {
+		installationIDs[i] = installation.ID
+	}
+
+	return installationIDs, nil
+}
+
+// ListAllRepositoriesForInstallations fetches repositories for all provided installation IDs
+func (c *GithubClient) ListAllRepositoriesForInstallations(ctx context.Context, installationIDs []int) (map[int][]domain.GithubRepository, error) {
+	result := make(map[int][]domain.GithubRepository)
+
+	for _, installationID := range installationIDs {
+		repos, err := c.ListRepositories(ctx, installationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list repositories for installation %d: %w", installationID, err)
+		}
+		result[installationID] = repos
+	}
+
+	return result, nil
+}
+
 func (c *GithubClient) ListRepositories(ctx context.Context, installationID int) ([]domain.GithubRepository, error) {
 	token, err := c.IssueAccessToken(installationID)
 	if err != nil {
@@ -181,6 +260,11 @@ func (c *GithubClient) ListRepositories(ctx context.Context, installationID int)
 	var repoResponse githubRepositoriesResponse
 	if err := json.NewDecoder(response.Body).Decode(&repoResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode repositories response: %w", err)
+	}
+
+	// Set the installation ID for each repository
+	for i := range repoResponse.Repositories {
+		repoResponse.Repositories[i].InstallationID = installationID
 	}
 
 	return repoResponse.Repositories, nil

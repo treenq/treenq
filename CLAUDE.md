@@ -89,4 +89,4 @@ Environment-based configuration using `envconfig` for:
 - BuildKit host configuration
 - JWT token management
 
-The project uses multiple Docker Compose configurations for different environments (dev, e2e, staging).
+the project uses multiple docker compose configurations for different environments (dev, e2e, staging).

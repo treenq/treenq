@@ -194,42 +194,72 @@ func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.App
 // LinkGithub is called either on "created" app installation event
 // or on manual sync,
 // it cleans the previous installed repos state and inserts everything in the repos slice
-func (s *Store) LinkGithub(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) (string, error) {
-	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
-	if err != nil {
-		return "", fmt.Errorf("failed to find a user :%w", err)
-	}
-
-	timestamp := now()
+func (s *Store) LinkGithub(ctx context.Context, installationID int, userDisplayName string, repos []domain.InstalledRepository) (string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to start link github transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	userID, err := s.getUserIDByDisplayName(ctx, userDisplayName, s.db)
+	if err != nil {
+		return "", fmt.Errorf("failed to find user: %w", err)
+	}
+
+	treenqInstallationID, err := s.linkGithub(ctx, tx, installationID, userID, userDisplayName, repos)
+	if err != nil {
+		return "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("failed to commit LinkGithub: %w", err)
+	}
+	return treenqInstallationID, nil
+}
+
+func (s *Store) linkGithub(ctx context.Context, querier Querier, installationID int, userID string, senderLogin string, repos []domain.InstalledRepository) (string, error) {
+	timestamp := now()
+
 	// save a github app
-	treenqInstallationID, err := s.saveInstallation(ctx, tx, userID, installationID, timestamp)
+	treenqInstallationID, err := s.saveInstallation(ctx, querier, userID, installationID, timestamp)
 	if err != nil {
 		return "", fmt.Errorf("failed to save installation: %w", err)
 	}
 
 	// clean previous state
-	err = s.removeInstalledRepos(ctx, userID, installationID, tx)
+	err = s.removeInstalledRepos(ctx, userID, installationID, querier)
 	if err != nil {
 		return "", fmt.Errorf("failed to remove installed repos: %w", err)
 	}
 
 	// Insert repositories
-	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, tx)
+	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, querier)
 	if err != nil {
 		return "", fmt.Errorf("failed to save installed repos: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("failed to commit github link transaction: %w", err)
+	return treenqInstallationID, nil
+}
+
+// LinkAllGithubInstallations saves all repositories from multiple installations for a user transactionally
+func (s *Store) LinkAllGithubInstallations(ctx context.Context, profile domain.UserInfo, installationsRepos map[int][]domain.GithubRepository) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	for installationID, repos := range installationsRepos {
+		_, err := s.linkGithub(ctx, tx, installationID, profile.ID, profile.DisplayName, repos)
+		if err != nil {
+			return err
+		}
 	}
 
-	return treenqInstallationID, nil
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // getUserIDByDisplayName gets user ID by display name
