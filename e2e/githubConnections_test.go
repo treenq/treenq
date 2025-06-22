@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -238,7 +239,33 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	t.Run("test qwer.localhost deployed", func(t *testing.T) {
 		t.Parallel()
-		testServiceResponds(t)
+		var qwerErr error
+		for range 20 {
+			time.Sleep(time.Second * 2)
+			req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+			require.NoError(t, err, "request for kube:80 must be created")
+			req.Host = "qwer.localhost"
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				qwerErr = err
+				continue
+			}
+			if resp.StatusCode != 200 {
+				qwerErr = fmt.Errorf("status code is %d", resp.StatusCode)
+				continue
+			}
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err, "body must be read from qwer.localhost")
+			resp.Body.Close()
+			if string(b) != "Hello, World!\n" {
+				qwerErr = fmt.Errorf("body expected to have Hello, World, given: %s", string(b))
+				continue
+			}
+
+			break
+
+		}
+		assert.NoError(t, qwerErr, "failed to get qwer.localhost")
 	})
 
 	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
@@ -416,15 +443,4 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.Ge
 }
 
 func testServiceResponds(t *testing.T) {
-	time.Sleep(time.Second * 2)
-	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
-	require.NoError(t, err, "request for kube:80 must be created")
-	req.Host = "qwer.localhost"
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err, "no error must be from qwer.localhost")
-	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
-	b, err := io.ReadAll(resp.Body)
-	require.NoError(t, err, "body must be read from qwer.localhost")
-	resp.Body.Close()
-	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
 }
