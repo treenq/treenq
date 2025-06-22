@@ -68,17 +68,16 @@ key = "/buildkit/server.key"
 # Note: No 'ca' field = server-only TLS (client verifies server)
 # To enable mutual TLS, add: ca = "/buildkit/ca.crt"
 
-# Secure config for proper hostname
+# Registry configuration - both use CA cert for validation
 [registry."registry:5000"]
 http = false
 insecure = false
-ca = ["/certs/registry.crt"]
+ca = ["/certs/ca.crt"]
 
-# Relaxed config for localhost access
 [registry."localhost:5005"]
 http = false
-insecure = true
-ca = ["/certs/registry.crt"]
+insecure = false
+ca = ["/certs/ca.crt"]
 ```
 
 2. Docker Compose Mounts
@@ -128,7 +127,7 @@ Environment Variables
 # Registry configuration
 DOCKER_REGISTRY=localhost:5005 # or registry:5000
 REGISTRY_TLS_VERIFY=true
-REGISTRY_CERT=./registry/certs/registry.crt
+REGISTRY_CERT=./registry/certs/ca.crt
 REGISTRY_AUTH_TYPE=basic
 REGISTRY_AUTH_USERNAME=testuser
 REGISTRY_AUTH_PASSWORD=testpassword
