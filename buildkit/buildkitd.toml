@@ -10,10 +10,10 @@ key = "/buildkit/server.key"
 [registry."registry:5000"]
 http = false
 insecure = false
-ca = ["/certs/registry.crt"]
+ca = ["/certs/ca.crt"]
 
 [registry."localhost:5005"]
 http = false
-insecure = true
-ca = ["/certs/registry.crt"]
+insecure = false
+ca = ["/certs/ca.crt"]
 
