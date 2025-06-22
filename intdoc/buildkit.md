@@ -38,14 +38,15 @@ registry/
 ├── auth/
 │   └── htpasswd
 └── certs/
-    ├── registry.crt
-    ├── registry.key
-    └── registry.cert
+    ├── ca.crt          # Shared CA certificate
+    ├── registry.crt    # Registry cert signed by CA with SAN
+    └── registry.key    # Registry private key
 
 buildkit/
 ├── certs/
-│   ├── server.crt      # Self-signed server certificate
-│   └── server.key      # Server private key
+│   ├── ca.crt          # Shared CA certificate (copy)
+│   ├── server.crt      # BuildKit cert signed by CA with SAN
+│   └── server.key      # BuildKit private key
 ├── buildkitd.toml      # BuildKit daemon config
 └── entrypoint.sh       # Container entrypoint
 ```
