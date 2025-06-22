@@ -2,12 +2,17 @@ package artifacts
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
@@ -23,6 +28,9 @@ import (
 	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/moby/buildkit/util/progress/progresswriter"
 	"golang.org/x/sync/errgroup"
+
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/treenq/treenq/src/domain"
 )
@@ -204,5 +212,58 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 
 func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeployment) (domain.Image, error) {
 	image := a.Image(deployment.Space.Service.Name, deployment.BuildTag)
-	return image, domain.ErrImageNotFound
+
+	ref := fmt.Sprintf("%s/%s", a.registry, image.Repository)
+	repo, err := remote.NewRepository(ref)
+	if err != nil {
+		return image, fmt.Errorf("failed to create repository: %w", err)
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: !a.registryTLSVerify,
+	}
+	if a.registryTLSVerify && a.registryCert != "" {
+		certPEM, err := os.ReadFile(a.registryCert)
+		if err != nil {
+			return image, fmt.Errorf("failed to read registry certificate: %w", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(certPEM) {
+			return image, fmt.Errorf("failed to parse registry certificate")
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	repo.Client = &auth.Client{
+		Client: httpClient,
+		Cache:  auth.NewCache(),
+		Credential: auth.StaticCredential(repo.Reference.Registry, auth.Credential{
+			Username: a.registryUsername,
+			Password: a.registryPassword,
+		}),
+	}
+
+	exists := false
+	err = repo.Tags(ctx, "", func(tags []string) error {
+		if slices.Contains(tags, image.Tag) {
+			exists = true
+		}
+		return nil
+	})
+	if err != nil {
+		return image, fmt.Errorf("failed to list tags: %w", err)
+	}
+
+	if !exists {
+		return image, domain.ErrImageNotFound
+	}
+
+	return image, nil
 }
