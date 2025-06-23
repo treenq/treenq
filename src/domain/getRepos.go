@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"errors"
 
 	"github.com/treenq/treenq/pkg/vel"
 )
@@ -18,19 +17,6 @@ func (h *Handler) GetRepos(ctx context.Context, _ struct{}) (GetReposResponse, *
 		return GetReposResponse{}, rpcErr
 	}
 
-	installation, _, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID)
-	if err != nil {
-		if errors.Is(err, ErrInstallationNotFound) {
-			return GetReposResponse{}, &vel.Error{
-				Code: "INSTALLATION_NOT_FOUND",
-			}
-		}
-		return GetReposResponse{}, &vel.Error{
-			Message: "failed to get installation",
-			Err:     err,
-		}
-	}
-
 	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
@@ -38,5 +24,5 @@ func (h *Handler) GetRepos(ctx context.Context, _ struct{}) (GetReposResponse, *
 			Err:  err,
 		}
 	}
-	return GetReposResponse{Repos: repos, Installation: installation != ""}, nil
+	return GetReposResponse{Repos: repos, Installation: len(repos) != 0}, nil
 }
