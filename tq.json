@@ -1,6 +1,4 @@
 {
-  "key": "treenq",
-  "region": "fra1",
   "service": {
     "dockerfilePath": "Dockerfile",
     "sizeSlug": "500-1024-1",

@@ -81,7 +81,7 @@ type Database interface {
 	LinkAllGithubInstallations(ctx context.Context, profile UserInfo, installationsRepos map[int][]GithubRepository) error
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
-	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, error)
+	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, bool, error)
 	GetInstallationID(ctx context.Context, userID, fullName string) (int, error)
 	SaveInstallation(ctx context.Context, userID string, githubID int) (string, error)
 	ConnectRepo(ctx context.Context, userID, repoID, branchName string) (GithubRepository, error)

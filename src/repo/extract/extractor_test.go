@@ -37,9 +37,15 @@ func TestExtractor_ExtractConfig(t *testing.T) {
 	assert.Equal(t, resource, tqsdk.Space{
 		Service: tqsdk.Service{
 			DockerfilePath: "Dockerfile",
+			DockerContext:  ".",
 			Name:           "treenq-e2e-sample",
 			HttpPort:       8000,
 			Replicas:       1,
+			ComputationResource: tqsdk.ComputationResource{
+				CpuUnits:   1000,
+				MemoryMibs: 2048,
+				DiskGibs:   20,
+			},
 		},
 	})
 }

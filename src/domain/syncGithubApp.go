@@ -51,7 +51,7 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 		}
 	}
 
-	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
+	repos, hasInstallation, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
 			Code: "FAILED_GET_GITHUB_REPOS",
@@ -59,9 +59,8 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 		}
 	}
 
-	hasInstallations := len(allRepos) > 0
 	return GetReposResponse{
-		Installation: hasInstallations,
+		Installation: hasInstallation,
 		Repos:        repos,
 	}, nil
 }

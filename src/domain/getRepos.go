@@ -17,12 +17,12 @@ func (h *Handler) GetRepos(ctx context.Context, _ struct{}) (GetReposResponse, *
 		return GetReposResponse{}, rpcErr
 	}
 
-	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
+	repos, installationExists, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
 			Code: "FAILED_GET_GITHUB_REPOS",
 			Err:  err,
 		}
 	}
-	return GetReposResponse{Repos: repos, Installation: len(repos) != 0}, nil
+	return GetReposResponse{Repos: repos, Installation: installationExists}, nil
 }

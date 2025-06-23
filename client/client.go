@@ -289,7 +289,7 @@ func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
 }
 
 type GetReposResponse struct {
-	Installation string             `json:"installationID"`
+	Installation bool               `json:"installation"`
 	Repos        []GithubRepository `json:"repos"`
 }
 
@@ -467,29 +467,24 @@ type AppDeployment struct {
 }
 
 type Space struct {
-	Region  string
+	Version string
 	Service Service
 }
 
 type Service struct {
-	Key                 string
-	DockerfilePath      string
-	DockerignorePath    string
-	BuildEnvs           map[string]string
-	RuntimeEnvs         map[string]string
-	BuildSecrets        []string
-	RuntimeSecrets      []string
-	HttpPort            int
-	Replicas            int
-	Name                string
-	SizeSlug            string
-	ComputationResource ComputationResource
+	Name                string              `json:"name"`
+	DockerfilePath      string              `json:"dockerfilePath"`
+	DockerContext       string              `json:"dockerContext"`
+	RuntimeEnvs         map[string]string   `json:"runtimeEnvs"`
+	HttpPort            int                 `json:"httpPort"`
+	Replicas            int                 `json:"replicas"`
+	ComputationResource ComputationResource `json:"computationResource"`
 }
 
 type ComputationResource struct {
-	CpuUnits   int
-	MemoryMibs int
-	DiskGibs   int
+	CpuUnits   int `json:"cpuUnits"`
+	MemoryMibs int `json:"memoryMibs"`
+	DiskGibs   int `json:"diskGibs"`
 }
 
 func (c *Client) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentResponse, error) {

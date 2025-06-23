@@ -62,10 +62,10 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err := apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
 
-	treenqInstallationID := reposResponse.Installation
-	require.NotEmpty(t, treenqInstallationID)
+	treenqInstallationExists := reposResponse.Installation
+	require.True(t, treenqInstallationExists)
 	assert.Equal(t, client.GetReposResponse{
-		Installation: treenqInstallationID,
+		Installation: treenqInstallationExists,
 		Repos: []client.GithubRepository{
 			{
 				TreenqID: reposResponse.Repos[0].TreenqID,
@@ -88,7 +88,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -142,7 +142,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after merge main")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -170,7 +170,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -209,7 +209,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,

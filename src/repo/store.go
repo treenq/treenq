@@ -456,19 +456,23 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 	return installationID, nil
 }
 
-func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.GithubRepository, error) {
+func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.GithubRepository, bool, error) {
+	hasInstallation, err := s.userHasInstallation(ctx, userID)
+	if err != nil {
+		return nil, false, nil
+	}
 	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "status", "branch").
 		From("installedRepos").
 		Where(sq.Eq{"userId": userID}).
 		OrderBy("id ASC").
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build GetGithubRepos query: %w", err)
+		return nil, hasInstallation, fmt.Errorf("failed to build GetGithubRepos query: %w", err)
 	}
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query GetGithubRepos: %w", err)
+		return nil, hasInstallation, fmt.Errorf("failed to query GetGithubRepos: %w", err)
 	}
 	defer rows.Close()
 
@@ -476,17 +480,35 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Git
 	for rows.Next() {
 		var repo domain.GithubRepository
 		if err := rows.Scan(&repo.TreenqID, &repo.ID, &repo.FullName, &repo.Private, &repo.Status, &repo.Branch); err != nil {
-			return nil, fmt.Errorf("failed to scan GetGithubRepos row: %w", err)
+			return nil, hasInstallation, fmt.Errorf("failed to scan GetGithubRepos row: %w", err)
 		}
 
 		repos = append(repos, repo)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate GetGithubRepos rows: %w", err)
+		return nil, hasInstallation, fmt.Errorf("failed to iterate GetGithubRepos rows: %w", err)
 	}
 
-	return repos, nil
+	return repos, hasInstallation, nil
+}
+
+func (s *Store) userHasInstallation(ctx context.Context, userID string) (bool, error) {
+	query, args, err := s.sq.Select("count(*)").
+		From("installations").
+		Where(sq.Eq{"userId": userID}).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to build userHasInstallation query: %w", err)
+	}
+
+	var count int
+	row := s.db.QueryRowContext(ctx, query, args...)
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("failed to scan userHasInstallation: %w", err)
+	}
+
+	return count > 0, nil
 }
 
 func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) (domain.GithubRepository, error) {

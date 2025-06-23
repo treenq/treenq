@@ -35,5 +35,8 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 		return tqsdk.Space{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	if err := space.Validate(); err != nil {
+		return space, err
+	}
 	return space, nil
 }
