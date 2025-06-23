@@ -97,24 +97,16 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   }
 
   const updateSecret = async () => {
-    try {
-      await secretStore.setSecret(repoID, inputs().key, inputs().value)
-      setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
-      setIsEditing(false)
-    } catch (error) {
-      // TODO: display the error message to the user
-      console.error(error)
-    }
+    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    if (!result.success) return
+    setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
+    setIsEditing(false)
   }
 
   const deleteSecret = async () => {
-    try {
-      await secretStore.removeSecret(repoID, inputs().key)
-      setSecrets((secrets) => secrets.filter((_, i) => i !== index))
-    } catch (error) {
-      // TODO: display the error message to the user
-      console.error(error)
-    }
+    const result = await secretStore.removeSecret(repoID, inputs().key)
+    if (!result.success) return
+    setSecrets((secrets) => secrets.filter((_, i) => i !== index))
   }
 
   return (
@@ -162,14 +154,10 @@ const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
   const [inputs, setInputs] = createSignal<Secret>({ key: '', value: '' })
 
   const addSecret = async () => {
-    try {
-      await secretStore.setSecret(repoID, inputs().key, inputs().value)
-      setSecrets((secrets) => [...secrets, inputs()])
-      setInputs({ key: '', value: '' })
-    } catch (error) {
-      // TODO: display the error message to the user
-      console.error(error)
-    }
+    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    if (!result.success) return
+    setSecrets((secrets) => [...secrets, inputs()])
+    setInputs({ key: '', value: '' })
   }
 
   return (

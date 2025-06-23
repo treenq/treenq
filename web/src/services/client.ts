@@ -96,7 +96,7 @@ export type SetSecretRequest = { repoID: string; key: string; value: string }
 
 export type GetSecretsRequest = { repoID: string }
 
-export type GetSecretsResponse = { keys: string[] | null }
+export type GetSecretsResponse = { keys: string[] | undefined }
 
 export type RevealSecretRequest = { repoID: string; key: string }
 
