@@ -9,10 +9,8 @@ import {
   TableRow,
 } from '@/components/ui/Table'
 import { TextField, TextFieldInput } from '@/components/ui/TextField'
-import { httpClient } from '@/services/client'
+import { Secret, secretStore } from '@/store/secretStore'
 import { Accessor, createEffect, createSignal, Index, JSX, Setter, Show } from 'solid-js'
-
-type Secret = { key: string; value: string }
 
 type SecretRowProps = {
   repoID: string
@@ -85,9 +83,9 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   }
 
   const revealSecret = async () => {
-    const response = await httpClient.revealSecret({ repoID, key: inputs().key })
-    if (!('error' in response)) {
-      setInputs((inputs) => ({ ...inputs, value: response.data.value }))
+    const value = await secretStore.revealSecret(repoID, secret().key)
+    if (value) {
+      setInputs((inputs) => ({ ...inputs, value }))
       return true
     }
     return false
@@ -99,22 +97,16 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   }
 
   const updateSecret = async () => {
-    const response = await httpClient.setSecret({
-      repoID,
-      key: inputs().key,
-      value: inputs().value,
-    })
-    if (!('error' in response)) {
-      setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
-      setIsEditing(false)
-    }
+    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    if (!result.success) return
+    setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
+    setIsEditing(false)
   }
 
   const deleteSecret = async () => {
-    const res = await httpClient.removeSecret({ repoID, key: secret().key })
-    if (!('error' in res)) {
-      setSecrets((secrets) => secrets.filter((_, i) => i !== index))
-    }
+    const result = await secretStore.removeSecret(repoID, inputs().key)
+    if (!result.success) return
+    setSecrets((secrets) => secrets.filter((_, i) => i !== index))
   }
 
   return (
@@ -162,15 +154,10 @@ const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
   const [inputs, setInputs] = createSignal<Secret>({ key: '', value: '' })
 
   const addSecret = async () => {
-    const response = await httpClient.setSecret({
-      repoID,
-      key: inputs().key,
-      value: inputs().value,
-    })
-    if (!('error' in response)) {
-      setSecrets((secrets) => [...secrets, inputs()])
-      setInputs({ key: '', value: '' })
-    }
+    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    if (!result.success) return
+    setSecrets((secrets) => [...secrets, inputs()])
+    setInputs({ key: '', value: '' })
   }
 
   return (
@@ -195,19 +182,7 @@ const Secrets = ({ repoID }: SecretsProps) => {
   const [secrets, setSecrets] = createSignal<Secret[]>([])
 
   createEffect(() => {
-    const fetchSecrets = async () => {
-      const response = await httpClient.getSecrets({ repoID })
-      if (!('error' in response) && response.data.keys) {
-        setSecrets(
-          response.data.keys.map((key) => ({
-            key,
-            value: '********',
-          })),
-        )
-      }
-    }
-
-    fetchSecrets()
+    ;(async () => setSecrets(await secretStore.getSecrets(repoID)))()
   })
 
   return (
