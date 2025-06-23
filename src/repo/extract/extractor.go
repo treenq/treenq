@@ -35,12 +35,5 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 		return tqsdk.Space{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	if space.Service.SizeSlug != "" {
-		space.Service.ComputationResource, err = space.Service.SizeSlug.ToComputationResource()
-		if err != nil {
-			return tqsdk.Space{}, fmt.Errorf("failed to parse size slug: %w", err)
-		}
-	}
-
 	return space, nil
 }

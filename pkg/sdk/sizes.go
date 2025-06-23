@@ -44,7 +44,3 @@ func (s SizeSlug) ToComputationResource() (ComputationResource, error) {
 		DiskGibs:   disk,
 	}, nil
 }
-
-const (
-	SizeSlugS SizeSlug = "500-1024-2"
-)

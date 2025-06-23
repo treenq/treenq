@@ -538,7 +538,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Level:   slog.LevelDebug,
 	})
 	var appSpace tqsdk.Space
-	if deployment.Space.Service.Key != "" {
+	if deployment.Space.Service.Name != "" {
 		appSpace = deployment.Space
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "reusing tq config from referenced deployment",
