@@ -9,6 +9,7 @@ import {
 } from '@/services/client'
 import { userStore } from '@/store/userStore'
 
+import { useTimer } from '@/hooks/useTimer'
 import { Routes } from '@/routes'
 import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
@@ -24,20 +25,28 @@ type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
+
   const userName = userStore.user?.displayName
   const params = Routes.deploy.params()
-
+  const { startTimer, time, finishTimer } = useTimer()
   createEffect(() => {
     if (!deployStore.deployment.id) {
       deployStore.getDeployment(params.id)
     }
   })
 
-  httpClient.listenProgress(params.id, (data: GetBuildProgressMessage) => {
-    setLogs((listMessage) => {
-      return [...listMessage, data.message]
-    })
-  })
+  httpClient.listenProgress(
+    params.id,
+    (data: GetBuildProgressMessage, isFinish: boolean = false) => {
+      if (isFinish) {
+        return
+      }
+
+      setLogs((listMessage) => {
+        return [...listMessage, data.message]
+      })
+    },
+  )
 
   return (
     <Card class="p-6">
@@ -50,7 +59,7 @@ export default function ConsoleDeploy() {
       <div class="border-b-border mb-3 grid grid-cols-4 justify-between border-b border-solid pb-3">
         <div>
           <CardDescription>Duration</CardDescription>
-          <CardDescription class="mt-0">{0}</CardDescription>
+          <CardDescription class="mt-0">{`${time().minute} m ${time().second} s`}</CardDescription>
         </div>
         <div>
           <CardDescription>Branch</CardDescription>

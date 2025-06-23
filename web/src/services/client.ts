@@ -236,19 +236,23 @@ class HttpClient {
     return await this.post('getDeployment', req)
   }
 
-  listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {
+  listenProgress(
+    deploymentID: string,
+    callback: (data: GetBuildProgressMessage, isFinish?: boolean) => void,
+  ) {
     const url = this.buildUrl('getBuildProgress', { deploymentID })
 
     const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.addEventListener('message', (event) => {
       const data: GetBuildProgressMessage = JSON.parse(event.data)
-      callback(data)
-
       if (data.message.final) {
         eventSource.close()
         console.log('FINISH Event Source, listenProgress')
+        callback(data, true)
+        return
       }
+      callback(data)
     })
   }
 }
