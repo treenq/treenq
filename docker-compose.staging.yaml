@@ -10,8 +10,8 @@ services:
       REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
       REGISTRY_HTTP_TLS_KEY: /certs/registry.key
     volumes:
-      - ./auth:/auth
-      - ./certs:/certs
+      - ./registry/auth:/auth
+      - ./registry/certs:/certs
     deploy:
       resources:
         limits:
@@ -21,6 +21,15 @@ services:
   buildkit:
     image: moby/buildkit:v0.22.0
     privileged: true
+    container_name: buildkit
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./buildkit/entrypoint.sh:/entrypoint.sh
+      - ./buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
+      - ./registry/certs:/certs
+      - ./buildkit/certs:/buildkit
+    entrypoint: ["/entrypoint.sh"]
     healthcheck:
       test: ["CMD-SHELL", "buildctl debug workers"]
       interval: 3s
@@ -46,13 +55,10 @@ services:
     privileged: true
     restart: always
     environment:
-      # - K3S_TOKEN=${K3S_PASSWORD_1} # Only required if we are running more than 1 node
-      # - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
       - K3S_KUBECONFIG_MODE=666
       - K3S_URL=https://kube:6443
     volumes:
       - k3s:/var/lib/rancher/k3s
-      # - ./k3s_data/kubeconfig:/output
       - ./k3s_data/docker_images:/var/lib/rancher/k3s/agent/images
       - ./k3s_data/k3s/:/etc/rancher/k3s/
     expose:
@@ -77,15 +83,11 @@ services:
     ports:
       - "8000:8000"
       - "40000:40000"
-    privileged: true
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - SYS_PTRACE
     env_file: staging.env
     restart: always
     volumes:
-      - ./certs:/certs
+      - ./buildkit/certs:/certs/buildkit.crt
+      - ./registry/certs:/certs/registry.crt
     deploy:
       resources:
         limits:

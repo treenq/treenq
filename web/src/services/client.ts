@@ -37,7 +37,7 @@ export type ConnectBranchRequest = {
 }
 
 export type GetReposResponse = {
-  installationID: string
+  installation: boolean
   repos: Repository[]
 }
 

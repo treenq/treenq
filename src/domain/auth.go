@@ -15,6 +15,7 @@ var (
 	ErrUserNotFound         = errors.New("user not found")
 	ErrRepoNotFound         = errors.New("repo not found")
 	ErrInstallationNotFound = errors.New("installation not found")
+	ErrUnauthorized         = errors.New("unauthorized: github token expired or invalid")
 )
 
 type UserInfo struct {

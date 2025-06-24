@@ -18,7 +18,6 @@ import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-
 
 type ConnectReposItem = {
   id: string
-  name: string
   fullName: string
   branch: string
 }
@@ -86,7 +85,7 @@ function ConnectionAction(props: ConnectReposItem): JSX.Element {
 
   createEffect(() => {
     if (isEditing()) {
-      reposStore.getBranches(props.name).then(setBranches)
+      reposStore.getBranches(props.fullName).then(setBranches)
     }
   })
 
@@ -158,14 +157,7 @@ export function ConnectRepos(): JSX.Element {
       <div class="w-full max-w-2xl space-y-6 p-6">
         <h2 class="mb-2 text-2xl font-bold">Connected Repositories</h2>
         <For each={reposStore.repos}>
-          {(repo) => (
-            <RepoItem
-              id={repo.treenqID}
-              name={repo.fullName.split('/')[1]}
-              fullName={repo.fullName}
-              branch={repo.branch}
-            />
-          )}
+          {(repo) => <RepoItem id={repo.treenqID} fullName={repo.fullName} branch={repo.branch} />}
         </For>
       </div>
     </section>

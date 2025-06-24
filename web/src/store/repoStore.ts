@@ -3,7 +3,7 @@ import { mergeProps } from 'solid-js'
 import { createStore } from 'solid-js/store'
 
 type ReposState = {
-  installation: string
+  installation: boolean
   repos: Repo[]
 }
 
@@ -13,7 +13,7 @@ export type Repo = {
   branch: string
 }
 
-const newDefaultRepoState = (): ReposState => ({ installation: '', repos: [] })
+const newDefaultRepoState = (): ReposState => ({ installation: false, repos: [] })
 
 function createReposStore() {
   const [store, setStore] = createStore(newDefaultRepoState())
@@ -38,7 +38,7 @@ function createReposStore() {
           branch: it.branch,
         })),
       )
-      setStore('installation', res.data.installationID)
+      setStore('installation', res.data.installation)
       return res.data.repos
     },
     syncGithubApp: async () => {
@@ -53,7 +53,7 @@ function createReposStore() {
           branch: it.branch,
         })),
       )
-      setStore('installation', res.data.installationID)
+      setStore('installation', res.data.installation)
     },
     getBranches: async (repoName: string) => {
       const res = await httpClient.getBranches({ repoName: repoName })

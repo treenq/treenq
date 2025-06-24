@@ -3,11 +3,13 @@ cmd/server/tq.json
 
 # test build output
 cmd/server/main
+gits/
 
 # IDE specific
 .vscode
 __debug*
 .idea
+.claude
 
 # state
 sqlite

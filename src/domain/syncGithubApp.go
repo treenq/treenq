@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/treenq/treenq/pkg/vel"
 )
@@ -11,30 +12,46 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 	if rpcErr != nil {
 		return GetReposResponse{}, rpcErr
 	}
-	githubInstallation, err := h.githubClient.GetUserInstallation(ctx, profile.UserInfo.DisplayName)
+
+	// Get the user's GitHub access token from OAuth provider cache
+	githubToken, err := h.oauthProvider.GetUserGithubToken(profile.UserInfo.DisplayName)
 	if err != nil {
-		return GetReposResponse{}, &vel.Error{
-			Message: "failed to get a github installation",
-			Err:     err,
+		if errors.Is(err, ErrUnauthorized) {
+			return GetReposResponse{}, &vel.Error{
+				Code:    "UNAUTHORIZED",
+				Message: "GitHub token expired or invalid, please re-authenticate with GitHub",
+			}
 		}
-	}
-	installedRepos, err := h.githubClient.ListRepositories(ctx, githubInstallation)
-	if err != nil {
 		return GetReposResponse{}, &vel.Error{
-			Message: "failed to get github repos",
+			Message: "failed to get user GitHub token",
 			Err:     err,
 		}
 	}
 
-	savedInstallation, err := h.db.LinkGithub(ctx, githubInstallation, profile.UserInfo.DisplayName, installedRepos)
+	allRepos, err := h.githubClient.ListAllRepositoriesForUser(ctx, githubToken)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
-			Message: "failed to sync a github repos link",
+			Message: "failed to get github repos for user installations",
 			Err:     err,
 		}
 	}
 
-	repos, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
+	if len(allRepos) == 0 {
+		return GetReposResponse{}, &vel.Error{
+			Code:    "NO_INSTALLATIONS_FOUND",
+			Message: "no accessible github app installations found for user",
+		}
+	}
+
+	err = h.db.LinkAllGithubInstallations(ctx, profile.UserInfo, allRepos)
+	if err != nil {
+		return GetReposResponse{}, &vel.Error{
+			Message: "failed to sync github installations and repos",
+			Err:     err,
+		}
+	}
+
+	repos, hasInstallation, err := h.db.GetGithubRepos(ctx, profile.UserInfo.ID)
 	if err != nil {
 		return GetReposResponse{}, &vel.Error{
 			Code: "FAILED_GET_GITHUB_REPOS",
@@ -43,7 +60,7 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 	}
 
 	return GetReposResponse{
-		Installation: savedInstallation,
+		Installation: hasInstallation,
 		Repos:        repos,
 	}, nil
 }

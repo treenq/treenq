@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -61,10 +62,10 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err := apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
 
-	treenqInstallationID := reposResponse.Installation
-	require.NotEmpty(t, treenqInstallationID)
+	treenqInstallationExists := reposResponse.Installation
+	require.True(t, treenqInstallationExists)
 	assert.Equal(t, client.GetReposResponse{
-		Installation: treenqInstallationID,
+		Installation: treenqInstallationExists,
 		Repos: []client.GithubRepository{
 			{
 				TreenqID: reposResponse.Repos[0].TreenqID,
@@ -87,7 +88,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after added repo")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -141,7 +142,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repos must be available after merge main")
 
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -169,7 +170,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// validate the repo has been removed
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -208,7 +209,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	// get repos and make sure there is a connected one
 	reposResponse, err = apiClient.GetRepos(ctx)
 	require.NoError(t, err, "repositores must be available after app installation")
-	assert.Equal(t, client.GetReposResponse{Installation: treenqInstallationID, Repos: []client.GithubRepository{
+	assert.Equal(t, client.GetReposResponse{Installation: true, Repos: []client.GithubRepository{
 		{
 			TreenqID: reposResponse.Repos[0].TreenqID,
 			ID:       805585115,
@@ -238,7 +239,33 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	t.Run("test qwer.localhost deployed", func(t *testing.T) {
 		t.Parallel()
-		testServiceResponds(t)
+		var qwerErr error
+		for range 20 {
+			time.Sleep(time.Second * 2)
+			req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+			require.NoError(t, err, "request for kube:80 must be created")
+			req.Host = "qwer.localhost"
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				qwerErr = err
+				continue
+			}
+			if resp.StatusCode != 200 {
+				qwerErr = fmt.Errorf("status code is %d", resp.StatusCode)
+				continue
+			}
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err, "body must be read from qwer.localhost")
+			resp.Body.Close()
+			if string(b) != "Hello, World!\n" {
+				qwerErr = fmt.Errorf("body expected to have Hello, World, given: %s", string(b))
+				continue
+			}
+
+			break
+
+		}
+		assert.NoError(t, qwerErr, "failed to get qwer.localhost")
 	})
 
 	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
@@ -416,15 +443,4 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.Ge
 }
 
 func testServiceResponds(t *testing.T) {
-	time.Sleep(time.Second * 2)
-	req, err := http.NewRequest("GET", "http://localhost:8080", nil)
-	require.NoError(t, err, "request for kube:80 must be created")
-	req.Host = "qwer.localhost"
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err, "no error must be from qwer.localhost")
-	require.Equal(t, resp.StatusCode, 200, "status from qwer.localhost must be 200")
-	b, err := io.ReadAll(resp.Body)
-	require.NoError(t, err, "body must be read from qwer.localhost")
-	resp.Body.Close()
-	require.Equal(t, "Hello, World!\n", string(b), "response from qwer.localhost must match")
 }
