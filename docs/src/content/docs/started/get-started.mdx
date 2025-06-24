@@ -1,11 +1,88 @@
 ---
-title: Example Guide
-description: A guide in my new Starlight docs site.
+title: Get started  
+description: A guide to start using treenq
 ---
 
-Guides lead a user through a specific task they want to accomplish, often with a sequence of steps.
-Writing a good guide requires thinking about what your users are trying to do.
+## Quick Start
 
-## Further reading
+Treenq uses a simple `tq.json` configuration file to define your service deployment. This file should be placed in the root of your repository.
 
-- Read [about how-to guides](https://diataxis.fr/how-to-guides/) in the Diátaxis framework
+### Basic Configuration
+
+Create a `tq.json` file with the following structure:
+
+```json
+{
+  "service": {
+    "name": "my-app",
+    "httpPort": 8000,
+    "dockerfilePath": "Dockerfile"
+  }
+}
+```
+
+### Configuration Options
+
+#### Required Fields
+
+- **`name`** - Name for your service, must be unique across the `space`
+- **`httpPort`** - Internal port your service listens on
+
+#### Optional Fields
+
+- **`dockerContext`** - Docker build context (default: `"."`)
+- **`dockerfilePath`** - Path to Dockerfile relative to dockerContext (default: `"Dockerfile"`)
+- **`replicas`** - Number of instances (default: `1`)
+- **`runtimeEnvs`** - Environment variables as key-value pairs
+
+#### Resource Configuration
+
+Configure compute resources using `computationResource`:
+
+```json
+{
+  "service": {
+    "name": "my-app",
+    "httpPort": 8000,
+    "computationResource": {
+      "cpuUnits": 1000,
+      "memoryMibs": 2048,
+      "diskGibs": 20
+    }
+  }
+}
+```
+
+**Resource Defaults:**
+- CPU: 1000 units (1 CPU)
+- Memory: 2048 MiB (2 GB)
+- Disk: 20 GiB
+
+### Complete Example
+
+```json
+{
+  "service": {
+    "name": "web-api",
+    "dockerfilePath": "Dockerfile",
+    "dockerContext": ".",
+    "httpPort": 3000,
+    "replicas": 2,
+    "runtimeEnvs": {
+      "NODE_ENV": "production",
+      "API_VERSION": "v1"
+    },
+    "computationResource": {
+      "cpuUnits": 2000,
+      "memoryMibs": 4096,
+      "diskGibs": 50
+    }
+  }
+}
+```
+
+### Next Steps
+
+1. Add `tq.json` to your repository root
+2. Connect your GitHub repository to Treenq
+3. Push changes to trigger deployment

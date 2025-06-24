@@ -20,7 +20,7 @@ func (h *Handler) GetBranches(ctx context.Context, req GetBranchesRequest) (GetB
 	if rpcErr != nil {
 		return GetBranchesResopnse{}, rpcErr
 	}
-	_, githubInstallationID, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID)
+	githubInstallationID, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID, req.RepoName)
 	if err != nil {
 		if errors.Is(err, ErrInstallationNotFound) {
 			return GetBranchesResopnse{}, &vel.Error{
@@ -33,7 +33,7 @@ func (h *Handler) GetBranches(ctx context.Context, req GetBranchesRequest) (GetB
 		}
 	}
 
-	branches, err := h.githubClient.GetBranches(ctx, githubInstallationID, profile.UserInfo.DisplayName, req.RepoName, true)
+	branches, err := h.githubClient.GetBranches(ctx, githubInstallationID, req.RepoName, true)
 	if err != nil {
 		return GetBranchesResopnse{}, &vel.Error{
 			Message: "failed to get branches",

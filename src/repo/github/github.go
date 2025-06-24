@@ -1,4 +1,4 @@
-package repo
+package github
 
 import (
 	"context"
@@ -87,46 +87,14 @@ func (c *GithubClient) IssueAccessToken(installationID int) (string, error) {
 }
 
 type githubInstallation struct {
-	ID int `json:"id"`
+	ID      int                       `json:"id"`
+	Account githubInstallationAccount `json:"account"`
 }
 
-// GetUserInstallation gets a user's installation for the authenticated app
-// username is the handle for the GitHub user account
-func (c *GithubClient) GetUserInstallation(ctx context.Context, displayName string) (int, error) {
-	token, err := c.issueJwt()
-	if err != nil {
-		return 0, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://api.github.com/users/%s/installation", displayName), nil)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Add("Accept", "application/vnd.github+json")
-	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
-
-	response, err := c.client.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode == http.StatusNotFound {
-		return 0, domain.ErrInstallationNotFound
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("GitHub API responded with %d trying to get user installation for %s", response.StatusCode, displayName)
-	}
-
-	var installation githubInstallation
-	if err := json.NewDecoder(response.Body).Decode(&installation); err != nil {
-		return 0, fmt.Errorf("failed to decode installation response: %w", err)
-	}
-
-	return installation.ID, nil
+type githubInstallationAccount struct {
+	ID    int    `json:"id"`
+	Login string `json:"login"`
+	Type  string `json:"type"`
 }
 
 func (c *GithubClient) issueJwt() (string, error) {
@@ -147,6 +115,78 @@ func (c *GithubClient) issueJwt() (string, error) {
 type githubRepositoriesResponse struct {
 	TotalCount   int                          `json:"total_count"`
 	Repositories []domain.InstalledRepository `json:"repositories"`
+}
+
+// ListAllRepositoriesForUser fetches repositories from all installations accessible to a user
+func (c *GithubClient) ListAllRepositoriesForUser(ctx context.Context, userGithubToken string) (map[int][]domain.GithubRepository, error) {
+	accessibleInstallations, err := c.GetUserAccessibleInstallations(ctx, userGithubToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user accessible installations: %w", err)
+	}
+
+	if len(accessibleInstallations) == 0 {
+		return nil, fmt.Errorf("no accessible installations found for user")
+	}
+
+	return c.ListAllRepositoriesForInstallations(ctx, accessibleInstallations)
+}
+
+// GetUserAccessibleInstallations gets installations accessible to a specific user using their GitHub access token
+// This uses the GitHub API endpoint /user/installations which requires a user access token
+func (c *GithubClient) GetUserAccessibleInstallations(ctx context.Context, userGithubToken string) ([]int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user/installations", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("Authorization", "Bearer "+userGithubToken)
+	req.Header.Add("Accept", "application/vnd.github+json")
+	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("unauthorized: user token may be invalid or expired")
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API responded with %d trying to get user installations", response.StatusCode)
+	}
+
+	var userInstallationsResponse struct {
+		TotalCount    int                  `json:"total_count"`
+		Installations []githubInstallation `json:"installations"`
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&userInstallationsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode user installations response: %w", err)
+	}
+
+	installationIDs := make([]int, len(userInstallationsResponse.Installations))
+	for i, installation := range userInstallationsResponse.Installations {
+		installationIDs[i] = installation.ID
+	}
+
+	return installationIDs, nil
+}
+
+// ListAllRepositoriesForInstallations fetches repositories for all provided installation IDs
+func (c *GithubClient) ListAllRepositoriesForInstallations(ctx context.Context, installationIDs []int) (map[int][]domain.GithubRepository, error) {
+	result := make(map[int][]domain.GithubRepository)
+
+	for _, installationID := range installationIDs {
+		repos, err := c.ListRepositories(ctx, installationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list repositories for installation %d: %w", installationID, err)
+		}
+		result[installationID] = repos
+	}
+
+	return result, nil
 }
 
 func (c *GithubClient) ListRepositories(ctx context.Context, installationID int) ([]domain.GithubRepository, error) {
@@ -183,18 +223,22 @@ func (c *GithubClient) ListRepositories(ctx context.Context, installationID int)
 		return nil, fmt.Errorf("failed to decode repositories response: %w", err)
 	}
 
+	// Set the installation ID for each repository
+	for i := range repoResponse.Repositories {
+		repoResponse.Repositories[i].InstallationID = installationID
+	}
+
 	return repoResponse.Repositories, nil
 }
 
 // GetBranches fetches the list of branch names for a given repo, using cache.
-func (c *GithubClient) GetBranches(ctx context.Context, installationID int, owner string, repoName string, fresh bool) ([]string, error) {
+func (c *GithubClient) GetBranches(ctx context.Context, installationID int, repoFullName string, fresh bool) ([]string, error) {
 	token, err := c.IssueAccessToken(installationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue an installation token: %w", err)
 	}
 
-	cacheKey := owner + repoName
-	branches, ok := c.branchesList.Get(cacheKey)
+	branches, ok := c.branchesList.Get(repoFullName)
 	isFresh := time.Since(branches.SavedAt) < time.Minute
 	if ok && ((fresh && isFresh) || !fresh) {
 		return branches.Branches, nil
@@ -206,7 +250,7 @@ func (c *GithubClient) GetBranches(ctx context.Context, installationID int, owne
 			return nil, err
 		}
 	}
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/branches", owner, repoName)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/branches", repoFullName)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -233,6 +277,6 @@ func (c *GithubClient) GetBranches(ctx context.Context, installationID int, owne
 	for _, b := range branchesResp {
 		branchNames = append(branchNames, b.Name)
 	}
-	c.branchesList.Set(cacheKey, cachedBranches{Branches: branchNames, SavedAt: time.Now()}, cache.WithExpiration(10*time.Minute))
+	c.branchesList.Set(repoFullName, cachedBranches{Branches: branchNames, SavedAt: time.Now()}, cache.WithExpiration(10*time.Minute))
 	return branchNames, nil
 }

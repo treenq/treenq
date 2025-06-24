@@ -93,7 +93,7 @@ func TestGenClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, infoClientOutput, buf.String())
 
-	// optional step to visualize the diff 
+	// optional step to visualize the diff
 	// f, err := os.OpenFile("./testdata/out.go", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	// require.NoError(t, err)
 	// defer f.Close()

@@ -1,0 +1,19 @@
+debug = true
+
+[grpc]
+address = ["tcp://0.0.0.0:1234"]
+
+[grpc.tls]
+cert = "/buildkit/server.crt"
+key = "/buildkit/server.key"
+
+[registry."registry:5000"]
+http = false
+insecure = false
+ca = ["/certs/ca.crt"]
+
+[registry."localhost:5005"]
+http = false
+insecure = false
+ca = ["/certs/ca.crt"]
+

@@ -106,12 +106,12 @@ const (
 )
 
 type BuildArtifactRequest struct {
-	Name         string
-	Path         string
-	Dockerfile   string
-	Dockerignore string
-	Tag          string
-	DeploymentID string
+	Name          string
+	Path          string
+	Dockerfile    string
+	DockerContext string
+	Tag           string
+	DeploymentID  string
 }
 
 type Image struct {
@@ -538,7 +538,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Level:   slog.LevelDebug,
 	})
 	var appSpace tqsdk.Space
-	if deployment.Space.Service.Key != "" {
+	if deployment.Space.Service.Name != "" {
 		appSpace = deployment.Space
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "reusing tq config from referenced deployment",
@@ -577,18 +577,24 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		})
 	}
 
-	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
-	dockerignorePath := ""
-	if appSpace.Service.DockerignorePath != "" {
-		dockerignorePath = filepath.Join(gitRepo.Dir, appSpace.Service.DockerignorePath)
+	dockerContext := appSpace.Service.DockerContext
+	if dockerContext == "" {
+		dockerContext = "."
 	}
+	dockerContext = filepath.Join(gitRepo.Dir, dockerContext)
+
+	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
+	if appSpace.Service.DockerfilePath == "" {
+		dockerFilePath = filepath.Join(gitRepo.Dir, dockerContext)
+	}
+
 	buildRequest := BuildArtifactRequest{
-		Name:         appSpace.Service.Name,
-		Path:         gitRepo.Dir,
-		Dockerfile:   dockerFilePath,
-		Dockerignore: dockerignorePath,
-		Tag:          gitRepo.Sha,
-		DeploymentID: deployment.ID,
+		Name:          appSpace.Service.Name,
+		DockerContext: dockerContext,
+		Path:          gitRepo.Dir,
+		Dockerfile:    dockerFilePath,
+		Tag:           gitRepo.Sha,
+		DeploymentID:  deployment.ID,
 	}
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "build image",

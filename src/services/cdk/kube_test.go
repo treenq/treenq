@@ -25,7 +25,6 @@ func TestAppDefinition(t *testing.T) {
 			},
 			HttpPort: 8000,
 			Replicas: 1,
-			SizeSlug: tqsdk.SizeSlugS,
 			ComputationResource: tqsdk.ComputationResource{
 				CpuUnits:   250,
 				MemoryMibs: 512,

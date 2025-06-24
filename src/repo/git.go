@@ -87,7 +87,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 	}
 	commit, err := r.CommitObject(ref.Hash())
 	if err != nil {
-		return domain.GitRepo{}, fmt.Errorf("failed to get a repo commit", err)
+		return domain.GitRepo{}, fmt.Errorf("failed to get a repo commit: %w", err)
 	}
 
 	return domain.GitRepo{
