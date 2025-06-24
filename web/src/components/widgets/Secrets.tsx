@@ -9,25 +9,28 @@ import {
   TableRow,
 } from '@/components/ui/Table'
 import { TextField, TextFieldInput } from '@/components/ui/TextField'
-import { Secret, secretStore } from '@/store/secretStore'
-import { Accessor, createEffect, createSignal, Index, JSX, Setter, Show } from 'solid-js'
+import { type Secret, secretStore } from '@/store/secretStore'
+import {
+  type Accessor,
+  createEffect,
+  createSignal,
+  For,
+  type JSX,
+  type Setter,
+  Show,
+} from 'solid-js'
 
-type SecretRowProps = {
-  repoID: string
-  secret: Accessor<Secret>
-  index: number
-  setSecrets: Setter<Secret[]>
-}
+type SecretRowProps = { repoID: string; secret: Secret }
 
 type SecretsProps = { repoID: string }
 
-type AddSecretRowProps = { setSecrets: Setter<Secret[]>; repoID: string }
+type AddSecretRowProps = { repoID: string }
 
 type SecretTableRowProps = {
   isEditing: Accessor<boolean>
   inputs: Accessor<Secret>
   setInputs: Setter<Secret>
-  secret?: Accessor<Secret>
+  secret?: Secret
   visible: Accessor<boolean>
   children: JSX.Element
 }
@@ -45,7 +48,7 @@ const SecretTableRow = ({
   return (
     <TableRow>
       <TableCell>
-        <Show when={isEditing()} fallback={secret && secret().key}>
+        <Show when={isEditing()} fallback={secret?.key}>
           <TextField
             value={inputs().key}
             onChange={(key) => setInputs((inputs) => ({ ...inputs, key }))}
@@ -72,8 +75,8 @@ const SecretTableRow = ({
   )
 }
 
-const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
-  const [inputs, setInputs] = createSignal<Secret>(secret())
+const SecretRow = ({ repoID, secret }: SecretRowProps) => {
+  const [inputs, setInputs] = createSignal<Secret>(secret)
   const [isEditing, setIsEditing] = createSignal(false)
   const [visible, setVisible] = createSignal(false)
 
@@ -83,7 +86,7 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   }
 
   const revealSecret = async () => {
-    const value = await secretStore.revealSecret(repoID, secret().key)
+    const value = await secretStore.revealSecret(repoID, secret.key)
     if (value) {
       setInputs((inputs) => ({ ...inputs, value }))
       return true
@@ -97,17 +100,12 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   }
 
   const updateSecret = async () => {
-    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    const result = await secretStore.updateSecret(repoID, inputs().key, inputs().value)
     if (!result.success) return
-    setSecrets((secrets) => secrets.map((s, i) => (i === index ? inputs() : s)))
     setIsEditing(false)
   }
 
-  const deleteSecret = async () => {
-    const result = await secretStore.removeSecret(repoID, inputs().key)
-    if (!result.success) return
-    setSecrets((secrets) => secrets.filter((_, i) => i !== index))
-  }
+  const deleteSecret = () => secretStore.removeSecret(repoID, inputs().key)
 
   return (
     <SecretTableRow
@@ -150,13 +148,12 @@ const SecretRow = ({ repoID, secret, index, setSecrets }: SecretRowProps) => {
   )
 }
 
-const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
+const AddSecretRow = ({ repoID }: AddSecretRowProps) => {
   const [inputs, setInputs] = createSignal<Secret>({ key: '', value: '' })
 
   const addSecret = async () => {
-    const result = await secretStore.setSecret(repoID, inputs().key, inputs().value)
+    const result = await secretStore.addSecret(repoID, inputs().key, inputs().value)
     if (!result.success) return
-    setSecrets((secrets) => [...secrets, inputs()])
     setInputs({ key: '', value: '' })
   }
 
@@ -179,10 +176,8 @@ const AddSecretRow = ({ setSecrets, repoID }: AddSecretRowProps) => {
 }
 
 const Secrets = ({ repoID }: SecretsProps) => {
-  const [secrets, setSecrets] = createSignal<Secret[]>([])
-
   createEffect(() => {
-    ;(async () => setSecrets(await secretStore.getSecrets(repoID)))()
+    secretStore.getSecrets(repoID)
   })
 
   return (
@@ -191,23 +186,14 @@ const Secrets = ({ repoID }: SecretsProps) => {
         <TableRow>
           <TableHead class="w-sm">Name</TableHead>
           <TableHead class="w-3xl">Value</TableHead>
-          <TableHead class="w-3xs"></TableHead>
+          <TableHead class="w-3xs" />
         </TableRow>
       </TableHeader>
       <TableBody>
-        <Index each={secrets()}>
-          {(secret, index) => (
-            <SecretRow
-              {...{
-                repoID,
-                secret,
-                index,
-                setSecrets,
-              }}
-            />
-          )}
-        </Index>
-        <AddSecretRow repoID={repoID} setSecrets={setSecrets} />
+        <For each={secretStore.secrets}>
+          {(secret) => <SecretRow repoID={repoID} secret={secret} />}
+        </For>
+        <AddSecretRow repoID={repoID} />
       </TableBody>
     </Table>
   )
