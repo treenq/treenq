@@ -11,8 +11,6 @@ const newDefaultSecretState = (): SecretState => ({ secrets: [] })
 function createSecretStore() {
   const [store, setStore] = createStore(newDefaultSecretState())
 
-  console.log(store)
-
   return mergeProps(store, {
     addSecret: async (repoID: string, key: string, value: string) => {
       const res = await httpClient.setSecret({ repoID, key, value })
