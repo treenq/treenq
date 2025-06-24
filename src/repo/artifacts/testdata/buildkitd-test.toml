@@ -1,0 +1,9 @@
+debug = true
+
+[grpc]
+address = ["tcp://0.0.0.0:1234"]
+
+# Registry configuration for test - no TLS
+[registry."registry:5000"]
+http = true
+insecure = true

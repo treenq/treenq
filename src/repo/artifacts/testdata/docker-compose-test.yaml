@@ -1,0 +1,36 @@
+services:
+  registry:
+    image: registry:2.8.3
+    ports:
+      - "0:5000"  # Let testcontainers assign random port
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_STORAGE_DELETE_ENABLED: true
+    volumes:
+      - ./auth:/auth
+    tmpfs:
+      - /var/lib/registry
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/v2/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  buildkit:
+    image: moby/buildkit:v0.23.0
+    privileged: true
+    ports:
+      - "0:1234"  # Let testcontainers assign random port
+    volumes:
+      - ./buildkitd-test.toml:/etc/buildkit/buildkitd.toml
+    command: ["buildkitd", "--config", "/etc/buildkit/buildkitd.toml"]
+    healthcheck:
+      test: ["CMD-SHELL", "buildctl --addr tcp://localhost:1234 debug workers"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    depends_on:
+      registry:
+        condition: service_healthy

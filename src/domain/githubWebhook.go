@@ -325,6 +325,12 @@ type ProgressBuf struct {
 	mx sync.RWMutex
 }
 
+func NewProgressBuf() *ProgressBuf {
+	return &ProgressBuf{
+		Bufs: make(map[string]buf),
+	}
+}
+
 type buf struct {
 	WriteAt time.Time
 	Content []ProgressMessage
