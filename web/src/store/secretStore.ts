@@ -12,7 +12,13 @@ function createSecretStore() {
   const [store, setStore] = createStore(newDefaultSecretState())
 
   return mergeProps(store, {
-    setSecret: async (repoID: string, key: string, value: string) => {
+    addSecret: async (repoID: string, key: string, value: string) => {
+      const res = await httpClient.setSecret({ repoID, key, value })
+      if ('error' in res) return { success: false }
+      setStore({ secrets: [...store.secrets, { key, value }] })
+      return { success: true }
+    },
+    updateSecret: async (repoID: string, key: string, value: string) => {
       const res = await httpClient.setSecret({ repoID, key, value })
       if ('error' in res) return { success: false }
       setStore({
@@ -29,14 +35,13 @@ function createSecretStore() {
     },
     getSecrets: async (repoID: string) => {
       const res = await httpClient.getSecrets({ repoID })
-      if ('error' in res) return []
+      if ('error' in res) return
       const secrets =
         res.data.keys?.map((k) => ({
           key: k,
           value: '******',
         })) || []
       setStore({ secrets })
-      return secrets
     },
     revealSecret: async (repoID: string, key: string) => {
       const res = await httpClient.revealSecret({ repoID, key })
@@ -45,9 +50,8 @@ function createSecretStore() {
     },
     removeSecret: async (repoID: string, key: string) => {
       const res = await httpClient.removeSecret({ repoID, key })
-      if ('error' in res) return { success: false }
+      if ('error' in res) return
       setStore({ secrets: store.secrets.filter((s) => s.key !== key) })
-      return { success: true }
     },
   })
 }
