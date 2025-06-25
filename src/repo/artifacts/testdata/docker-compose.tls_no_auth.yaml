@@ -1,0 +1,18 @@
+services:
+  registry-tls:
+    image: registry:2.8.3
+    ports:
+      - "15001:5000" # Fixed port for reliable BuildKit config
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: true
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/registry.key
+    volumes:
+      - ./certs:/certs:ro
+    tmpfs:
+      - /var/lib/registry
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5000"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

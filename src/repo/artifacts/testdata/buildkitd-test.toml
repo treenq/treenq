@@ -3,13 +3,24 @@ debug = true
 [grpc]
 address = ["tcp://0.0.0.0:1234"]
 
-# Registry configuration for test - no TLS, no auth, insecure HTTP
-# Using host networking, buildkit can reach localhost registries directly
-[registry."registry:5000"]
+# HTTP registry (no TLS, no auth)
+[registry."localhost:15000"]
 http = true
 insecure = true
 
-# Localhost with any port for testing
-[registry."localhost"]
+# HTTPS registry (TLS, no auth)
+[registry."localhost:15001"]
+http = false
+insecure = false
+ca = ["/certs/ca.crt"]
+
+# HTTPS registry (TLS + auth)
+[registry."localhost:15002"]
+http = false
+insecure = false
+ca = ["/certs/ca.crt"]
+
+# HTTP registry (no TLS + auth)
+[registry."localhost:15003"]
 http = true
 insecure = true

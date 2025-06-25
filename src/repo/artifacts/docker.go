@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
@@ -28,10 +26,10 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/moby/buildkit/util/progress/progresswriter"
-	"golang.org/x/sync/errgroup"
 
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 
 	"github.com/treenq/treenq/src/domain"
 )
@@ -47,7 +45,6 @@ type DockerArtifact struct {
 	registryCert      string
 	registryUsername  string
 	registryPassword  string
-	registryHTTP      bool // true for HTTP, false for HTTPS
 }
 
 func NewDockerArtifactory(
@@ -58,7 +55,6 @@ func NewDockerArtifactory(
 	registryCert string,
 	registryUsername string,
 	registryPassword string,
-	registryHTTP bool,
 ) (*DockerArtifact, error) {
 	return &DockerArtifact{
 		buildkitHost:      buildkitHost,
@@ -68,7 +64,6 @@ func NewDockerArtifactory(
 		registryCert:      registryCert,
 		registryUsername:  registryUsername,
 		registryPassword:  registryPassword,
-		registryHTTP:      registryHTTP,
 	}, nil
 }
 
@@ -127,10 +122,8 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 	dockerConfig := &configfile.ConfigFile{
 		AuthConfigs: map[string]types.AuthConfig{
 			a.registry: {
-				Username:      a.registryUsername,
-				Password:      a.registryPassword,
-				Auth:          base64.StdEncoding.EncodeToString([]byte(a.registryUsername + ":" + a.registryPassword)),
-				ServerAddress: a.registry,
+				Username: a.registryUsername,
+				Password: a.registryPassword,
 			},
 		},
 	}
@@ -166,8 +159,6 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		return image, err
 	}
 
-	eg, ctx := errgroup.WithContext(ctx)
-
 	solveOpt := client.SolveOpt{
 		Exports: []client.ExportEntry{{
 			Type: "image",
@@ -182,33 +173,25 @@ func (a *DockerArtifact) Build(ctx context.Context, args domain.BuildArtifactReq
 		LocalMounts:   localMounts,
 	}
 
-	eg.Go(func() error {
-		sreq := gateway.SolveRequest{
-			Frontend:    solveOpt.Frontend,
-			FrontendOpt: solveOpt.FrontendAttrs,
-		}
+	sreq := gateway.SolveRequest{
+		Frontend:    solveOpt.Frontend,
+		FrontendOpt: solveOpt.FrontendAttrs,
+	}
 
-		_, err := c.Build(ctx, solveOpt, "buildctl", func(ctx context.Context, c gateway.Client) (*gateway.Result, error) {
-			res, err := c.Solve(ctx, sreq)
-			if err != nil {
-				return nil, err
-			}
-			return res, err
-		}, progresswriter.ResetTime(pw).Status())
+	_, err = c.Build(ctx, solveOpt, "buildctl", func(ctx context.Context, c gateway.Client) (*gateway.Result, error) {
+		res, err := c.Solve(ctx, sreq)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		return res, err
+	}, progresswriter.ResetTime(pw).Status())
+	if err != nil {
+		return image, fmt.Errorf("failed to build an image: %w", err)
+	}
 
-		return nil
-	})
-
-	eg.Go(func() error {
-		<-pw.Done()
-		return pw.Err()
-	})
-
-	if err := eg.Wait(); err != nil {
-		return image, err
+	<-pw.Done()
+	if err := pw.Err(); err != nil {
+		return image, fmt.Errorf("progress writer failed: %w", err)
 	}
 
 	return image, nil
@@ -253,9 +236,7 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 			Password: a.registryPassword,
 		}),
 	}
-
-	// Set to use plain HTTP if configured
-	repo.PlainHTTP = a.registryHTTP
+	repo.PlainHTTP = !a.registryTLSVerify
 
 	exists := false
 	err = repo.Tags(ctx, "", func(tags []string) error {
@@ -265,8 +246,8 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 		return nil
 	})
 	if err != nil {
-		// If repository doesn't exist, treat it as image not found
-		if isRepositoryNotFoundError(err) {
+		var orasErr *errcode.ErrorResponse
+		if errors.As(err, &orasErr) && (orasErr.StatusCode == 404 || orasErr.StatusCode == 401) {
 			return image, domain.ErrImageNotFound
 		}
 		return image, fmt.Errorf("failed to list tags: %w", err)
@@ -277,12 +258,4 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 	}
 
 	return image, nil
-}
-
-// isRepositoryNotFoundError checks if the error indicates that the repository does not exist
-func isRepositoryNotFoundError(err error) bool {
-	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "name unknown") ||
-		strings.Contains(errStr, "repository name not known") ||
-		strings.Contains(errStr, "404")
 }

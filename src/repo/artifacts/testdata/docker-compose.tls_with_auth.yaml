@@ -1,0 +1,22 @@
+services:
+  registry-auth:
+    image: registry:2.8.3
+    ports:
+      - "15002:5000" # Fixed port for reliable BuildKit config
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: true
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/registry.key
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    volumes:
+      - ./certs:/certs:ro
+      - ./auth:/auth:ro
+    tmpfs:
+      - /var/lib/registry
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5000"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

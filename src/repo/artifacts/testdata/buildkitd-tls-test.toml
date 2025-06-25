@@ -1,0 +1,27 @@
+debug = true
+
+[grpc]
+address = ["tcp://0.0.0.0:1235"]
+
+# TLS configuration for BuildKit daemon (server-only TLS)
+[grpc.tls]
+cert = "/certs/buildkit-server.crt"
+key = "/certs/buildkit-server.key"
+# Note: No 'ca' field = server-only TLS (client verifies server)
+
+# Registry configuration for TLS testing
+[registry."registry-tls:5000"]
+http = false
+insecure = false
+ca = ["/certs/registry-ca.crt"]
+
+[registry."registry-auth:5000"]
+http = false
+insecure = false
+ca = ["/certs/registry-ca.crt"]
+
+# Localhost with any port for testing
+[registry."localhost"]
+http = false
+insecure = false
+ca = ["/certs/registry-ca.crt"]

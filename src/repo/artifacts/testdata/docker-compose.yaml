@@ -1,0 +1,14 @@
+services:
+  buildkit:
+    image: moby/buildkit:v0.23.0
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./buildkitd-test.toml:/etc/buildkit/buildkitd.toml
+      - ./certs:/certs:ro
+    command: ["buildkitd", "--config", "/etc/buildkit/buildkitd.toml"]
+    healthcheck:
+      test: ["CMD-SHELL", "buildctl --addr tcp://localhost:1234 debug workers"]
+      interval: 5s
+      timeout: 10s
+      retries: 10

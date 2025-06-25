@@ -1,0 +1,22 @@
+services:
+  registry:
+    image: registry:2.8.3
+    ports:
+      - "15000:5000" # Fixed port for reliable BuildKit config
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: true
+    tmpfs:
+      - /var/lib/registry
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:5000/v2/",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
