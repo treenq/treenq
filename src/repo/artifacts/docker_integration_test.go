@@ -19,6 +19,9 @@ func TestDockerArtifact_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
+	// Disable testcontainers reaper which has issues with Colima
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	ctx := context.Background()
 
 	composeFilePaths := []string{filepath.Join("testdata", "docker-compose-test.yaml")}
@@ -36,23 +39,18 @@ func TestDockerArtifact_Integration(t *testing.T) {
 	registryContainer, err := composeStack.ServiceContainer(ctx, "registry")
 	require.NoError(t, err, "Failed to get registry container")
 
-	buildkitContainer, err := composeStack.ServiceContainer(ctx, "buildkit")
-	require.NoError(t, err, "Failed to get buildkit container")
-
-	registryPort, err := registryContainer.MappedPort(ctx, "5005")
+	registryPort, err := registryContainer.MappedPort(ctx, "5000")
 	require.NoError(t, err, "Failed to get registry port")
 
-	buildkitPort, err := buildkitContainer.MappedPort(ctx, "1234")
-	require.NoError(t, err, "Failed to get buildkit port")
-
+	// BuildKit uses host networking, so it's on localhost:1234
 	dockerArtifact, err := NewDockerArtifactory(
-		fmt.Sprintf("tcp://localhost:%s", buildkitPort.Port()),
+		"tcp://localhost:1234",
 		"", // no TLS CA for test
 		fmt.Sprintf("localhost:%s", registryPort.Port()),
 		false, // TLS verify disabled for test
 		"",    // no registry cert
-		"testuser",
-		"testpassword",
+		"",    // no username for test
+		"",    // no password for test
 	)
 	require.NoError(t, err, "Failed to create docker artifact")
 

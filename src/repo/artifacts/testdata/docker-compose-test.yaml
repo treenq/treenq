@@ -4,12 +4,7 @@ services:
     ports:
       - "0:5000"  # Let testcontainers assign random port
     environment:
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
       REGISTRY_STORAGE_DELETE_ENABLED: true
-    volumes:
-      - ./auth:/auth
     tmpfs:
       - /var/lib/registry
     healthcheck:
@@ -21,8 +16,7 @@ services:
   buildkit:
     image: moby/buildkit:v0.23.0
     privileged: true
-    ports:
-      - "0:1234"  # Let testcontainers assign random port
+    network_mode: host
     volumes:
       - ./buildkitd-test.toml:/etc/buildkit/buildkitd.toml
     command: ["buildkitd", "--config", "/etc/buildkit/buildkitd.toml"]

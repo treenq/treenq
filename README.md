@@ -127,6 +127,10 @@ docker-compose.e2e-ci can be used to run the e2e tests, keep volumes and test it
 docker-compose.e2e mirrors e2e-ci, but allows attaching a debugger, uses a `dev` docker image target build
 docker-compose.staging is used to run a staging environment, doesn't include a database
 
+Some integration tests use go-testcontainers, for colima users it requires explicit config of docker host,
+in a file `~/.testcontainers.properties` add `docker.host=unix:///${HOME}/.colima/default/docker.sock`, more info in the doc:
+https://golang.testcontainers.org/features/configuration/#docker-host-detection
+
 ### Run web locally
 
 There are 2 commands to run web locally

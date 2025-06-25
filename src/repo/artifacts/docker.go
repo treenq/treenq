@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
@@ -46,6 +47,7 @@ type DockerArtifact struct {
 	registryCert      string
 	registryUsername  string
 	registryPassword  string
+	registryHTTP      bool // true for HTTP, false for HTTPS
 }
 
 func NewDockerArtifactory(
@@ -56,6 +58,7 @@ func NewDockerArtifactory(
 	registryCert string,
 	registryUsername string,
 	registryPassword string,
+	registryHTTP bool,
 ) (*DockerArtifact, error) {
 	return &DockerArtifact{
 		buildkitHost:      buildkitHost,
@@ -65,6 +68,7 @@ func NewDockerArtifactory(
 		registryCert:      registryCert,
 		registryUsername:  registryUsername,
 		registryPassword:  registryPassword,
+		registryHTTP:      registryHTTP,
 	}, nil
 }
 
@@ -250,6 +254,9 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 		}),
 	}
 
+	// Set to use plain HTTP if configured
+	repo.PlainHTTP = a.registryHTTP
+
 	exists := false
 	err = repo.Tags(ctx, "", func(tags []string) error {
 		if slices.Contains(tags, image.Tag) {
@@ -258,6 +265,10 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 		return nil
 	})
 	if err != nil {
+		// If repository doesn't exist, treat it as image not found
+		if isRepositoryNotFoundError(err) {
+			return image, domain.ErrImageNotFound
+		}
 		return image, fmt.Errorf("failed to list tags: %w", err)
 	}
 
@@ -266,4 +277,12 @@ func (a *DockerArtifact) Inspect(ctx context.Context, deployment domain.AppDeplo
 	}
 
 	return image, nil
+}
+
+// isRepositoryNotFoundError checks if the error indicates that the repository does not exist
+func isRepositoryNotFoundError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "name unknown") ||
+		strings.Contains(errStr, "repository name not known") ||
+		strings.Contains(errStr, "404")
 }
