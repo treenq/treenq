@@ -53,7 +53,7 @@ func TestClone(t *testing.T) {
 	_, err = gitComponent.Clone(repo, "", "main", "1234")
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND sha passed")
 
-	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", &domain.ProgressBuf{})
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -64,7 +64,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", &domain.ProgressBuf{})
 	require.NoError(t, err)
 	defer os.RemoveAll(sameGitRepo.Dir) // Clean up
 	latestSHA := sameGitRepo.Sha
@@ -75,7 +75,7 @@ func TestClone(t *testing.T) {
 	assert.Equal(t, len(sameGitRepo.Sha), 40)
 
 	// --- Checkout to the initial commit and verify ---
-	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA)
+	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA, &domain.ProgressBuf{})
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, initialSHA, checkoutRepo.Sha)
