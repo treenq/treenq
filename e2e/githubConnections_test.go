@@ -225,6 +225,7 @@ func TestGithubAppInstallation(t *testing.T) {
 		testSecretsApi(t, ctx, apiClient, anotherApiClient, connectRepoRes)
 	})
 
+	// ------------------------------------------------------------------
 	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
@@ -239,33 +240,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	})
 	t.Run("test qwer.localhost deployed", func(t *testing.T) {
 		t.Parallel()
-		var qwerErr error
-		for range 20 {
-			time.Sleep(time.Second * 2)
-			req, err := http.NewRequest("GET", "http://localhost:8080", nil)
-			require.NoError(t, err, "request for kube:80 must be created")
-			req.Host = "qwer.localhost"
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				qwerErr = err
-				continue
-			}
-			if resp.StatusCode != 200 {
-				qwerErr = fmt.Errorf("status code is %d", resp.StatusCode)
-				continue
-			}
-			b, err := io.ReadAll(resp.Body)
-			require.NoError(t, err, "body must be read from qwer.localhost")
-			resp.Body.Close()
-			if string(b) != "Hello, main\n" {
-				qwerErr = fmt.Errorf("body expected to have Hello, World, given: %s", string(b))
-				continue
-			}
-
-			break
-
-		}
-		assert.NoError(t, qwerErr, "failed to get qwer.localhost")
+		validateDeployedServiceResponse(t, "qwer.localhost", "Hello, main\n", 200)
 	})
 
 	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
@@ -307,7 +282,11 @@ func TestGithubAppInstallation(t *testing.T) {
 		t.Parallel()
 		readProgress(t, ctx, createdDeployment, apiClient, userToken)
 	})
-	readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+	t.Run("read rollback progress", func(t *testing.T) {
+		t.Parallel()
+		readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
+	})
+	// ------------------------------------------------------------------
 }
 
 func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
@@ -442,5 +421,105 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.Ge
 	require.True(t, progressRead, "progress must be read")
 }
 
-func testServiceResponds(t *testing.T) {
+func testDeploymentValidation(
+	t *testing.T,
+	apiClient *client.Client,
+	userToken string,
+) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name           string
+		deployRequest  client.DeployRequest
+		expectedHost   string
+		expectedBody   string
+		expectedStatus int
+	}{
+		{
+			name: "main_branch_deployment",
+			deployRequest: client.DeployRequest{
+				RepoID: reposResponse.Repos[0].TreenqID,
+			},
+			expectedHost:   "qwer.localhost",
+			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_MAIN",
+			expectedStatus: 200,
+		},
+		{
+			name: "feature_branch_deployment",
+			deployRequest: client.DeployRequest{
+				RepoID: reposResponse.Repos[0].TreenqID,
+				Branch: "feature-branch",
+			},
+			expectedHost:   "qwer.localhost",
+			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_FEATURE",
+			expectedStatus: 200,
+		},
+		{
+			name: "tag_deployment",
+			deployRequest: client.DeployRequest{
+				RepoID: reposResponse.Repos[0].TreenqID,
+				Tag:    "v1.0.0",
+			},
+			expectedHost:   "qwer.localhost",
+			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_TAG",
+			expectedStatus: 200,
+		},
+		{
+			name: "sha_deployment",
+			deployRequest: client.DeployRequest{
+				RepoID: reposResponse.Repos[0].TreenqID,
+				Sha:    "abc123def456",
+			},
+			expectedHost:   "qwer.localhost",
+			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_SHA",
+			expectedStatus: 200,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			deployment, err := apiClient.Deploy(ctx, tc.deployRequest)
+			require.NoError(t, err, "deployment must succeed")
+			require.NotEmpty(t, deployment.Deployment.ID, "deployment ID must not be empty")
+
+			readProgress(t, ctx, deployment, apiClient, userToken)
+			validateDeployedServiceResponse(t, tc.expectedHost, tc.expectedBody, tc.expectedStatus)
+		})
+	}
+}
+
+func validateDeployedServiceResponse(t *testing.T, expectedHost, expectedBody string, expectedStatus int) {
+	var lastErr error
+
+	for range 20 {
+		time.Sleep(time.Second * 2)
+
+		req, err := http.NewRequest("GET", "http://localhost:8080", nil)
+		require.NoError(t, err, "request creation must succeed")
+		req.Host = expectedHost
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		defer resp.Body.Close()
+		if resp.StatusCode != expectedStatus {
+			lastErr = fmt.Errorf("expected status %d, got %d", expectedStatus, resp.StatusCode)
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err, "body read must succeed")
+
+		if string(body) != expectedBody {
+			lastErr = fmt.Errorf("expected body %q, got %q", expectedBody, string(body))
+			continue
+		}
+
+		return
+	}
+
+	require.NoError(t, lastErr, "service validation failed")
 }
