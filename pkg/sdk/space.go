@@ -62,16 +62,16 @@ func (s *Space) Validate() error {
 	if s.Service.DockerContext == "" {
 		s.Service.DockerContext = DefaultDockerContext
 	}
-	if s.Service.Replicas == 0 {
+	if s.Service.Replicas <= 0 {
 		s.Service.Replicas = DefaultReplicas
 	}
-	if s.Service.ComputationResource.CpuUnits == 0 {
+	if s.Service.ComputationResource.CpuUnits <= 0 {
 		s.Service.ComputationResource.CpuUnits = DefaultCpuUnit
 	}
-	if s.Service.ComputationResource.MemoryMibs == 0 {
+	if s.Service.ComputationResource.MemoryMibs <= 0 {
 		s.Service.ComputationResource.MemoryMibs = DefaultMemoryMibs
 	}
-	if s.Service.ComputationResource.DiskGibs == 0 {
+	if s.Service.ComputationResource.DiskGibs <= 0 {
 		s.Service.ComputationResource.DiskGibs = DefaultDiskGibs
 	}
 
