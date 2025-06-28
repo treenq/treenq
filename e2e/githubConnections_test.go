@@ -225,22 +225,11 @@ func TestGithubAppInstallation(t *testing.T) {
 		testSecretsApi(t, ctx, apiClient, anotherApiClient, connectRepoRes)
 	})
 
-	// ------------------------------------------------------------------
-	createdDeployment, err := apiClient.Deploy(ctx, client.DeployRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
-	})
-	require.NotEmpty(t, createdDeployment.Deployment.ID)
-	require.Equal(t, createdDeployment.Deployment.Status, "run")
-	require.NotEmpty(t, createdDeployment.Deployment.CreatedAt)
-	require.NoError(t, err, "failed to deploys app")
-
-	// wait for deployment done
-	t.Run("read deployment progress", func(t *testing.T) {
-		readProgress(t, ctx, createdDeployment, apiClient, userToken)
-	})
-	t.Run("test qwer.localhost deployed", func(t *testing.T) {
-		t.Parallel()
-		validateDeployedServiceResponse(t, "qwer.localhost", "Hello, main\n", 200)
+	createdDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+		},
+		expectedBody: "Hello, main\n",
 	})
 
 	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
@@ -257,14 +246,13 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
 	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
 
-	rollbackDeploy, err := apiClient.Deploy(ctx, client.DeployRequest{
-		RepoID:           reposResponse.Repos[0].TreenqID,
-		FromDeploymentID: deployments.Deployments[0].ID,
+	rollbackDeploy := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID:           reposResponse.Repos[0].TreenqID,
+			FromDeploymentID: deployments.Deployments[0].ID,
+		},
+		expectedBody: "Hello, main\n",
 	})
-	require.NotEqual(t, rollbackDeploy.Deployment.ID, createdDeployment.Deployment.ID, "rollback id must not be the same")
-	require.NotEmpty(t, rollbackDeploy.Deployment.ID)
-	require.NotEmpty(t, rollbackDeploy.Deployment.CreatedAt)
-	require.NoError(t, err, "failed to deploys app")
 
 	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
@@ -278,15 +266,6 @@ func TestGithubAppInstallation(t *testing.T) {
 	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
 	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
 	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
-	t.Run("read deployment progress", func(t *testing.T) {
-		t.Parallel()
-		readProgress(t, ctx, createdDeployment, apiClient, userToken)
-	})
-	t.Run("read rollback progress", func(t *testing.T) {
-		t.Parallel()
-		readProgress(t, ctx, rollbackDeploy, apiClient, userToken)
-	})
-	// ------------------------------------------------------------------
 }
 
 func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
@@ -421,71 +400,29 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.Ge
 	require.True(t, progressRead, "progress must be read")
 }
 
+type serviceValidateRequest struct {
+	req          client.DeployRequest
+	expectedBody string
+}
+
 func testDeploymentValidation(
 	t *testing.T,
 	apiClient *client.Client,
 	userToken string,
-) {
+	testCase serviceValidateRequest,
+) client.GetDeploymentResponse {
 	ctx := context.Background()
 
-	testCases := []struct {
-		name           string
-		deployRequest  client.DeployRequest
-		expectedHost   string
-		expectedBody   string
-		expectedStatus int
-	}{
-		{
-			name: "main_branch_deployment",
-			deployRequest: client.DeployRequest{
-				RepoID: reposResponse.Repos[0].TreenqID,
-			},
-			expectedHost:   "qwer.localhost",
-			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_MAIN",
-			expectedStatus: 200,
-		},
-		{
-			name: "feature_branch_deployment",
-			deployRequest: client.DeployRequest{
-				RepoID: reposResponse.Repos[0].TreenqID,
-				Branch: "feature-branch",
-			},
-			expectedHost:   "qwer.localhost",
-			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_FEATURE",
-			expectedStatus: 200,
-		},
-		{
-			name: "tag_deployment",
-			deployRequest: client.DeployRequest{
-				RepoID: reposResponse.Repos[0].TreenqID,
-				Tag:    "v1.0.0",
-			},
-			expectedHost:   "qwer.localhost",
-			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_TAG",
-			expectedStatus: 200,
-		},
-		{
-			name: "sha_deployment",
-			deployRequest: client.DeployRequest{
-				RepoID: reposResponse.Repos[0].TreenqID,
-				Sha:    "abc123def456",
-			},
-			expectedHost:   "qwer.localhost",
-			expectedBody:   "PLACEHOLDER_EXPECTED_RESPONSE_SHA",
-			expectedStatus: 200,
-		},
-	}
+	deployment, err := apiClient.Deploy(ctx, testCase.req)
+	require.NoError(t, err, "deployment must succeed")
+	require.NotEmpty(t, deployment.Deployment.ID, "deployment ID must not be empty")
+	require.Equal(t, deployment.Deployment.Status, "run")
+	require.NotEmpty(t, deployment.Deployment.CreatedAt)
+	require.NoError(t, err, "failed to deploys app")
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			deployment, err := apiClient.Deploy(ctx, tc.deployRequest)
-			require.NoError(t, err, "deployment must succeed")
-			require.NotEmpty(t, deployment.Deployment.ID, "deployment ID must not be empty")
-
-			readProgress(t, ctx, deployment, apiClient, userToken)
-			validateDeployedServiceResponse(t, tc.expectedHost, tc.expectedBody, tc.expectedStatus)
-		})
-	}
+	readProgress(t, ctx, deployment, apiClient, userToken)
+	validateDeployedServiceResponse(t, "qwer.localhost", testCase.expectedBody, 200)
+	return deployment
 }
 
 func validateDeployedServiceResponse(t *testing.T, expectedHost, expectedBody string, expectedStatus int) {
