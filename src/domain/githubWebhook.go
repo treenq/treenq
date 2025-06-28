@@ -211,6 +211,46 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		return GithubWebhookResponse{}, nil
 	}
 
+	if req.Action == "" {
+		repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)
+		if err != nil {
+			if errors.Is(err, ErrRepoNotFound) {
+				return GithubWebhookResponse{}, &vel.Error{
+					Code: "REPO_NOT_FOUND",
+				}
+			}
+			return GithubWebhookResponse{}, &vel.Error{
+				Message: "failed to get github repo by github id",
+				Err:     err,
+			}
+		}
+
+		if req.Ref == "refs/heads/"+repo.Branch {
+			space, err := h.githubClient.GetRepoSpace(ctx, req.Installation.ID, repo.FullName, repo.Branch)
+			if err != nil {
+				if errors.Is(err, ErrNoTqJsonFound) {
+					return GithubWebhookResponse{}, &vel.Error{
+						Code: "TQ_JSON_NOT_FOUND",
+					}
+				}
+				if errors.Is(err, ErrTqIsNotValidJson) {
+					return GithubWebhookResponse{}, &vel.Error{
+						Code: "TQ_JSON_INVALID",
+					}
+				}
+				return GithubWebhookResponse{}, &vel.Error{
+					Message: "failed to get space from github",
+				}
+			}
+
+			if err := h.db.SaveSpace(ctx, repo.TreenqID, space); err != nil {
+				return GithubWebhookResponse{}, &vel.Error{
+					Message: "failed to save space",
+				}
+			}
+		}
+	}
+
 	// new commit to the default branch
 	// if req.Action == "" && req.Ref == "refs/heads/"+req.Repository.Branch {
 	// 	repo, err := h.db.GetRepoByGithub(ctx, req.Repository.ID)

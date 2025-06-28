@@ -89,6 +89,7 @@ type Database interface {
 	GetRepoByID(ctx context.Context, userID, repoID string) (GithubRepository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 	GetSpace(ctx context.Context, repoID string) (tqsdk.Space, error)
+	SaveSpace(ctx context.Context, repoID string, space tqsdk.Space) error
 
 	// Secrets
 	// ////////////////////////

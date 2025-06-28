@@ -559,6 +559,10 @@ func (s *Store) connectRepo(ctx context.Context, q Querier, userID, repoID, bran
 	return repo, nil
 }
 
+func (s *Store) SaveSpace(ctx context.Context, repoID string, space tqsdk.Space) error {
+	return s.saveSpace(ctx, s.db, repoID, space)
+}
+
 func (s *Store) saveSpace(ctx context.Context, q Querier, repoID string, space tqsdk.Space) error {
 	spacePayload, err := json.Marshal(space)
 	if err != nil {
@@ -638,6 +642,9 @@ func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.G
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&repo.TreenqID, &repo.ID, &repo.FullName,
 		&repo.Private, &repo.Branch, &repo.InstallationID, &repo.Status); err != nil {
+		if errors.As(err, sql.ErrNoRows) {
+			return domain.GithubRepository{}, domain.ErrRepoNotFound
+		}
 		return domain.GithubRepository{}, fmt.Errorf("failed to scan GetRepoByGithub value: %w", err)
 	}
 
