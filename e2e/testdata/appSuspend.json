@@ -1,7 +1,7 @@
 {
   "action": "suspend",
   "installation": {
-    "id": 51602685,
+    "id": 70896823,
     "client_id": "Iv23liIcdZc9iw5WTylS",
     "account": {
       "login": "treenq",
@@ -35,9 +35,7 @@
       "contents": "read",
       "metadata": "read"
     },
-    "events": [
-      "push"
-    ],
+    "events": ["push"],
     "created_at": "2024-06-06T23:26:15.000+02:00",
     "updated_at": "2024-09-13T10:11:01.000+02:00",
     "single_file_name": null,

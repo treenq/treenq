@@ -9,6 +9,7 @@ import (
 	"time"
 
 	cache "github.com/Code-Hex/go-generics-cache"
+	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/domain"
 )
 
@@ -279,4 +280,76 @@ func (c *GithubClient) GetBranches(ctx context.Context, installationID int, repo
 	}
 	c.branchesList.Set(repoFullName, cachedBranches{Branches: branchNames, SavedAt: time.Now()}, cache.WithExpiration(10*time.Minute))
 	return branchNames, nil
+}
+
+type githubFileContent struct {
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	SHA         string `json:"sha"`
+	Size        int    `json:"size"`
+	URL         string `json:"url"`
+	HTMLURL     string `json:"html_url"`
+	GitURL      string `json:"git_url"`
+	DownloadURL string `json:"download_url"`
+	Type        string `json:"type"`
+	Content     []byte `json:"content"`
+	Encoding    string `json:"encoding"`
+}
+
+// GetFileContent retrieves the content of a specific file from a GitHub repository
+func (c *GithubClient) GetRepoSpace(ctx context.Context, installationID int, repoFullName, ref string) (tqsdk.Space, error) {
+	token, err := c.IssueAccessToken(installationID)
+	if err != nil {
+		return tqsdk.Space{}, fmt.Errorf("failed to issue an installation token: %w", err)
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/tq.json", repoFullName)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return tqsdk.Space{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if ref != "" {
+		q := req.URL.Query()
+		q.Add("ref", ref)
+		req.URL.RawQuery = q.Encode()
+	}
+
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Accept", "application/vnd.github+json")
+	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return tqsdk.Space{}, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return tqsdk.Space{}, fmt.Errorf("file not found in repository %s", repoFullName)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return tqsdk.Space{}, domain.ErrNoTqJsonFound
+		}
+		respBody, _ := io.ReadAll(resp.Body)
+		return tqsdk.Space{}, fmt.Errorf("GitHub API responded with %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var fileContent githubFileContent
+	if err := json.NewDecoder(resp.Body).Decode(&fileContent); err != nil {
+		return tqsdk.Space{}, fmt.Errorf("failed to decode file content response: %w", err)
+	}
+
+	var space tqsdk.Space
+	if err := json.Unmarshal(fileContent.Content, &space); err != nil {
+		return tqsdk.Space{}, domain.ErrTqIsNotValidJson
+	}
+
+	if err := space.Validate(); err != nil {
+		return tqsdk.Space{}, err
+	}
+
+	return space, nil
 }

@@ -84,10 +84,11 @@ type Database interface {
 	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, bool, error)
 	GetInstallationID(ctx context.Context, userID, fullName string) (int, error)
 	SaveInstallation(ctx context.Context, userID string, githubID int) (string, error)
-	ConnectRepo(ctx context.Context, userID, repoID, branchName string) (GithubRepository, error)
+	ConnectRepo(ctx context.Context, userID, repoID, branchName string, space tqsdk.Space) (GithubRepository, error)
 	GetRepoByGithub(ctx context.Context, githubRepoID int) (GithubRepository, error)
 	GetRepoByID(ctx context.Context, userID, repoID string) (GithubRepository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
+	GetSpace(ctx context.Context, repoID string) (tqsdk.Space, error)
 
 	// Secrets
 	// ////////////////////////
@@ -104,6 +105,7 @@ type GithubClient interface {
 	ListAllRepositoriesForInstallations(ctx context.Context, installationIDs []int) (map[int][]GithubRepository, error)
 	ListAllRepositoriesForUser(ctx context.Context, userGithubToken string) (map[int][]GithubRepository, error)
 	GetBranches(ctx context.Context, installationID int, repoName string, fresh bool) ([]string, error)
+	GetRepoSpace(ctx context.Context, installationID int, repoFullName, ref string) (tqsdk.Space, error)
 }
 
 type Git interface {

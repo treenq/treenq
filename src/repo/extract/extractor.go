@@ -24,7 +24,7 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 
 	data, err := os.ReadFile(configFile)
 	if os.IsNotExist(err) {
-		return tqsdk.Space{}, domain.ErrNoConfigFileFound
+		return tqsdk.Space{}, domain.ErrNoTqJsonFound
 	}
 	if err != nil {
 		return tqsdk.Space{}, fmt.Errorf("failed to read config file: %w", err)
@@ -32,7 +32,7 @@ func (e *Extractor) ExtractConfig(repoDir string) (tqsdk.Space, error) {
 
 	var space tqsdk.Space
 	if err := json.Unmarshal(data, &space); err != nil {
-		return tqsdk.Space{}, fmt.Errorf("failed to unmarshal config: %w", err)
+		return tqsdk.Space{}, domain.ErrTqIsNotValidJson
 	}
 
 	if err := space.Validate(); err != nil {

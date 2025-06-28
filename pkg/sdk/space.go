@@ -1,10 +1,13 @@
 package tqsdk
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrServiceNameRequired = errors.New("service.name required")
 	ErrHttpPortRequired    = errors.New("service.httpPort required")
+	ErrReleaseOnRequired   = errors.New("service.releaseOn requires one of the fields")
 )
 
 const (
@@ -17,7 +20,6 @@ const (
 )
 
 type Space struct {
-	Version string
 	Service Service
 }
 
@@ -25,6 +27,9 @@ type Service struct {
 	// The name of the component,
 	// unique in the space
 	Name string `json:"name"`
+
+	// ReleaseOn defines the release strategy on different merge events
+	ReleaseOn ReleaseOn `json:"releaseOn"`
 
 	// The path to a Dockerfile relative to the root of the repo. If set, overrides usage of buildpacks.
 	DockerfilePath string `json:"dockerfilePath"`
@@ -41,6 +46,16 @@ type Service struct {
 	ComputationResource ComputationResource `json:"computationResource"`
 }
 
+// ReleaseOn defines the release strategy on different merge events,
+// only one of them must be defines
+type ReleaseOn struct {
+	// Branch requires a branch name
+	Branch string
+	// TagPrefix expects a tag prefix which will be listened,
+	// "*" is allowed to specify any tag triggers a release
+	TagPrefix string
+}
+
 type ComputationResource struct {
 	CpuUnits   int `json:"cpuUnits"`
 	MemoryMibs int `json:"memoryMibs"`
@@ -54,6 +69,13 @@ func (s *Space) Validate() error {
 
 	if s.Service.HttpPort == 0 {
 		return ErrHttpPortRequired
+	}
+
+	if s.Service.ReleaseOn.Branch == "" && s.Service.ReleaseOn.TagPrefix == "" {
+		return ErrReleaseOnRequired
+	}
+	if s.Service.ReleaseOn.Branch != "" && s.Service.ReleaseOn.TagPrefix != "" {
+		return ErrReleaseOnRequired
 	}
 
 	if s.Service.DockerfilePath == "" {

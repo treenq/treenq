@@ -511,7 +511,31 @@ func (s *Store) userHasInstallation(ctx context.Context, userID string) (bool, e
 	return count > 0, nil
 }
 
-func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) (domain.GithubRepository, error) {
+func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string, space tqsdk.Space) (domain.GithubRepository, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.GithubRepository{}, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	repo, err := s.connectRepo(ctx, tx, userID, repoID, branch)
+	if err != nil {
+		return repo, err
+	}
+
+	err = s.saveSpace(ctx, tx, repoID, space)
+	if err != nil {
+		return repo, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return repo, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return repo, nil
+}
+
+func (s *Store) connectRepo(ctx context.Context, q Querier, userID, repoID, branch string) (domain.GithubRepository, error) {
 	query, args, err := s.sq.Update("installedRepos").
 		Set("branch", branch).
 		Where(sq.Eq{"id": repoID, "userId": userID}).
@@ -521,7 +545,7 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 		return domain.GithubRepository{}, fmt.Errorf("failed to build ConnectRepoBranch query: %w", err)
 	}
 
-	row := s.db.QueryRowContext(ctx, query, args...)
+	row := q.QueryRowContext(ctx, query, args...)
 	if row.Err() != nil {
 		return domain.GithubRepository{}, fmt.Errorf("failed to execute ConnectRepoBranch: %w", row.Err())
 	}
@@ -533,6 +557,54 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string) 
 		return repo, fmt.Errorf("failed to scan repository: %w", err)
 	}
 	return repo, nil
+}
+
+func (s *Store) saveSpace(ctx context.Context, q Querier, repoID string, space tqsdk.Space) error {
+	spacePayload, err := json.Marshal(space)
+	if err != nil {
+		return fmt.Errorf("failed to marshal space to json: %w", err)
+	}
+
+	timestamp := now()
+	query, args, err := s.sq.Insert("spaces").
+		Columns("repoId", "space", "createdAt", "updatedAt").
+		Values(repoID, string(spacePayload), timestamp, timestamp).
+		Suffix("ON CONFLICT (repoId) DO UPDATE SET space = EXCLUDED.space, updatedAt = EXCLUDED.updatedAt").
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build saveSpace query: %w", err)
+	}
+
+	if _, err := q.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to exec saveSpace: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) GetSpace(ctx context.Context, repoID string) (tqsdk.Space, error) {
+	query, args, err := s.sq.Select("space").
+		From("spaces").
+		Where(sq.Eq{"repoId": repoID}).
+		ToSql()
+	if err != nil {
+		return tqsdk.Space{}, fmt.Errorf("failed to build GetSpace query: %w", err)
+	}
+
+	var spacePayload string
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&spacePayload); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return tqsdk.Space{}, domain.ErrNoSpaceFound
+		}
+		return tqsdk.Space{}, fmt.Errorf("failed to scan GetSpace: %w", err)
+	}
+
+	var space tqsdk.Space
+	if err := json.Unmarshal([]byte(spacePayload), &space); err != nil {
+		return tqsdk.Space{}, domain.ErrTqIsNotValidJson
+	}
+
+	return space, nil
 }
 
 func (s *Store) RepoIsConnected(ctx context.Context, repoID string) (bool, error) {

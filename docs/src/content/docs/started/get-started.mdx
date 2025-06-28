@@ -16,7 +16,10 @@ Create a `tq.json` file with the following structure:
   "service": {
     "name": "my-app",
     "httpPort": 8000,
-    "dockerfilePath": "Dockerfile"
+    "dockerfilePath": "Dockerfile",
+    "releaseOn": {
+      "branch": "main"
+    }
   }
 }
 ```
@@ -27,6 +30,7 @@ Create a `tq.json` file with the following structure:
 
 - **`name`** - Name for your service, must be unique across the `space`
 - **`httpPort`** - Internal port your service listens on
+- **`releaseOn`** - Release strategy configuration (must specify either `branch` or `tagPrefix`)
 
 #### Optional Fields
 
@@ -34,6 +38,35 @@ Create a `tq.json` file with the following structure:
 - **`dockerfilePath`** - Path to Dockerfile relative to dockerContext (default: `"Dockerfile"`)
 - **`replicas`** - Number of instances (default: `1`)
 - **`runtimeEnvs`** - Environment variables as key-value pairs
+
+#### Release Strategy
+
+The `releaseOn` field defines when deployments are triggered. You must specify exactly one of:
+
+- **`branch`** - Deploy when code is pushed to this branch (e.g., `"main"`, `"production"`)
+- **`tagPrefix`** - Deploy when tags matching this prefix are created (use `"*"` for any tag), for example a tagPrefix "app-v" will match a tag "app-v1.0.1"
+
+```json
+{
+  "service": {
+    "releaseOn": {
+      "branch": "main"
+    }
+  }
+}
+```
+
+Or for tag-based releases:
+
+```json
+{
+  "service": {
+    "releaseOn": {
+      "tagPrefix": "v"
+    }
+  }
+}
+```
 
 #### Resource Configuration
 
@@ -67,6 +100,9 @@ Configure compute resources using `computationResource`:
     "dockerfilePath": "Dockerfile",
     "dockerContext": ".",
     "httpPort": 3000,
+    "releaseOn": {
+      "branch": "main"
+    },
     "replicas": 2,
     "runtimeEnvs": {
       "NODE_ENV": "production",

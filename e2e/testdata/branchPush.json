@@ -153,7 +153,7 @@
     "site_admin": false
   },
   "installation": {
-    "id": 54819704,
+    "id": 70896823,
     "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uNTQ4MTk3MDQ="
   },
   "created": true,
@@ -179,9 +179,7 @@
         "email": "candyboobers@gmail.com",
         "username": "dennypenta"
       },
-      "added": [
-        "t.txt"
-      ],
+      "added": ["t.txt"],
       "removed": [],
       "modified": []
     }
@@ -203,9 +201,7 @@
       "email": "candyboobers@gmail.com",
       "username": "dennypenta"
     },
-    "added": [
-      "t.txt"
-    ],
+    "added": ["t.txt"],
     "removed": [],
     "modified": []
   }

@@ -116,7 +116,7 @@ func TestGithubAppInstallation(t *testing.T) {
 	}, "a not connected repo must not be deployable")
 
 	// connect repo
-	branchName := "test-branch"
+	branchName := "main"
 	connectRepoRes, err := apiClient.ConnectRepoBranch(ctx, client.ConnectBranchRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 		Branch: branchName,

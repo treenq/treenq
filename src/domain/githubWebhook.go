@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	ErrNoConfigFileFound                = errors.New("no config file found")
 	ErrDeployStatusMustBeString         = errors.New("deploy status must be string")
 	ErrImageNotFound                    = errors.New("image not found")
 	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
@@ -557,10 +556,10 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 				Payload: "failed to extract treenq config: " + err.Error(),
 				Level:   slog.LevelError,
 			})
-			if errors.Is(err, ErrNoConfigFileFound) {
+			if errors.Is(err, ErrNoTqJsonFound) {
 				return AppDeployment{}, &vel.Error{
 					Message: "failed to extract config",
-					Code:    "NO_TQ_CONFIG_FOUND",
+					Code:    "NO_TQ_JSON_FOUND",
 				}
 			}
 			return AppDeployment{}, &vel.Error{
