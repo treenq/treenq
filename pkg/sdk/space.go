@@ -7,7 +7,6 @@ import (
 var (
 	ErrServiceNameRequired = errors.New("service.name required")
 	ErrHttpPortRequired    = errors.New("service.httpPort required")
-	ErrReleaseOnRequired   = errors.New("service.releaseOn requires one of the fields")
 )
 
 const (
@@ -69,13 +68,6 @@ func (s *Space) Validate() error {
 
 	if s.Service.HttpPort == 0 {
 		return ErrHttpPortRequired
-	}
-
-	if s.Service.ReleaseOn.Branch == "" && s.Service.ReleaseOn.TagPrefix == "" {
-		return ErrReleaseOnRequired
-	}
-	if s.Service.ReleaseOn.Branch != "" && s.Service.ReleaseOn.TagPrefix != "" {
-		return ErrReleaseOnRequired
 	}
 
 	if s.Service.DockerfilePath == "" {

@@ -20,11 +20,22 @@ func NewGit(dir string) *Git {
 	return &Git{dir: dir}
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha string) (domain.GitRepo, error) {
-	if branch == "" && sha == "" {
+func countNotEmpty(vals ...string) int {
+	notEmpty := 0
+	for i := range vals {
+		if vals[i] != "" {
+			notEmpty += 1
+		}
+	}
+
+	return notEmpty
+}
+
+func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha, tag string) (domain.GitRepo, error) {
+	if countNotEmpty(branch, sha, tag) == 0 {
 		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
 	}
-	if branch != "" && sha != "" {
+	if countNotEmpty(branch, sha, tag) > 1 {
 		return domain.GitRepo{}, domain.ErrGitBranchAndShaMutuallyExclusive
 	}
 
@@ -55,6 +66,11 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		cloneOpts.Depth = 1
 		cloneOpts.SingleBranch = true
 		cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(branch)
+	} else if tag != "" {
+		// For tag checkout, use shallow clone with single tag
+		cloneOpts.Depth = 1
+		cloneOpts.SingleBranch = true
+		cloneOpts.ReferenceName = plumbing.NewTagReferenceName(tag)
 	} else if sha != "" {
 		// For SHA checkout, we need full history but can skip initial checkout
 		cloneOpts.NoCheckout = true
@@ -84,6 +100,11 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 			pullOpts.Depth = 1
 			pullOpts.SingleBranch = true
 			pullOpts.ReferenceName = plumbing.NewBranchReferenceName(branch)
+		} else if tag != "" {
+			// For tag checkout, use shallow clone with single tag
+			pullOpts.Depth = 1
+			pullOpts.SingleBranch = true
+			pullOpts.ReferenceName = plumbing.NewTagReferenceName(tag)
 		}
 
 		if accessToken != "" {
@@ -112,6 +133,13 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 		})
 		if err != nil {
 			return domain.GitRepo{}, fmt.Errorf("error checking out SHA %s: %w", sha, err)
+		}
+	} else if tag != "" {
+		err = w.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewTagReferenceName(tag),
+		})
+		if err != nil {
+			return domain.GitRepo{}, fmt.Errorf("error checking out tag %s: %w", tag, err)
 		}
 	} else {
 		err = w.Checkout(&git.CheckoutOptions{

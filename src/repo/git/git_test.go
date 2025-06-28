@@ -47,13 +47,22 @@ func TestClone(t *testing.T) {
 	}
 	os.RemoveAll(repo.Location(reposDir))
 
-	_, err = gitComponent.Clone(repo, "", "", "")
+	_, err = gitComponent.Clone(repo, "", "", "", "")
 	assert.Equal(t, domain.ErrNoGitCheckoutSpecified, err, "must give an error if no branch or sha passed")
 
-	_, err = gitComponent.Clone(repo, "", "main", "1234")
+	_, err = gitComponent.Clone(repo, "", "main", "1234", "")
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND sha passed")
 
-	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	_, err = gitComponent.Clone(repo, "", "main", "", "v1.0.0")
+	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND tag passed")
+
+	_, err = gitComponent.Clone(repo, "", "", "1234", "v1.0.0")
+	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if sha AND tag passed")
+
+	_, err = gitComponent.Clone(repo, "", "main", "1234", "v1.0.0")
+	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if all three passed")
+
+	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -64,7 +73,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(sameGitRepo.Dir) // Clean up
 	latestSHA := sameGitRepo.Sha
@@ -75,7 +84,7 @@ func TestClone(t *testing.T) {
 	assert.Equal(t, len(sameGitRepo.Sha), 40)
 
 	// --- Checkout to the initial commit and verify ---
-	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA)
+	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA, "")
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, initialSHA, checkoutRepo.Sha)
@@ -92,7 +101,7 @@ func TestClone(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	// --- Checkout to a master branch
-	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "")
+	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, latestSHA, checkoutRepo.Sha)
@@ -107,6 +116,38 @@ func TestClone(t *testing.T) {
 	newFilePath = filepath.Join(checkoutRepo.Dir, "NEW_FILE.md")
 	_, err = os.Stat(newFilePath)
 	assert.NoError(t, err)
+
+	// Test tag checkout
+	gitRepo, err := git.PlainOpen(mockRepoPath)
+	require.NoError(t, err)
+	addTag(t, gitRepo, "v1.0.0")
+
+	tagSHA := latestSHA
+
+	// Add another commit after the tag to make sure tag checkout works correctly
+	addThirdCommit(t, worktree, mockRepoPath)
+	postTagRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(postTagRepo.Dir)
+	postTagSHA := postTagRepo.Sha
+	assert.NotEqual(t, tagSHA, postTagSHA, "post-tag commit should have different SHA")
+
+	tagCheckoutRepo, err := gitComponent.Clone(TestingRepository{ID: "tag-test", Path: mockRepoPath}, "dummy-access-token", "", "", "v1.0.0")
+	require.NoError(t, err)
+	defer os.RemoveAll(tagCheckoutRepo.Dir)
+	assert.Equal(t, tagSHA, tagCheckoutRepo.Sha)
+
+	// Both files should exist at tag
+	readmePath = filepath.Join(tagCheckoutRepo.Dir, "README.md")
+	_, err = os.Stat(readmePath)
+	assert.NoError(t, err)
+	newFilePath = filepath.Join(tagCheckoutRepo.Dir, "NEW_FILE.md")
+	_, err = os.Stat(newFilePath)
+	assert.NoError(t, err)
+	// new commit is not on the tag
+	thirdFilePath := filepath.Join(tagCheckoutRepo.Dir, "THIRD_FILE.md")
+	_, err = os.Stat(thirdFilePath)
+	assert.True(t, os.IsNotExist(err), "file shouldn't exist")
 }
 
 func newRepo(t *testing.T, path string) *git.Worktree {
@@ -141,6 +182,37 @@ func addCommit(t *testing.T, worktree *git.Worktree, path string) {
 	require.NoError(t, err)
 	_, err = worktree.Commit("Add new file", &git.CommitOptions{
 		Author: &object.Signature{
+			Name:  "Test Author",
+			Email: "author@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+}
+
+func addThirdCommit(t *testing.T, worktree *git.Worktree, path string) {
+	thirdFilePath := filepath.Join(path, "THIRD_FILE.md")
+	err := os.WriteFile(thirdFilePath, []byte("# Third File"), 0644)
+	require.NoError(t, err)
+	_, err = worktree.Add("THIRD_FILE.md")
+	require.NoError(t, err)
+	_, err = worktree.Commit("Add third file", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test Author",
+			Email: "author@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+}
+
+func addTag(t *testing.T, repo *git.Repository, tagName string) {
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	_, err = repo.CreateTag(tagName, head.Hash(), &git.CreateTagOptions{
+		Message: "Test tag",
+		Tagger: &object.Signature{
 			Name:  "Test Author",
 			Email: "author@example.com",
 			When:  time.Now(),

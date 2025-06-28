@@ -9,6 +9,9 @@ import (
 type DeployRequest struct {
 	RepoID           string `json:"repoID"`
 	FromDeploymentID string `json:"fromDeploymentID"`
+	Branch           string `json:"branch"`
+	Sha              string `json:"sha"`
+	Tag              string `json:"tag"`
 }
 
 func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentResponse, *vel.Error) {
@@ -30,6 +33,9 @@ func (h *Handler) Deploy(ctx context.Context, req DeployRequest) (GetDeploymentR
 		profile.UserInfo.DisplayName,
 		repo,
 		req.FromDeploymentID,
+		req.Branch,
+		req.Sha,
+		req.Tag,
 	)
 	if apiErr != nil {
 		return GetDeploymentResponse{}, apiErr

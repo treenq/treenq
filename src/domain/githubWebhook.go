@@ -23,7 +23,7 @@ var (
 	ErrDeployStatusMustBeString         = errors.New("deploy status must be string")
 	ErrImageNotFound                    = errors.New("image not found")
 	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
-	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha are mutually exclusive")
+	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha and tag are mutually exclusive")
 	ErrSecretNotFound                   = errors.New("secret not found")
 )
 
@@ -275,7 +275,18 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	return GithubWebhookResponse{}, nil
 }
 
-func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo GithubRepository, fromDeploymentID string) (AppDeployment, *vel.Error) {
+func countNotEmpty(vals ...string) int {
+	notEmpty := 0
+	for i := range vals {
+		if vals[i] != "" {
+			notEmpty += 1
+		}
+	}
+
+	return notEmpty
+}
+
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo GithubRepository, fromDeploymentID, branch, sha, tag string) (AppDeployment, *vel.Error) {
 	// validate the repo must run
 	if repo.Branch == "" {
 		return AppDeployment{}, &vel.Error{
@@ -290,14 +301,42 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 		}
 	}
 
+	notEmptyDeployMarks := countNotEmpty(branch, sha, tag)
+	if notEmptyDeployMarks > 1 {
+		return AppDeployment{}, &vel.Error{
+			Code: "ONLY_BRANCH_OR_SHA_OR_TAG_ALLOWED",
+		}
+	}
+
+	if notEmptyDeployMarks == 0 {
+		space, err := h.db.GetSpace(ctx, repo.TreenqID)
+		if err != nil {
+			if errors.Is(err, ErrNoSpaceFound) {
+				return AppDeployment{}, &vel.Error{
+					Code: "SPACE_NOT_FOUND",
+				}
+			}
+
+			return AppDeployment{}, &vel.Error{
+				Message: "failed to get space",
+			}
+		}
+		branch = space.Service.ReleaseOn.Branch
+		if branch == "" {
+			branch = repo.Branch
+		}
+	}
+
 	// Create initial deployment with "init" status
 	deployment := AppDeployment{
 		RepoID:           repo.TreenqID,
 		UserDisplayName:  userDisplayName,
 		Status:           DeployStatusRunning,
 		Space:            tqsdk.Space{},
-		Branch:           repo.Branch,
 		FromDeploymentID: fromDeploymentID,
+		Branch:           branch,
+		Sha:              sha,
+		BuildTag:         tag,
 	}
 
 	if fromDeploymentID != "" {
@@ -557,7 +596,7 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Payload: "cloning github repository",
 		Level:   slog.LevelDebug,
 	})
-	gitRepo, err := h.git.Clone(repo, token, repo.Branch, deployment.Sha)
+	gitRepo, err := h.git.Clone(repo, token, deployment.Branch, deployment.Sha, deployment.BuildTag)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to clone github repository: " + err.Error(),
@@ -570,6 +609,9 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 	}
 	deployment.Sha = gitRepo.Sha
 	deployment.CommitMessage = gitRepo.Message
+	if deployment.BuildTag == "" {
+		deployment.BuildTag = gitRepo.Sha
+	}
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload:    "cloned github repository",
 		Level:      slog.LevelInfo,
@@ -623,22 +665,15 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 	}
 
 	dockerContext := appSpace.Service.DockerContext
-	if dockerContext == "" {
-		dockerContext = "."
-	}
 	dockerContext = filepath.Join(gitRepo.Dir, dockerContext)
-
 	dockerFilePath := filepath.Join(gitRepo.Dir, appSpace.Service.DockerfilePath)
-	if appSpace.Service.DockerfilePath == "" {
-		dockerFilePath = filepath.Join(gitRepo.Dir, dockerContext)
-	}
 
 	buildRequest := BuildArtifactRequest{
 		Name:          appSpace.Service.Name,
 		DockerContext: dockerContext,
 		Path:          gitRepo.Dir,
 		Dockerfile:    dockerFilePath,
-		Tag:           gitRepo.Sha,
+		Tag:           deployment.BuildTag,
 		DeploymentID:  deployment.ID,
 	}
 	progress.Append(deployment.ID, ProgressMessage{
