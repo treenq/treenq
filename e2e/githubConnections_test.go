@@ -257,7 +257,7 @@ func TestGithubAppInstallation(t *testing.T) {
 			b, err := io.ReadAll(resp.Body)
 			require.NoError(t, err, "body must be read from qwer.localhost")
 			resp.Body.Close()
-			if string(b) != "Hello, World!\n" {
+			if string(b) != "Hello, main\n" {
 				qwerErr = fmt.Errorf("body expected to have Hello, World, given: %s", string(b))
 				continue
 			}

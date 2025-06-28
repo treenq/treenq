@@ -445,6 +445,9 @@ func (c *Client) ConnectRepoBranch(ctx context.Context, req ConnectBranchRequest
 type DeployRequest struct {
 	RepoID           string `json:"repoID"`
 	FromDeploymentID string `json:"fromDeploymentID"`
+	Branch           string `json:"branch"`
+	Sha              string `json:"sha"`
+	Tag              string `json:"tag"`
 }
 
 type GetDeploymentResponse struct {
@@ -467,18 +470,23 @@ type AppDeployment struct {
 }
 
 type Space struct {
-	Version string
 	Service Service
 }
 
 type Service struct {
 	Name                string              `json:"name"`
+	ReleaseOn           ReleaseOn           `json:"releaseOn"`
 	DockerfilePath      string              `json:"dockerfilePath"`
 	DockerContext       string              `json:"dockerContext"`
 	RuntimeEnvs         map[string]string   `json:"runtimeEnvs"`
 	HttpPort            int                 `json:"httpPort"`
 	Replicas            int                 `json:"replicas"`
 	ComputationResource ComputationResource `json:"computationResource"`
+}
+
+type ReleaseOn struct {
+	Branch    string
+	TagPrefix string
 }
 
 type ComputationResource struct {
