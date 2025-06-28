@@ -110,7 +110,9 @@ func runDockerArtifactTest(t *testing.T, tc testCase) {
 	deployment := domain.AppDeployment{
 		Space: tqsdk.Space{
 			Service: tqsdk.Service{
-				Name: "test-app",
+				Name:      "test-app",
+				HttpPort:  8080,
+				ReleaseOn: tqsdk.ReleaseOn{Branch: "main"},
 			},
 		},
 		BuildTag: tag,
