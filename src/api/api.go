@@ -13,6 +13,7 @@ import (
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
 	"github.com/treenq/treenq/src/repo/extract"
+	"github.com/treenq/treenq/src/repo/git"
 	"github.com/treenq/treenq/src/repo/github"
 	"github.com/treenq/treenq/src/resources"
 
@@ -40,7 +41,7 @@ func New(conf Config) (http.Handler, error) {
 	authJwtIssuer := auth.NewJwtIssuer("treenq-api", []byte(conf.AuthPrivateKey), []byte(conf.AuthPublicKey), conf.AuthTtl)
 	githubClient := github.NewGithubClient(githubJwtIssuer, http.DefaultClient)
 	gitDir := filepath.Join(wd, "gits")
-	gitClient := repo.NewGit(gitDir)
+	gitClient := git.NewGit(gitDir)
 	docker, err := artifacts.NewDockerArtifactory(
 		conf.BuildkitHost,
 		conf.BuildkitTLSCA,

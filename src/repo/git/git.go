@@ -1,4 +1,4 @@
-package repo
+package git
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/treenq/treenq/src/domain"
 )
 
@@ -37,54 +38,95 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha stri
 
 	u, err := url.Parse(repo.CloneURL())
 	if err != nil {
-		return domain.GitRepo{}, err
+		return domain.GitRepo{}, fmt.Errorf("failed to parse clone URL: %w", err)
 	}
 	if accessToken != "" {
 		u.User = url.UserPassword("x-access-token", accessToken)
 	}
 
-	r, err := git.PlainClone(dir, false, &git.CloneOptions{
+	cloneOpts := &git.CloneOptions{
 		URL:      u.String(),
 		Progress: os.Stdout,
-	})
+	}
+
+	// Optimize based on what we're checking out
+	if branch != "" {
+		// For branch checkout, use shallow clone with single branch
+		cloneOpts.Depth = 1
+		cloneOpts.SingleBranch = true
+		cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(branch)
+	} else if sha != "" {
+		// For SHA checkout, we need full history but can skip initial checkout
+		cloneOpts.NoCheckout = true
+	}
+
+	r, err := git.PlainClone(dir, false, cloneOpts)
 	var w *git.Worktree
+
 	if err != nil {
 		if !errors.Is(err, git.ErrRepositoryAlreadyExists) {
-			return domain.GitRepo{}, fmt.Errorf("error while cloning the repo: %s", err)
+			return domain.GitRepo{}, fmt.Errorf("error while cloning the repo: %w", err)
 		}
 
 		r, err = git.PlainOpen(dir)
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while opening the repo: %s", err)
+			return domain.GitRepo{}, fmt.Errorf("error while opening the repo: %w", err)
 		}
+
 		w, err = r.Worktree()
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %s", err)
+			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %w", err)
 		}
-		err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+
+		pullOpts := &git.PullOptions{}
+		if branch != "" {
+			// For branch checkout, use shallow clone with single branch
+			pullOpts.Depth = 1
+			pullOpts.SingleBranch = true
+			pullOpts.ReferenceName = plumbing.NewBranchReferenceName(branch)
+		}
+
+		if accessToken != "" {
+			pullOpts.Auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: accessToken,
+			}
+		}
+
+		err = w.Pull(pullOpts)
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-			return domain.GitRepo{}, fmt.Errorf("error while pulling latest: %s", err)
+			return domain.GitRepo{}, fmt.Errorf("error while pulling latest: %w", err)
 		}
 	}
+
 	if w == nil {
 		w, err = r.Worktree()
 		if err != nil {
-			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %s", err)
+			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %w", err)
 		}
 	}
+
 	if sha != "" {
-		w.Checkout(&git.CheckoutOptions{
+		err = w.Checkout(&git.CheckoutOptions{
 			Hash: plumbing.NewHash(sha),
 		})
+		if err != nil {
+			return domain.GitRepo{}, fmt.Errorf("error checking out SHA %s: %w", sha, err)
+		}
 	} else {
-		w.Checkout(&git.CheckoutOptions{
+		err = w.Checkout(&git.CheckoutOptions{
 			Branch: plumbing.NewBranchReferenceName(branch),
 		})
+		if err != nil {
+			return domain.GitRepo{}, fmt.Errorf("error checking out branch %s: %w", branch, err)
+		}
 	}
+
 	ref, err := r.Head()
 	if err != nil {
-		return domain.GitRepo{}, nil
+		return domain.GitRepo{}, fmt.Errorf("error getting HEAD reference: %w", err)
 	}
+
 	commit, err := r.CommitObject(ref.Hash())
 	if err != nil {
 		return domain.GitRepo{}, fmt.Errorf("failed to get a repo commit: %w", err)
