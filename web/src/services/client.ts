@@ -58,6 +58,9 @@ export type GetBranchesResponse = {
 export type DeployRequest = {
   repoID: string
   fromDeploymentID: string
+  branch: string
+  sha: string
+  tag: string
 }
 
 export type Deployment = {

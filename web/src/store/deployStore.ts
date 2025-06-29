@@ -41,8 +41,14 @@ function createDeployStore() {
     setDeployment: (deployment: Deployment) => {
       setStore('deployment', deployment)
     },
-    deploy: async (repoID: string, fromDeploymentID: string) => {
-      const res = await httpClient.deploy({ repoID, fromDeploymentID })
+    deploy: async (
+      repoID: string,
+      fromDeploymentID: string,
+      branch: string,
+      sha: string,
+      tag: string,
+    ) => {
+      const res = await httpClient.deploy({ repoID, fromDeploymentID, branch, sha, tag })
       if ('error' in res) return ''
       return res.data.deployment
     },
