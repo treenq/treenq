@@ -3,11 +3,14 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { Routes } from '@/routes'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/TextField'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
+import { createEffect, createSignal, For, Show } from 'solid-js'
 
 import { Deployment } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
 import { reposStore, type Repo } from '@/store/repoStore'
-import { createEffect, createSignal, For } from 'solid-js'
 
 type DeployProps = {
   repoID: string
@@ -17,13 +20,27 @@ export default function Deploy(props: DeployProps) {
   const [deployments, setDeployments] = createSignal<Deployment[]>([])
   const [repo, setRepo] = createSignal<Repo | undefined>()
 
+  const [popoverOpen, setPopoverOpen] = createSignal(false)
+  const [deployMode, setDeployMode] = createSignal<'menu' | 'branch' | 'commit' | 'tag'>('menu')
+  const [branchInput, setBranchInput] = createSignal('')
+  const [commitInput, setCommitInput] = createSignal('')
+  const [tagInput, setTagInput] = createSignal('')
+  const [loading, setLoading] = createSignal(false)
+
   const navigateToDeploy = Routes.deploy.navigate()
 
-  const deploy = async (fromDeploymentID: string = '') => {
-    const deployment = await deployStore.deploy(props.repoID, fromDeploymentID)
+  const doDeploy = async (fromDeploymentID = '', branch = '', sha = '', tag = '') => {
+    setLoading(true)
+    const deployment = await deployStore.deploy(props.repoID, fromDeploymentID, branch, sha, tag)
+    setLoading(false)
     if (deployment) {
       deployStore.setDeployment(deployment)
       navigateToDeploy({ id: deployment.id })
+      setPopoverOpen(false)
+      setDeployMode('menu')
+      setBranchInput('')
+      setCommitInput('')
+      setTagInput('')
     }
   }
 
@@ -34,6 +51,7 @@ export default function Deploy(props: DeployProps) {
     reposStore.getRepos().then(() => {
       const repo = reposStore.repos.find((it) => it.treenqID === props.repoID)
       setRepo(repo)
+      setBranchInput(repo?.branch || '')
     })
   })
 
@@ -50,10 +68,105 @@ export default function Deploy(props: DeployProps) {
             </div>
             <h3 class="font-bold">{repo()?.fullName}</h3>
           </div>
-          <Button variant="outline" class="hover:bg-primary" onclick={() => deploy()}>
-            Deploy Now
-            <div class="bg-muted ml-2 h-4 w-4 rounded" />
-          </Button>
+          <Popover open={popoverOpen()} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" class="hover:bg-primary" aria-expanded={popoverOpen()}>
+                Manual Deploy
+                <svg class="ml-2 h-4 w-4" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent>
+              <Show when={deployMode() === 'menu'}>
+                <div class="flex flex-col gap-2">
+                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('branch')}>
+                    Deploy a branch
+                  </Button>
+                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('commit')}>
+                    Deploy a specific commit
+                  </Button>
+                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('tag')}>
+                    Deploy a tag
+                  </Button>
+                  <Button variant="outline" class="mt-2" onClick={() => doDeploy()}>Deploy from default branch</Button>
+                </div>
+              </Show>
+              <Show when={deployMode() === 'branch'}>
+                <div class="flex flex-col gap-2">
+                  <TextField>
+                    <TextFieldLabel>Branch</TextFieldLabel>
+                    <div class="flex items-center gap-2">
+                      <TextFieldInput
+                        value={branchInput()}
+                        onInput={e => setBranchInput(e.currentTarget.value)}
+                        placeholder="Enter branch name"
+                        class="flex-1"
+                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span class="text-xs text-muted-foreground cursor-pointer">{repo()?.branch}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>{repo()?.branch} branch</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TextField>
+                  <div class="flex gap-2 mt-2">
+                    <Button
+                      variant="primary"
+                      disabled={loading() || !branchInput()}
+                      onClick={() => doDeploy('', branchInput(), '', '')}
+                    >
+                      Deploy branch
+                    </Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                  </div>
+                </div>
+              </Show>
+              <Show when={deployMode() === 'commit'}>
+                <div class="flex flex-col gap-2">
+                  <TextField>
+                    <TextFieldLabel>Commit SHA</TextFieldLabel>
+                    <TextFieldInput
+                      value={commitInput()}
+                      onInput={e => setCommitInput(e.currentTarget.value)}
+                      placeholder="Enter commit SHA"
+                    />
+                  </TextField>
+                  <div class="flex gap-2 mt-2">
+                    <Button
+                      variant="primary"
+                      disabled={loading() || !commitInput()}
+                      onClick={() => doDeploy('', '', commitInput(), '')}
+                    >
+                      Deploy commit
+                    </Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                  </div>
+                </div>
+              </Show>
+              <Show when={deployMode() === 'tag'}>
+                <div class="flex flex-col gap-2">
+                  <TextField>
+                    <TextFieldLabel>Tag</TextFieldLabel>
+                    <TextFieldInput
+                      value={tagInput()}
+                      onInput={e => setTagInput(e.currentTarget.value)}
+                      placeholder="Enter tag"
+                    />
+                  </TextField>
+                  <div class="flex gap-2 mt-2">
+                    <Button
+                      variant="primary"
+                      disabled={loading() || !tagInput()}
+                      onClick={() => doDeploy('', '', '', tagInput())}
+                    >
+                      Deploy tag
+                    </Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                  </div>
+                </div>
+              </Show>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div class="mb-2 flex items-center gap-4">
@@ -92,7 +205,7 @@ export default function Deploy(props: DeployProps) {
                             class="text-primary"
                             href={Routes.deploy.makeHref({ id: deployment.id })}
                           >
-                            #${deployment.id}
+                            #{deployment.id}
                           </A>{' '}
                           {deployment.status === 'run' ? 'live' : deployment.status}
                           for {deployment.sha.slice(0, 7)}
@@ -107,7 +220,7 @@ export default function Deploy(props: DeployProps) {
                           variant="outline"
                           size="sm"
                           class="gap-1"
-                          onClick={() => deploy(deployment.id)}
+                          onClick={() => doDeploy(deployment.id, '', '', '')}
                         >
                           <div class="bg-muted h-4 w-4 rounded" />
                           Rollback

@@ -420,7 +420,6 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 	query, args, err := s.sq.Select("id").
 		From("installations").
 		Where(sq.Eq{
-			"userId":   userID,
 			"githubId": githubID,
 		}).
 		ToSql()
