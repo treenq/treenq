@@ -182,6 +182,11 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	if req.Action == "created" {
 		_, err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
 		if err != nil {
+			if errors.Is(err, ErrInstallationNotFound) {
+				return GithubWebhookResponse{}, &vel.Error{
+					Code: "INSTALLATION_NOT_FOUND",
+				}
+			}
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to link github",
 				Err:     err,

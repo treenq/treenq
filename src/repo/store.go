@@ -421,6 +421,7 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 		From("installations").
 		Where(sq.Eq{
 			"githubId": githubID,
+			"userId":   userID,
 		}).
 		ToSql()
 	if err != nil {
@@ -434,7 +435,7 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 		return installationID, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("failed to check existing installation: %w", err)
+		return "", domain.ErrInstallationNotFound
 	}
 
 	// No existing installation found, create new one
