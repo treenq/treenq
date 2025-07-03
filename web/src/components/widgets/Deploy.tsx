@@ -1,11 +1,11 @@
 import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Separator } from '@/components/ui/Separator'
-import { Routes } from '@/routes'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { Separator } from '@/components/ui/Separator'
 import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/TextField'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
+import { Routes } from '@/routes'
 import { createEffect, createSignal, For, Show } from 'solid-js'
 
 import { Deployment } from '@/services/client'
@@ -69,25 +69,47 @@ export default function Deploy(props: DeployProps) {
             <h3 class="font-bold">{repo()?.fullName}</h3>
           </div>
           <Popover open={popoverOpen()} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
+            <PopoverTrigger>
               <Button variant="outline" class="hover:bg-primary" aria-expanded={popoverOpen()}>
                 Manual Deploy
-                <svg class="ml-2 h-4 w-4" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="ml-2 h-4 w-4" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
               </Button>
             </PopoverTrigger>
             <PopoverContent>
               <Show when={deployMode() === 'menu'}>
                 <div class="flex flex-col gap-2">
-                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('branch')}>
+                  <Button
+                    variant="ghost"
+                    class="justify-start"
+                    onClick={() => setDeployMode('branch')}
+                  >
                     Deploy a branch
                   </Button>
-                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('commit')}>
+                  <Button
+                    variant="ghost"
+                    class="justify-start"
+                    onClick={() => setDeployMode('commit')}
+                  >
                     Deploy a specific commit
                   </Button>
-                  <Button variant="ghost" class="justify-start" onClick={() => setDeployMode('tag')}>
+                  <Button
+                    variant="ghost"
+                    class="justify-start"
+                    onClick={() => setDeployMode('tag')}
+                  >
                     Deploy a tag
                   </Button>
-                  <Button variant="outline" class="mt-2" onClick={() => doDeploy()}>Deploy from default branch</Button>
+                  <Button variant="outline" class="mt-2" onClick={() => doDeploy()}>
+                    Deploy from default branch
+                  </Button>
                 </div>
               </Show>
               <Show when={deployMode() === 'branch'}>
@@ -97,27 +119,30 @@ export default function Deploy(props: DeployProps) {
                     <div class="flex items-center gap-2">
                       <TextFieldInput
                         value={branchInput()}
-                        onInput={e => setBranchInput(e.currentTarget.value)}
+                        onInput={(e) => setBranchInput(e.currentTarget.value)}
                         placeholder="Enter branch name"
                         class="flex-1"
                       />
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span class="text-xs text-muted-foreground cursor-pointer">{repo()?.branch}</span>
+                        <TooltipTrigger>
+                          <span class="text-muted-foreground cursor-pointer text-xs">
+                            {repo()?.branch}
+                          </span>
                         </TooltipTrigger>
                         <TooltipContent>{repo()?.branch} branch</TooltipContent>
                       </Tooltip>
                     </div>
                   </TextField>
-                  <div class="flex gap-2 mt-2">
+                  <div class="mt-2 flex gap-2">
                     <Button
-                      variant="primary"
                       disabled={loading() || !branchInput()}
                       onClick={() => doDeploy('', branchInput(), '', '')}
                     >
                       Deploy branch
                     </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
+                      Back
+                    </Button>
                   </div>
                 </div>
               </Show>
@@ -127,19 +152,20 @@ export default function Deploy(props: DeployProps) {
                     <TextFieldLabel>Commit SHA</TextFieldLabel>
                     <TextFieldInput
                       value={commitInput()}
-                      onInput={e => setCommitInput(e.currentTarget.value)}
+                      onInput={(e) => setCommitInput(e.currentTarget.value)}
                       placeholder="Enter commit SHA"
                     />
                   </TextField>
-                  <div class="flex gap-2 mt-2">
+                  <div class="mt-2 flex gap-2">
                     <Button
-                      variant="primary"
                       disabled={loading() || !commitInput()}
                       onClick={() => doDeploy('', '', commitInput(), '')}
                     >
                       Deploy commit
                     </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
+                      Back
+                    </Button>
                   </div>
                 </div>
               </Show>
@@ -149,19 +175,20 @@ export default function Deploy(props: DeployProps) {
                     <TextFieldLabel>Tag</TextFieldLabel>
                     <TextFieldInput
                       value={tagInput()}
-                      onInput={e => setTagInput(e.currentTarget.value)}
+                      onInput={(e) => setTagInput(e.currentTarget.value)}
                       placeholder="Enter tag"
                     />
                   </TextField>
-                  <div class="flex gap-2 mt-2">
+                  <div class="mt-2 flex gap-2">
                     <Button
-                      variant="primary"
                       disabled={loading() || !tagInput()}
                       onClick={() => doDeploy('', '', '', tagInput())}
                     >
                       Deploy tag
                     </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>Back</Button>
+                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
+                      Back
+                    </Button>
                   </div>
                 </div>
               </Show>
