@@ -1,12 +1,12 @@
+import { Branch } from '@/components/icons'
 import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { Separator } from '@/components/ui/Separator'
 import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/TextField'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { Routes } from '@/routes'
-import { createEffect, createSignal, For, Show } from 'solid-js'
+import { createEffect, createSignal, For, Show, type Accessor, type Setter } from 'solid-js'
 
 import { Deployment } from '@/services/client'
 import { deployStore } from '@/store/deployStore'
@@ -108,89 +108,46 @@ export default function Deploy(props: DeployProps) {
                     Deploy a tag
                   </Button>
                   <Button variant="outline" class="mt-2" onClick={() => doDeploy()}>
-                    Deploy from default branch
+                    Deploy <Branch />
+                    {repo()?.branch}
                   </Button>
                 </div>
               </Show>
               <Show when={deployMode() === 'branch'}>
-                <div class="flex flex-col gap-2">
-                  <TextField>
-                    <TextFieldLabel>Branch</TextFieldLabel>
-                    <div class="flex items-center gap-2">
-                      <TextFieldInput
-                        value={branchInput()}
-                        onInput={(e) => setBranchInput(e.currentTarget.value)}
-                        placeholder="Enter branch name"
-                        class="flex-1"
-                      />
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <span class="text-muted-foreground cursor-pointer text-xs">
-                            {repo()?.branch}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>{repo()?.branch} branch</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TextField>
-                  <div class="mt-2 flex gap-2">
-                    <Button
-                      disabled={loading() || !branchInput()}
-                      onClick={() => doDeploy('', branchInput(), '', '')}
-                    >
-                      Deploy branch
-                    </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
-                      Back
-                    </Button>
-                  </div>
-                </div>
+                <DeployAction
+                  inputText="Branch"
+                  inputPlaceholder="Enter branch name"
+                  getter={branchInput}
+                  setter={setBranchInput}
+                  loading={loading}
+                  onDeploy={() => doDeploy('', branchInput(), '', '')}
+                  onBack={() => setDeployMode('menu')}
+                  deployText="Deploy branch"
+                />
               </Show>
               <Show when={deployMode() === 'commit'}>
-                <div class="flex flex-col gap-2">
-                  <TextField>
-                    <TextFieldLabel>Commit SHA</TextFieldLabel>
-                    <TextFieldInput
-                      value={commitInput()}
-                      onInput={(e) => setCommitInput(e.currentTarget.value)}
-                      placeholder="Enter commit SHA"
-                    />
-                  </TextField>
-                  <div class="mt-2 flex gap-2">
-                    <Button
-                      disabled={loading() || !commitInput()}
-                      onClick={() => doDeploy('', '', commitInput(), '')}
-                    >
-                      Deploy commit
-                    </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
-                      Back
-                    </Button>
-                  </div>
-                </div>
+                <DeployAction
+                  inputText="Commit SHA"
+                  inputPlaceholder="Enter commit SHA"
+                  getter={commitInput}
+                  setter={setCommitInput}
+                  loading={loading}
+                  onDeploy={() => doDeploy('', '', commitInput(), '')}
+                  onBack={() => setDeployMode('menu')}
+                  deployText="Deploy commit"
+                />
               </Show>
               <Show when={deployMode() === 'tag'}>
-                <div class="flex flex-col gap-2">
-                  <TextField>
-                    <TextFieldLabel>Tag</TextFieldLabel>
-                    <TextFieldInput
-                      value={tagInput()}
-                      onInput={(e) => setTagInput(e.currentTarget.value)}
-                      placeholder="Enter tag"
-                    />
-                  </TextField>
-                  <div class="mt-2 flex gap-2">
-                    <Button
-                      disabled={loading() || !tagInput()}
-                      onClick={() => doDeploy('', '', '', tagInput())}
-                    >
-                      Deploy tag
-                    </Button>
-                    <Button variant="ghost" onClick={() => setDeployMode('menu')}>
-                      Back
-                    </Button>
-                  </div>
-                </div>
+                <DeployAction
+                  inputText="Tag"
+                  inputPlaceholder="Enter tag"
+                  getter={tagInput}
+                  setter={setTagInput}
+                  loading={loading}
+                  onDeploy={() => doDeploy('', '', '', tagInput())}
+                  onBack={() => setDeployMode('menu')}
+                  deployText="Deploy tag"
+                />
               </Show>
             </PopoverContent>
           </Popover>
@@ -242,7 +199,7 @@ export default function Deploy(props: DeployProps) {
                         <p class="text-muted-foreground mt-1 text-sm">{deployment.createdAt}</p>
                       </div>
 
-                      {deployment.status === 'done' && (
+                      {deployment.status === 'done' && index() != 0 && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -262,6 +219,39 @@ export default function Deploy(props: DeployProps) {
           </For>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+type DeployActionProps = {
+  inputText: string
+  inputPlaceholder: string
+  getter: Accessor<string>
+  setter: Setter<string>
+  loading: Accessor<boolean>
+  onDeploy: () => void
+  onBack: () => void
+  deployText: string
+}
+function DeployAction(props: DeployActionProps) {
+  return (
+    <div class="flex flex-col gap-2">
+      <TextField>
+        <TextFieldLabel>{props.inputText}</TextFieldLabel>
+        <TextFieldInput
+          value={props.getter()}
+          onInput={(e) => props.setter(e.currentTarget.value)}
+          placeholder={props.inputPlaceholder}
+        />
+      </TextField>
+      <div class="mt-2 flex gap-2">
+        <Button disabled={props.loading() || !props.getter()} onClick={props.onDeploy}>
+          {props.deployText}
+        </Button>
+        <Button variant="ghost" onClick={props.onBack}>
+          Back
+        </Button>
+      </div>
     </div>
   )
 }

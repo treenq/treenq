@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
-	"github.com/treenq/treenq/src/domain"
+	tqsdk "github.com/treenq/treenq/pkg/sdk"
 )
 
 //go:embed testdata/appInstall.json
@@ -231,41 +231,65 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 		expectedBody: "Hello, main\n",
 	})
-
-	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
+	assert.Equal(t, createdDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.Equal(t, createdDeployment.Deployment.Space, tqsdk.Space{
+		Service: tqsdk.Service{
+			Name:     "treenq-e2e-sample",
+			HttpPort: 8000,
+			ReleaseOn: tqsdk.ReleaseOn{
+				Branch: "main",
+			},
+			DockerfilePath: "Dockerfile",
+			Replicas:       1,
+		},
 	})
-	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, createdDeployment.Deployment.ID, deployments.Deployments[0].ID)
-	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
-	assert.NotEmpty(t, deployments.Deployments[0].Sha)
-	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
-	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
-	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
+	assert.Len(t, createdDeployment.Deployment.Sha, 36)
+	assert.Equal(t, createdDeployment.Deployment.Branch, "main")
+	assert.NotEmpty(t, createdDeployment.Deployment.CommitMessage, 36)
+	assert.Equal(t, createdDeployment.Deployment.BuildTag, createdDeployment.Deployment.Sha)
+	assert.Equal(t, createdDeployment.Deployment.UserDisplayName, "testing")
+
+	branchDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Branch: "main2",
+		},
+		expectedBody: "Hello, main2\n",
+	})
+	tagDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Tag:    "v1.0.0",
+		},
+		expectedBody: "Hello, tag 1.0.0!\n",
+	})
+	shaDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Sha:    "32bddc1b2e31fa3b92963c21e9110f321927a0d3",
+		},
+		expectedBody: "Hello, 754ca2d77143d30c5c70743b0472dd223ce8212b!\n",
+	})
 
 	rollbackDeploy := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
 		req: client.DeployRequest{
 			RepoID:           reposResponse.Repos[0].TreenqID,
-			FromDeploymentID: deployments.Deployments[0].ID,
+			FromDeploymentID: createdDeployment.Deployment.ID,
 		},
 		expectedBody: "Hello, main\n",
 	})
-
-	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, rollbackDeploy.Deployment.ID, deployments.Deployments[0].ID)
-	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
-	assert.NotEmpty(t, deployments.Deployments[0].Sha)
-	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
-	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	require.NoError(t, err, "deployments list must be given")
+
+	assert.EqualValues(t, deployments.Deployments, []client.AppDeployment{
+		createdDeployment.Deployment,
+		branchDeployment.Deployment,
+		tagDeployment.Deployment,
+		shaDeployment.Deployment,
+		rollbackDeploy.Deployment,
+	})
 }
 
 func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
