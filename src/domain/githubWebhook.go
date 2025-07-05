@@ -314,22 +314,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 	}
 
 	if notEmptyDeployMarks == 0 {
-		space, err := h.db.GetSpace(ctx, repo.TreenqID)
-		if err != nil {
-			if errors.Is(err, ErrNoSpaceFound) {
-				return AppDeployment{}, &vel.Error{
-					Code: "SPACE_NOT_FOUND",
-				}
-			}
-
-			return AppDeployment{}, &vel.Error{
-				Message: "failed to get space",
-			}
-		}
-		branch = space.Service.ReleaseOn.Branch
-		if branch == "" {
-			branch = repo.Branch
-		}
+		branch = repo.Branch
 	}
 
 	// Create initial deployment with "init" status
