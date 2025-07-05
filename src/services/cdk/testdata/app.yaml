@@ -99,7 +99,7 @@ metadata:
   namespace: space-id-1234
 spec:
   rules:
-  - host: qwer.treenq.com
+  - host: id-1234.treenq.com
     http:
       paths:
       - backend:

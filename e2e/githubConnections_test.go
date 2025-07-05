@@ -482,7 +482,7 @@ func testDeploymentValidation(
 	require.NoError(t, err, "failed to deploys app")
 
 	readProgress(t, ctx, deployment, apiClient, userToken)
-	validateDeployedServiceResponse(t, "qwer.localhost", testCase.expectedBody, 200)
+	validateDeployedServiceResponse(t, testCase.req.RepoID+".localhost", testCase.expectedBody, 200)
 	doneDeployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
 		DeploymentID: deployment.Deployment.ID,
 	})

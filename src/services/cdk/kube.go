@@ -223,7 +223,7 @@ func (k *Kube) generateKubeResources(id, nsName string, app tqsdk.Space, image d
 	// 5. Ingress
 	ingressName := "ingress"
 	pathTypePrefix := networkingv1.PathTypePrefix
-	ingressRuleHost := "qwer." + k.host
+	ingressRuleHost := id + "." + k.host
 	ingressTLSHost := k.host
 
 	ingress := &networkingv1.Ingress{
