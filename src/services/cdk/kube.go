@@ -1,10 +1,15 @@
 package cdk
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/domain"
@@ -20,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	kyaml "sigs.k8s.io/yaml"
 )
@@ -327,5 +333,83 @@ func (k *Kube) Apply(ctx context.Context, rawConig, data string) error {
 		}
 	}
 
+	return nil
+}
+
+func (k *Kube) StreamLogs(ctx context.Context, rawConfig, repoID, spaceName string, logChan chan<- domain.ProgressMessage) error {
+	conf, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig))
+	if err != nil {
+		return err
+	}
+
+	clientset, err := kubernetes.NewForConfig(conf)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+
+	fullNsName := ns(spaceName, repoID)
+
+	pods, err := clientset.CoreV1().Pods(fullNsName).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list pods: %w", err)
+	}
+
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no pods found in namespace %s", fullNsName)
+	}
+
+	var wg sync.WaitGroup
+
+	for i := range pods.Items {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			pod := pods.Items[i]
+			req := clientset.CoreV1().Pods(fullNsName).GetLogs(pod.Name, &corev1.PodLogOptions{
+				Follow:     true,
+				TailLines:  int64Ptr(100),
+				Timestamps: true,
+			})
+
+			stream, err := req.Stream(ctx)
+			if err != nil {
+				logChan <- domain.ProgressMessage{
+					Payload: fmt.Sprintf("failed to get log stream: %w", err),
+					Level:   slog.LevelError,
+					Final:   true,
+				}
+				return
+			}
+			defer stream.Close()
+
+			scanner := bufio.NewScanner(stream)
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				select {
+				case logChan <- domain.ProgressMessage{
+					Timestamp: time.Now(),
+					Level:     slog.LevelInfo,
+					Payload:   line,
+					Final:     false,
+				}:
+				case <-ctx.Done():
+					return
+				}
+			}
+
+			if err := scanner.Err(); err != nil && err != io.EOF {
+				logChan <- domain.ProgressMessage{
+					Payload: fmt.Sprintf("error reading logs: %w", err),
+					Level:   slog.LevelError,
+					Final:   true,
+				}
+				return
+			}
+		}()
+	}
+
+	wg.Wait()
 	return nil
 }

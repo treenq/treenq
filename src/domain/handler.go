@@ -129,6 +129,7 @@ type Kube interface {
 	StoreSecret(ctx context.Context, rawConfig, nsName, repoID, key, value string) error
 	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
 	RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error
+	StreamLogs(ctx context.Context, rawConfig, repoID, spaceName string, logChan chan<- ProgressMessage) error
 }
 
 type OauthProvider interface {

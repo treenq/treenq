@@ -5,6 +5,7 @@ export const Routes = {
   notFound: createRoute('404'),
   deploy: createRoute('deploy', param('id')),
   repos: createRoute('repos', param('id')),
+  logs: createRoute('logs', param('id')),
 }
 
 type Param<Name extends string = string> = { param: Name }

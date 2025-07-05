@@ -64,6 +64,9 @@ export default function Deploy(props: DeployProps) {
               <span class="inline-flex items-center gap-1">
                 <div class="bg-muted h-4 w-4 rounded" />
                 SERVICE
+                <A href={Routes.logs.makeHref({ id: props.repoID })} class="text-primary">
+                  (logs)
+                </A>
               </span>
             </div>
             <h3 class="font-bold">{repo()?.fullName}</h3>

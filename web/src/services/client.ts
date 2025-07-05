@@ -254,6 +254,22 @@ class HttpClient {
       }
     })
   }
+
+  listenLogs(repoID: string, callback: (data: GetBuildProgressMessage) => void) {
+    const url = this.buildUrl('getLogs', { repoID })
+
+    const eventSource = new EventSource(url, { withCredentials: true })
+
+    eventSource.addEventListener('message', (event) => {
+      const data: GetBuildProgressMessage = JSON.parse(event.data)
+      callback(data)
+
+      if (data.message.final) {
+        eventSource.close()
+        console.log('FINISH Event Source, listenLogs')
+      }
+    })
+  }
 }
 
 export const httpClient = new HttpClient(import.meta.env.APP_API_HOST)

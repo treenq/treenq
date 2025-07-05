@@ -6,6 +6,7 @@ import Main from '@/components/pages/Main'
 import { createSignal, onMount, Show } from 'solid-js'
 
 import DeployPage from '@/components/pages/DeployPage'
+import LogsPage from '@/components/pages/LogsPage'
 import NotFound from '@/components/pages/NotFound'
 import RedirectPage from '@/components/pages/RedirectPage'
 import RepoPage from '@/components/pages/RepoPage'
@@ -73,6 +74,7 @@ function App(): JSX.Element {
                 <Route path="/" component={requiresAuth(Main)} />
                 <Route path={Routes.repos.path} component={requiresAuth(RepoPage)} />
                 <Route path={Routes.deploy.path} component={requiresAuth(DeployPage)} />
+                <Route path={Routes.logs.path} component={requiresAuth(LogsPage)} />
               </Route>
               <Route
                 path={Routes.auth.path}
