@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
-	"github.com/treenq/treenq/src/domain"
 )
 
 //go:embed testdata/appInstall.json
@@ -231,41 +230,104 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 		expectedBody: "Hello, main\n",
 	})
-
-	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
-		RepoID: reposResponse.Repos[0].TreenqID,
+	assert.Equal(t, createdDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.EqualValues(t, createdDeployment.Deployment.Space, client.Space{
+		Service: client.Service{
+			Name:     "treenq-e2e-sample",
+			HttpPort: 8000,
+			ReleaseOn: client.ReleaseOn{
+				Branch: "main",
+			},
+			DockerfilePath: "Dockerfile",
+			DockerContext:  ".",
+			Replicas:       1,
+			ComputationResource: client.ComputationResource{
+				CpuUnits:   1000,
+				MemoryMibs: 2048,
+				DiskGibs:   20,
+			},
+		},
 	})
-	require.Len(t, deployments.Deployments, 1, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, createdDeployment.Deployment.ID, deployments.Deployments[0].ID)
-	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
-	assert.NotEmpty(t, deployments.Deployments[0].Sha)
-	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
-	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
-	assert.EqualValues(t, domain.DeployStatusDone, deployments.Deployments[0].Status)
+	assert.Len(t, createdDeployment.Deployment.Sha, 40)
+	assert.Equal(t, createdDeployment.Deployment.Branch, "main")
+	assert.NotEmpty(t, createdDeployment.Deployment.CommitMessage)
+	assert.Equal(t, createdDeployment.Deployment.BuildTag, createdDeployment.Deployment.Sha)
+	assert.Equal(t, createdDeployment.Deployment.UserDisplayName, "testing")
+
+	branchDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Branch: "main2",
+		},
+		expectedBody: "Hello, main2\n",
+	})
+	assert.Equal(t, branchDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.Len(t, branchDeployment.Deployment.Sha, 40)
+	assert.Equal(t, branchDeployment.Deployment.Branch, "main2")
+	assert.NotEmpty(t, branchDeployment.Deployment.CommitMessage)
+	assert.Equal(t, branchDeployment.Deployment.BuildTag, branchDeployment.Deployment.Sha)
+	assert.Equal(t, branchDeployment.Deployment.UserDisplayName, "testing")
+
+	tagDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Tag:    "v1.0.0",
+		},
+		expectedBody: "Hello, tag 1.0.0!\n",
+	})
+	assert.Equal(t, tagDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.Len(t, tagDeployment.Deployment.Sha, 40)
+	assert.Equal(t, tagDeployment.Deployment.Branch, "")
+	assert.NotEmpty(t, tagDeployment.Deployment.CommitMessage)
+	assert.Equal(t, tagDeployment.Deployment.BuildTag, "v1.0.0")
+	assert.Equal(t, tagDeployment.Deployment.UserDisplayName, "testing")
+
+	shaDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
+		req: client.DeployRequest{
+			RepoID: reposResponse.Repos[0].TreenqID,
+			Sha:    "32bddc1b2e31fa3b92963c21e9110f321927a0d3",
+		},
+		expectedBody: "Hello, 754ca2d77143d30c5c70743b0472dd223ce8212b!\n",
+	})
+	assert.Equal(t, shaDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.Len(t, shaDeployment.Deployment.Sha, 40)
+	assert.Equal(t, shaDeployment.Deployment.Branch, "")
+	assert.NotEmpty(t, shaDeployment.Deployment.CommitMessage)
+	assert.Equal(t, shaDeployment.Deployment.BuildTag, shaDeployment.Deployment.Sha)
+	assert.Equal(t, shaDeployment.Deployment.UserDisplayName, "testing")
 
 	rollbackDeploy := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
 		req: client.DeployRequest{
 			RepoID:           reposResponse.Repos[0].TreenqID,
-			FromDeploymentID: deployments.Deployments[0].ID,
+			FromDeploymentID: createdDeployment.Deployment.ID,
 		},
 		expectedBody: "Hello, main\n",
 	})
+	assert.Equal(t, rollbackDeploy.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
+	assert.Len(t, rollbackDeploy.Deployment.Sha, 40)
+	assert.Equal(t, rollbackDeploy.Deployment.Branch, "main")
+	assert.NotEmpty(t, rollbackDeploy.Deployment.CommitMessage)
+	assert.Equal(t, rollbackDeploy.Deployment.BuildTag, rollbackDeploy.Deployment.Sha)
+	assert.Equal(t, rollbackDeploy.Deployment.UserDisplayName, "testing")
 
-	deployments, err = apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+	deployments, err := apiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
-	require.Len(t, deployments.Deployments, 2, "1 item expected in history deployment after first successful")
-	require.NoError(t, err, "no error expected on deployment history")
-	assert.Equal(t, reposResponse.Repos[0].TreenqID, deployments.Deployments[0].RepoID)
-	assert.Equal(t, rollbackDeploy.Deployment.ID, deployments.Deployments[0].ID)
-	assert.NotEmpty(t, deployments.Deployments[0].BuildTag)
-	assert.NotEmpty(t, deployments.Deployments[0].Sha)
-	assert.Equal(t, branchName, deployments.Deployments[0].Branch)
-	assert.NotEmpty(t, deployments.Deployments[0].CommitMessage)
-	assert.Equal(t, user.DisplayName, deployments.Deployments[0].UserDisplayName)
+	require.NoError(t, err, "deployments list must be given")
+
+	for _, deployment := range deployments.Deployments {
+		assert.EqualValues(t, deployment.RepoID, reposResponse.Repos[0].TreenqID)
+		assert.EqualValues(t, deployment.Status, "done")
+		assert.NotEmpty(t, deployment.CreatedAt, "createdAt of a deployment must not be empty")
+		assert.NotEmpty(t, deployment.UpdatedAt, "updatedAt of a deployment must not be empty")
+	}
+	assert.Equal(t, deployments.Deployments, []client.AppDeployment{
+		rollbackDeploy.Deployment,
+		shaDeployment.Deployment,
+		tagDeployment.Deployment,
+		branchDeployment.Deployment,
+		createdDeployment.Deployment,
+	})
 }
 
 func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
@@ -377,7 +439,6 @@ func readProgress(t *testing.T, ctx context.Context, createdDeployment client.Ge
 			}
 
 			var progressMessage client.GetBuildProgressResponse
-			t.Log(line)
 			line = strings.TrimPrefix(line, "data: ")
 			err = json.Unmarshal([]byte(line), &progressMessage)
 			require.NoError(t, err)
@@ -422,7 +483,11 @@ func testDeploymentValidation(
 
 	readProgress(t, ctx, deployment, apiClient, userToken)
 	validateDeployedServiceResponse(t, "qwer.localhost", testCase.expectedBody, 200)
-	return deployment
+	doneDeployment, err := apiClient.GetDeployment(ctx, client.GetDeploymentRequest{
+		DeploymentID: deployment.Deployment.ID,
+	})
+	require.NoError(t, err, "deployment must be found")
+	return doneDeployment
 }
 
 func validateDeployedServiceResponse(t *testing.T, expectedHost, expectedBody string, expectedStatus int) {

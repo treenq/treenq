@@ -182,6 +182,11 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 	if req.Action == "created" {
 		_, err := h.db.LinkGithub(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
 		if err != nil {
+			if errors.Is(err, ErrInstallationNotFound) {
+				return GithubWebhookResponse{}, &vel.Error{
+					Code: "INSTALLATION_NOT_FOUND",
+				}
+			}
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to link github",
 				Err:     err,
@@ -309,22 +314,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 	}
 
 	if notEmptyDeployMarks == 0 {
-		space, err := h.db.GetSpace(ctx, repo.TreenqID)
-		if err != nil {
-			if errors.Is(err, ErrNoSpaceFound) {
-				return AppDeployment{}, &vel.Error{
-					Code: "SPACE_NOT_FOUND",
-				}
-			}
-
-			return AppDeployment{}, &vel.Error{
-				Message: "failed to get space",
-			}
-		}
-		branch = space.Service.ReleaseOn.Branch
-		if branch == "" {
-			branch = repo.Branch
-		}
+		branch = repo.Branch
 	}
 
 	// Create initial deployment with "init" status

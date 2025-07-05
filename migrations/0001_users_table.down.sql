@@ -1,2 +1,7 @@
+DROP TABLE IF EXISTS installations;
+DROP TABLE IF EXISTS deployments;
+DROP TABLE IF EXISTS secrets;
+DROP TABLE IF EXISTS spaces;
+DROP TABLE IF EXISTS installedRepos;
 DROP TABLE IF EXISTS users;
 

@@ -45,6 +45,12 @@ func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposRespon
 
 	err = h.db.LinkAllGithubInstallations(ctx, profile.UserInfo, allRepos)
 	if err != nil {
+		if errors.Is(err, ErrInstallationNotFound) {
+			return GetReposResponse{}, &vel.Error{
+				Code: "INSTALLATION_NOT_FOUND",
+			}
+		}
+
 		return GetReposResponse{}, &vel.Error{
 			Message: "failed to sync github installations and repos",
 			Err:     err,
