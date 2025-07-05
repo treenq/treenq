@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS deployments (
     repoId CHAR(20) NOT NULL,
 
     space jsonb NOT NULL,
-    sha char(64) NOT NULL,
+    sha char(40) NOT NULL,
     branch  varchar(100) NOT NULL,
     commitMessage text NOT NULL,
     buildTag varchar(80),

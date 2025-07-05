@@ -123,7 +123,7 @@ func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeplo
 }
 
 func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
+	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt").
 		From("deployments").
 		Where(sq.Eq{"id": deploymentID}).
 		ToSql()
@@ -134,7 +134,7 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 	var dep domain.AppDeployment
 	var spacePayload string
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.Branch, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt,
+		&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.Branch, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt, &dep.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dep, domain.ErrDeploymentNotFound
@@ -152,7 +152,7 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 }
 
 func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt").
+	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt").
 		From("deployments").
 		Where(sq.Eq{"repoId": repoID}).
 		OrderBy("id DESC").
@@ -172,7 +172,7 @@ func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.App
 	for rows.Next() {
 		var dep domain.AppDeployment
 		var spacePayload string
-		if err := rows.Scan(&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.Branch, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt); err != nil {
+		if err := rows.Scan(&dep.ID, &dep.FromDeploymentID, &dep.RepoID, &spacePayload, &dep.Sha, &dep.Branch, &dep.CommitMessage, &dep.BuildTag, &dep.UserDisplayName, &dep.Status, &dep.CreatedAt, &dep.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan GetDeploymentHistory row: %w", err)
 		}
 

@@ -90,3 +90,7 @@ Environment-based configuration using `envconfig` for:
 - JWT token management
 
 the project uses multiple docker compose configurations for different environments (dev, e2e, staging).
+
+## Code style
+
+- no comment is better than obvious comment
