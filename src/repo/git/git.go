@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 
@@ -31,7 +32,7 @@ func countNotEmpty(vals ...string) int {
 	return notEmpty
 }
 
-func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha, tag string) (domain.GitRepo, error) {
+func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha, tag string, progress io.Writer) (domain.GitRepo, error) {
 	if countNotEmpty(branch, sha, tag) == 0 {
 		return domain.GitRepo{}, domain.ErrNoGitCheckoutSpecified
 	}
@@ -57,7 +58,7 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha, tag
 
 	cloneOpts := &git.CloneOptions{
 		URL:      u.String(),
-		Progress: os.Stdout,
+		Progress: progress,
 	}
 
 	// Optimize based on what we're checking out
@@ -94,7 +95,9 @@ func (g *Git) Clone(repo domain.Repository, accessToken string, branch, sha, tag
 			return domain.GitRepo{}, fmt.Errorf("error while getting worktree: %w", err)
 		}
 
-		pullOpts := &git.PullOptions{}
+		pullOpts := &git.PullOptions{
+			Progress: progress,
+		}
 		if branch != "" {
 			// For branch checkout, use shallow clone with single branch
 			pullOpts.Depth = 1

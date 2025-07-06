@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"time"
 
@@ -110,7 +111,7 @@ type GithubClient interface {
 }
 
 type Git interface {
-	Clone(repo Repository, accesstoken, branch, sha, tag string) (GitRepo, error)
+	Clone(repo Repository, accesstoken, branch, sha, tag string, progress io.Writer) (GitRepo, error)
 }
 
 type Extractor interface {

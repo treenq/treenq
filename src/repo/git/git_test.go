@@ -1,6 +1,7 @@
 package git
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,22 +48,22 @@ func TestClone(t *testing.T) {
 	}
 	os.RemoveAll(repo.Location(reposDir))
 
-	_, err = gitComponent.Clone(repo, "", "", "", "")
+	_, err = gitComponent.Clone(repo, "", "", "", "", io.Discard)
 	assert.Equal(t, domain.ErrNoGitCheckoutSpecified, err, "must give an error if no branch or sha passed")
 
-	_, err = gitComponent.Clone(repo, "", "main", "1234", "")
+	_, err = gitComponent.Clone(repo, "", "main", "1234", "", io.Discard)
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND sha passed")
 
-	_, err = gitComponent.Clone(repo, "", "main", "", "v1.0.0")
+	_, err = gitComponent.Clone(repo, "", "main", "", "v1.0.0", io.Discard)
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if branch AND tag passed")
 
-	_, err = gitComponent.Clone(repo, "", "", "1234", "v1.0.0")
+	_, err = gitComponent.Clone(repo, "", "", "1234", "v1.0.0", io.Discard)
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if sha AND tag passed")
 
-	_, err = gitComponent.Clone(repo, "", "main", "1234", "v1.0.0")
+	_, err = gitComponent.Clone(repo, "", "main", "1234", "v1.0.0", io.Discard)
 	assert.Equal(t, domain.ErrGitBranchAndShaMutuallyExclusive, err, "must give an error if all three passed")
 
-	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
+	firstGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(firstGitRepo.Dir)
 	assert.Equal(t, len(firstGitRepo.Sha), 40)
@@ -73,7 +74,7 @@ func TestClone(t *testing.T) {
 	require.NoError(t, err)
 
 	addCommit(t, worktree, mockRepoPath)
-	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
+	sameGitRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(sameGitRepo.Dir) // Clean up
 	latestSHA := sameGitRepo.Sha
@@ -84,7 +85,7 @@ func TestClone(t *testing.T) {
 	assert.Equal(t, len(sameGitRepo.Sha), 40)
 
 	// --- Checkout to the initial commit and verify ---
-	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA, "")
+	checkoutRepo, err := gitComponent.Clone(repo, "dummy-access-token", "", initialSHA, "", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, initialSHA, checkoutRepo.Sha)
@@ -101,7 +102,7 @@ func TestClone(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	// --- Checkout to a master branch
-	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
+	checkoutRepo, err = gitComponent.Clone(repo, "dummy-access-token", "master", "", "", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(checkoutRepo.Dir)
 	assert.Equal(t, latestSHA, checkoutRepo.Sha)
@@ -126,13 +127,13 @@ func TestClone(t *testing.T) {
 
 	// Add another commit after the tag to make sure tag checkout works correctly
 	addThirdCommit(t, worktree, mockRepoPath)
-	postTagRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "")
+	postTagRepo, err := gitComponent.Clone(repo, "dummy-access-token", "master", "", "", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(postTagRepo.Dir)
 	postTagSHA := postTagRepo.Sha
 	assert.NotEqual(t, tagSHA, postTagSHA, "post-tag commit should have different SHA")
 
-	tagCheckoutRepo, err := gitComponent.Clone(TestingRepository{ID: "tag-test", Path: mockRepoPath}, "dummy-access-token", "", "", "v1.0.0")
+	tagCheckoutRepo, err := gitComponent.Clone(TestingRepository{ID: "tag-test", Path: mockRepoPath}, "dummy-access-token", "", "", "v1.0.0", io.Discard)
 	require.NoError(t, err)
 	defer os.RemoveAll(tagCheckoutRepo.Dir)
 	assert.Equal(t, tagSHA, tagCheckoutRepo.Sha)
