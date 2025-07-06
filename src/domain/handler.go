@@ -98,6 +98,10 @@ type Database interface {
 	GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error)
 	RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error)
 	RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error
+
+	// Installation cleanup
+	// ////////////////////////
+	RemoveInstallation(ctx context.Context, installationID int) error
 }
 
 type GithubClient interface {
@@ -131,6 +135,7 @@ type Kube interface {
 	GetSecret(ctx context.Context, rawConfig, nsName, repoID, key string) (string, error)
 	RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error
 	StreamLogs(ctx context.Context, rawConfig, repoID, spaceName string, logChan chan<- ProgressMessage) error
+	RemoveNamespace(ctx context.Context, rawConfig, id, nsName string) error
 }
 
 type OauthProvider interface {

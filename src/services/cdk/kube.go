@@ -375,7 +375,7 @@ func (k *Kube) StreamLogs(ctx context.Context, rawConfig, repoID, spaceName stri
 			stream, err := req.Stream(ctx)
 			if err != nil {
 				logChan <- domain.ProgressMessage{
-					Payload: fmt.Sprintf("failed to get log stream: %w", err),
+					Payload: fmt.Sprintf("failed to get log stream: %v", err),
 					Level:   slog.LevelError,
 					Final:   true,
 				}
@@ -401,7 +401,7 @@ func (k *Kube) StreamLogs(ctx context.Context, rawConfig, repoID, spaceName stri
 
 			if err := scanner.Err(); err != nil && err != io.EOF {
 				logChan <- domain.ProgressMessage{
-					Payload: fmt.Sprintf("error reading logs: %w", err),
+					Payload: fmt.Sprintf("error reading logs: %v", err),
 					Level:   slog.LevelError,
 					Final:   true,
 				}
@@ -411,5 +411,28 @@ func (k *Kube) StreamLogs(ctx context.Context, rawConfig, repoID, spaceName stri
 	}
 
 	wg.Wait()
+	return nil
+}
+
+func (k *Kube) RemoveNamespace(ctx context.Context, kubeConfig, id, spaceName string) error {
+	namespaceName := ns(spaceName, id)
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeConfig))
+	if err != nil {
+		return fmt.Errorf("failed to create kube config from raw config: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	err = clientset.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete namespace %s: %w", namespaceName, err)
+	}
+
 	return nil
 }

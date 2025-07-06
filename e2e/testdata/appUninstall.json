@@ -65,36 +65,15 @@
   },
   "repositories": [
     {
-      "id": 805584367,
-      "node_id": "R_kgDOMAQ97w",
-      "name": "treenq-sdk-go",
-      "full_name": "treenq/useless-sdk-go",
-      "private": false
-    },
-    {
-      "id": 805584540,
-      "node_id": "R_kgDOMAQ-nA",
-      "name": "treenq-cli",
-      "full_name": "treenq/useless-cli",
-      "private": false
-    },
-    {
       "id": 805585115,
       "node_id": "R_kgDOMARA2w",
       "name": "treenq",
       "full_name": "treenq/useless",
       "private": false
-    },
-    {
-      "id": 811584063,
-      "node_id": "R_kgDOMF_KPw",
-      "name": "useless",
-      "full_name": "treenq/useless",
-      "private": true
     }
   ],
   "sender": {
-    "login": "dennypenta",
+    "login": "testing",
     "id": 18236918,
     "node_id": "MDQ6VXNlcjE4MjM2OTE4",
     "avatar_url": "https://avatars.githubusercontent.com/u/18236918?v=4",

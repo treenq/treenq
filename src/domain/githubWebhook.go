@@ -25,6 +25,7 @@ var (
 	ErrNoGitCheckoutSpecified           = errors.New("git branch or sha must be specified")
 	ErrGitBranchAndShaMutuallyExclusive = errors.New("git branch and sha and tag are mutually exclusive")
 	ErrSecretNotFound                   = errors.New("secret not found")
+	ErrSpaceNotFound                    = errors.New("space not found")
 )
 
 type GithubWebhookRequest struct {
@@ -210,6 +211,16 @@ func (h *Handler) GithubWebhook(ctx context.Context, req GithubWebhookRequest) (
 		if err != nil {
 			return GithubWebhookResponse{}, &vel.Error{
 				Message: "failed to remove github repos",
+				Err:     err,
+			}
+		}
+		return GithubWebhookResponse{}, nil
+	}
+	if req.Action == "deleted" {
+		err := h.removeInstallation(ctx, req.Installation.ID, req.Sender.Login, req.Repositories)
+		if err != nil {
+			return GithubWebhookResponse{}, &vel.Error{
+				Message: "failed to remove installation",
 				Err:     err,
 			}
 		}
@@ -768,4 +779,38 @@ func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppD
 		Final:   true,
 	})
 	return deployment, nil
+}
+
+func (h *Handler) removeInstallation(ctx context.Context, installationID int, userDisplayName string, repos []InstalledRepository) *vel.Error {
+	// Remove Kubernetes namespaces first
+	for _, repo := range repos {
+		treenqRepo, err := h.db.GetRepoByGithub(ctx, repo.ID)
+		if err != nil {
+			if errors.Is(err, ErrRepoNotFound) {
+				continue
+			}
+			return &vel.Error{
+				Message: fmt.Sprintf("failed to get repo %d", repo.ID),
+				Err:     err,
+			}
+		}
+
+		if err := h.kube.RemoveNamespace(ctx, h.kubeConfig, treenqRepo.TreenqID, userDisplayName); err != nil {
+			return &vel.Error{
+				Message: "failed to remove namespace",
+				Err:     err,
+			}
+		}
+	}
+
+	// Remove all database data (this handles repos, deployments, secrets, spaces, and installation)
+	err := h.db.RemoveInstallation(ctx, installationID)
+	if err != nil {
+		return &vel.Error{
+			Message: "failed to remove installation from database",
+			Err:     err,
+		}
+	}
+
+	return nil
 }

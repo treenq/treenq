@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/rs/xid"
@@ -490,6 +491,17 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Git
 		return nil, hasInstallation, fmt.Errorf("failed to iterate GetGithubRepos rows: %w", err)
 	}
 
+	// put connected repositories on top
+	slices.SortFunc(repos, func(a, b domain.GithubRepository) int {
+		if a.Branch == b.Branch {
+			return 0
+		}
+		if a.Branch != "" {
+			return -1
+		}
+		return 1
+	})
+
 	return repos, hasInstallation, nil
 }
 
@@ -756,6 +768,91 @@ func (s *Store) RemoveSecret(ctx context.Context, repoID, key, userDisplayName s
 
 	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to exec RemoveSecret: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) RemoveInstallation(ctx context.Context, installationID int) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start remove installation transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// First get all repos for this installation
+	repoQuery, args, err := s.sq.Select("id").
+		From("installedRepos").
+		Where(sq.Eq{"installationId": installationID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build repo query: %w", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, repoQuery, args...)
+	if err != nil {
+		return fmt.Errorf("failed to query repos: %w", err)
+	}
+	defer rows.Close()
+
+	var repoIDs []string
+	for rows.Next() {
+		var repoID string
+		if err := rows.Scan(&repoID); err != nil {
+			return fmt.Errorf("failed to scan repo ID: %w", err)
+		}
+		repoIDs = append(repoIDs, repoID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed to iterate repos: %w", err)
+	}
+
+	// Delete all related data for each repo
+	for _, repoID := range repoIDs {
+		// Delete secrets
+		if _, err := s.sq.Delete("secrets").
+			Where(sq.Eq{"repoId": repoID}).
+			RunWith(tx).
+			ExecContext(ctx); err != nil {
+			return fmt.Errorf("failed to delete secrets for repo %s: %w", repoID, err)
+		}
+
+		// Delete spaces
+		if _, err := s.sq.Delete("spaces").
+			Where(sq.Eq{"repoId": repoID}).
+			RunWith(tx).
+			ExecContext(ctx); err != nil {
+			return fmt.Errorf("failed to delete spaces for repo %s: %w", repoID, err)
+		}
+
+		// Delete deployments
+		if _, err := s.sq.Delete("deployments").
+			Where(sq.Eq{"repoId": repoID}).
+			RunWith(tx).
+			ExecContext(ctx); err != nil {
+			return fmt.Errorf("failed to delete deployments for repo %s: %w", repoID, err)
+		}
+	}
+
+	// Delete all repos for this installation
+	if _, err := s.sq.Delete("installedRepos").
+		Where(sq.Eq{"installationId": installationID}).
+		RunWith(tx).
+		ExecContext(ctx); err != nil {
+		return fmt.Errorf("failed to delete repos: %w", err)
+	}
+
+	// Finally delete the installation
+	if _, err := s.sq.Delete("installations").
+		Where(sq.Eq{"githubId": installationID}).
+		RunWith(tx).
+		ExecContext(ctx); err != nil {
+		return fmt.Errorf("failed to delete installation: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit RemoveInstallation: %w", err)
 	}
 
 	return nil

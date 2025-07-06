@@ -30,6 +30,9 @@ var repoRemoveRequestBody []byte
 //go:embed testdata/branchMergeMain.json
 var repoBranchMergeMainRequestBody []byte
 
+//go:embed testdata/appUninstall.json
+var appUninstallRequestBody []byte
+
 func TestGithubAppInstallation(t *testing.T) {
 	clearDatabase()
 
@@ -219,9 +222,9 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	secretsTestDone := make(chan struct{}, 1)
 	t.Run("test secrets api", func(t *testing.T) {
-		t.Parallel()
-		testSecretsApi(t, ctx, apiClient, anotherApiClient, connectRepoRes)
+		go testSecretsApi(t, ctx, apiClient, anotherApiClient, connectRepoRes, secretsTestDone)
 	})
 
 	createdDeployment := testDeploymentValidation(t, apiClient, userToken, serviceValidateRequest{
@@ -328,9 +331,35 @@ func TestGithubAppInstallation(t *testing.T) {
 		branchDeployment.Deployment,
 		createdDeployment.Deployment,
 	})
+
+	// wait for secrets test to complete before uninstalling
+	<-secretsTestDone
+
+	// save repo ID for later validation
+	repoIDForValidation := reposResponse.Repos[0].TreenqID
+
+	// test app uninstall
+	var uninstallAppReq client.GithubWebhookRequest
+	err = json.Unmarshal(appUninstallRequestBody, &uninstallAppReq)
+	require.NoError(t, err, "uninstall app request must be unmarshalled")
+
+	err = githubHookClient.GithubWebhook(ctx, uninstallAppReq)
+	require.NoError(t, err, "uninstall github webhook must be processed")
+
+	// validate the app has been uninstalled and repos are gone
+	reposResponse, err = apiClient.GetRepos(ctx)
+	require.NoError(t, err, "repos must be accessible after app uninstall")
+	require.False(t, reposResponse.Installation, "installation should be removed")
+	require.Empty(t, reposResponse.Repos, "all repos should be removed")
+
+	// validate deployed service is no longer accessible (404)
+	validateDeployedServiceResponse(t, repoIDForValidation+".localhost", "404 page not found\n", 404)
 }
 
-func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse) {
+func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClient *client.Client, connectRepoRes client.ConnectBranchResponse, done chan struct{}) {
+	defer func() {
+		done <- struct{}{}
+	}()
 	secrets, err := apiClient.GetSecrets(ctx, client.GetSecretsRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 	})
