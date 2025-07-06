@@ -12,6 +12,7 @@ import {
   ComboboxItemLabel,
   ComboboxTrigger,
 } from '@/components/ui/Combobox'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { Routes } from '@/routes'
 import { reposStore } from '@/store/repoStore'
 import { For, Show, createEffect, createSignal, onMount, type JSX } from 'solid-js'
@@ -156,9 +157,32 @@ export function ConnectRepos(): JSX.Element {
     <section class="flex w-full flex-col items-center justify-center py-8">
       <div class="w-full max-w-2xl space-y-6 p-6">
         <h2 class="mb-2 text-2xl font-bold">Connected Repositories</h2>
-        <For each={reposStore.repos}>
-          {(repo) => <RepoItem id={repo.treenqID} fullName={repo.fullName} branch={repo.branch} />}
-        </For>
+        <Show
+          when={!reposStore.isSyncing}
+          fallback={
+            <div class="space-y-6">
+              <For each={Array(3).fill(0)}>
+                {() => (
+                  <Card class="mx-auto w-full max-w-2xl">
+                    <CardHeader class="flex-row items-center justify-between gap-4 p-6 pb-2">
+                      <div class="min-w-0 flex-1 space-y-2">
+                        <Skeleton class="h-6 w-3/4" />
+                        <Skeleton class="h-4 w-1/2" />
+                      </div>
+                      <Skeleton class="h-10 w-28" />
+                    </CardHeader>
+                  </Card>
+                )}
+              </For>
+            </div>
+          }
+        >
+          <For each={reposStore.repos}>
+            {(repo) => (
+              <RepoItem id={repo.treenqID} fullName={repo.fullName} branch={repo.branch} />
+            )}
+          </For>
+        </Show>
       </div>
     </section>
   )

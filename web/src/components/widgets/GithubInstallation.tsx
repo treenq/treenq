@@ -87,8 +87,8 @@ function SyncGithubAppAction() {
 
   return (
     <Tooltip>
-      <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp}>
-        Sync Github Repos
+      <TooltipTrigger as={Button} variant="outline" onClick={syncGithubApp} disabled={reposStore.isSyncing}>
+        {reposStore.isSyncing ? 'Syncing...' : 'Sync Github Repos'}
       </TooltipTrigger>
       <TooltipContent>
         <p>App installation webhook may fail, you can sync it manually</p>

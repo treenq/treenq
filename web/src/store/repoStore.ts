@@ -5,6 +5,7 @@ import { createStore } from 'solid-js/store'
 type ReposState = {
   installation: boolean
   repos: Repo[]
+  isSyncing: boolean
 }
 
 export type Repo = {
@@ -13,7 +14,7 @@ export type Repo = {
   branch: string
 }
 
-const newDefaultRepoState = (): ReposState => ({ installation: false, repos: [] })
+const newDefaultRepoState = (): ReposState => ({ installation: false, repos: [], isSyncing: false })
 
 function createReposStore() {
   const [store, setStore] = createStore(newDefaultRepoState())
@@ -42,18 +43,23 @@ function createReposStore() {
       return res.data.repos
     },
     syncGithubApp: async () => {
-      const res = await httpClient.syncGithubApp()
-      if ('error' in res) return
+      setStore('isSyncing', true)
+      try {
+        const res = await httpClient.syncGithubApp()
+        if ('error' in res) return
 
-      setStore(
-        'repos',
-        (res.data.repos || []).map((it) => ({
-          treenqID: it.treenqID,
-          fullName: it.full_name,
-          branch: it.branch,
-        })),
-      )
-      setStore('installation', res.data.installation)
+        setStore(
+          'repos',
+          (res.data.repos || []).map((it) => ({
+            treenqID: it.treenqID,
+            fullName: it.full_name,
+            branch: it.branch,
+          })),
+        )
+        setStore('installation', res.data.installation)
+      } finally {
+        setStore('isSyncing', false)
+      }
     },
     getBranches: async (repoName: string) => {
       const res = await httpClient.getBranches({ repoName: repoName })
