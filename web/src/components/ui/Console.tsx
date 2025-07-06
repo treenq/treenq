@@ -69,12 +69,12 @@ export default function Console(props: PropsConsole) {
         onWheel={toggleShowFull}
       >
         {props.logs.length === 0 ? (
-          <div class="flex flex-col items-center justify-center h-full text-center">
-            <div class="text-foreground text-lg font-medium mb-2">
+          <div class="flex h-full flex-col items-center justify-center text-center">
+            <div class="text-foreground mb-2 text-lg font-medium">
               {props.emptyStateMessage || 'No logs to show'}
             </div>
             {props.emptyStateDescription && (
-              <div class="text-muted-foreground text-sm max-w-md">
+              <div class="text-muted-foreground max-w-md text-sm">
                 {props.emptyStateDescription}
               </div>
             )}
