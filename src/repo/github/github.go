@@ -326,7 +326,7 @@ func (c *GithubClient) GetRepoSpace(ctx context.Context, installationID int, rep
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return tqsdk.Space{}, fmt.Errorf("file not found in repository %s", repoFullName)
+		return tqsdk.Space{}, domain.ErrSpaceNotFound
 	}
 
 	if resp.StatusCode != http.StatusOK {
