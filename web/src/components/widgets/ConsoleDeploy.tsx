@@ -24,6 +24,7 @@ type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
+  const [showEmptyState, setShowEmptyState] = createSignal(false)
   const userName = userStore.user?.displayName
   const params = Routes.deploy.params()
 
@@ -34,6 +35,10 @@ export default function ConsoleDeploy() {
   })
 
   httpClient.listenProgress(params.id, (data: GetBuildProgressMessage) => {
+    if (data.message.errorCode == 'NO_LOGS') {
+      setShowEmptyState(true)
+      return
+    }
     setLogs((listMessage) => {
       return [...listMessage, data.message]
     })
@@ -70,7 +75,14 @@ export default function ConsoleDeploy() {
         <CardDescription class="mt-0">{deployStore.deployment.commitMessage}</CardDescription>
       </div>
 
-      <Console classNames="mb-3" logs={logs()} />
+      <Console
+        classNames="mb-3"
+        logs={logs()}
+        emptyStateMessage={showEmptyState() ? 'No logs to show' : undefined}
+        emptyStateDescription={
+          showEmptyState() ? 'The time range is outside your log retention period' : undefined
+        }
+      />
     </Card>
   )
 }

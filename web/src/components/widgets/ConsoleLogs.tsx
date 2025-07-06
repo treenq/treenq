@@ -1,7 +1,7 @@
 import { Card, CardTitle } from '@/components/ui/Card'
 import Console from '@/components/ui/Console'
 import {
-  BuildProgressMessage,
+  type BuildProgressMessage,
   type GetBuildProgressMessage,
   httpClient,
 } from '@/services/client'

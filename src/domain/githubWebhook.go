@@ -422,6 +422,7 @@ type ProgressMessage struct {
 	Final      bool          `json:"final"`
 	Timestamp  time.Time     `json:"timestamp"`
 	Deployment AppDeployment `json:"deployment,omitzero"`
+	ErrorCode  string        `json:"errorCode,omitempty"`
 }
 
 type Subscriber struct {
@@ -438,7 +439,14 @@ func (b *ProgressBuf) Get(ctx context.Context, deploymentID string) <-chan Progr
 	go func() {
 		defer b.mx.Unlock()
 
-		buf := b.Bufs[deploymentID]
+		buf, ok := b.Bufs[deploymentID]
+		if !ok {
+			out <- ProgressMessage{
+				ErrorCode: "NO_LOGS",
+			}
+			close(out)
+			return
+		}
 		for _, m := range buf.Content {
 			select {
 			case out <- m:

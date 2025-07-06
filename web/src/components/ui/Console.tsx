@@ -22,6 +22,8 @@ const messageVariants = cva('mx-1', {
 type PropsConsole = {
   logs: BuildProgressMessage[]
   classNames: string
+  emptyStateMessage?: string
+  emptyStateDescription?: string
 }
 
 export default function Console(props: PropsConsole) {
@@ -66,16 +68,29 @@ export default function Console(props: PropsConsole) {
         )}
         onWheel={toggleShowFull}
       >
-        <For each={isExpanded() ? props.logs.slice(-MAX_LINES) : props.logs}>
-          {(log) => (
-            <li class="mb-1 text-sm">
-              <span class="text-gray-400">{`[${new Date(log.timestamp).toISOString()}]`}</span>
+        {props.logs.length === 0 ? (
+          <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-foreground text-lg font-medium mb-2">
+              {props.emptyStateMessage || 'No logs to show'}
+            </div>
+            {props.emptyStateDescription && (
+              <div class="text-muted-foreground text-sm max-w-md">
+                {props.emptyStateDescription}
+              </div>
+            )}
+          </div>
+        ) : (
+          <For each={isExpanded() ? props.logs.slice(-MAX_LINES) : props.logs}>
+            {(log) => (
+              <li class="mb-1 text-sm">
+                <span class="text-gray-400">{`[${new Date(log.timestamp).toISOString()}]`}</span>
 
-              <span class={cn(messageVariants({ variant: log.level }))}>{`[${log.level}]`}</span>
-              {log.payload}
-            </li>
-          )}
-        </For>
+                <span class={cn(messageVariants({ variant: log.level }))}>{`[${log.level}]`}</span>
+                {log.payload}
+              </li>
+            )}
+          </For>
+        )}
       </ul>
       <div class="flex justify-between">
         <div class="text-muted-foreground text-sm">

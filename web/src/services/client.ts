@@ -119,6 +119,7 @@ export type BuildProgressMessage = {
   final: boolean
   timestamp: string
   deployment: Deployment
+  errorCode: string
 }
 
 class HttpClient {
