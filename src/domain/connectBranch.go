@@ -85,5 +85,10 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 			Message: "failed to connect repo",
 		}
 	}
+
+	// _, deployErr := h.deployRepo(ctx, profile.UserInfo.DisplayName, repo, "", "", "", "")
+	// if deployErr != nil {
+	// 	return ConnectBranchResponse{}, deployErr
+	// }
 	return ConnectBranchResponse{Repo: repo}, nil
 }

@@ -25,9 +25,7 @@ func NewJwtIssuer(issuerId string, secretKey []byte, publicKey []byte, ttl time.
 		issuer: issuerId,
 		secret: secretKey,
 		public: publicKey,
-		// secret: _privateKey,
-		// public: _publicKey,
-		ttl: ttl,
+		ttl:    ttl,
 	}
 }
 
