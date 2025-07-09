@@ -1,4 +1,4 @@
-package vel
+package treenq
 
 import (
 	"bytes"

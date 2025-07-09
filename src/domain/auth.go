@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/xid"
+	"github.com/treenq/treenq/pkg/auth"
 	"github.com/treenq/treenq/pkg/vel"
-	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 var (

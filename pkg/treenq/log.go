@@ -1,4 +1,4 @@
-package vel
+package treenq
 
 import (
 	"context"
@@ -8,7 +8,15 @@ import (
 	"os"
 	"runtime/debug"
 	"time"
+
+	"github.com/treenq/treenq/pkg/vel"
 )
+
+func init() {
+	vel.GlobalOpts.ProcessErr = func(r *http.Request, e *vel.Error) {
+		*r = *r.WithContext(LogAttrsToContext(r.Context(), "err", e.Err, "code", e.Code, "errMsg", e.Message))
+	}
+}
 
 type responseWriter struct {
 	http.ResponseWriter

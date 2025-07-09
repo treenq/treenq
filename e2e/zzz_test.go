@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/treenq/treenq/client"
-	"github.com/treenq/treenq/pkg/vel/auth"
+	"github.com/treenq/treenq/pkg/auth"
 	"github.com/treenq/treenq/src/resources"
 )
 

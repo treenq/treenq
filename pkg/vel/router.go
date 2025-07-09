@@ -9,9 +9,26 @@ import (
 	"unsafe"
 
 	"github.com/gorilla/schema"
+	"github.com/treenq/treenq/pkg/vel/openapi"
 )
 
 type Handler[I, O any] func(ctx context.Context, i I) (O, *Error)
+
+type Opts struct {
+	ProcessErr       func(r *http.Request, e *Error)
+	MapCodeToStatus  func(code string) int
+	SkipOptionMethod bool
+}
+
+var GlobalOpts = Opts{
+	ProcessErr: nil,
+	MapCodeToStatus: func(code string) int {
+		if code == "" {
+			return http.StatusInternalServerError
+		}
+		return http.StatusBadRequest
+	},
+}
 
 func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 	var iType I
@@ -56,11 +73,10 @@ func NewHandler[I, O any](call Handler[I, O]) http.HandlerFunc {
 
 		res, callErr := call(r.Context(), i)
 		if callErr != nil {
-			*r = *r.WithContext(LogAttrsToContext(r.Context(), "err", callErr.Err, "code", callErr.Code, "errMsg", callErr.Message))
-			status := http.StatusBadRequest
-			if callErr.Code == "" {
-				status = http.StatusInternalServerError
+			if GlobalOpts.ProcessErr != nil {
+				GlobalOpts.ProcessErr(r, callErr)
 			}
+			status := GlobalOpts.MapCodeToStatus(callErr.Code)
 			w.WriteHeader(status)
 			err := json.NewEncoder(w).Encode(callErr)
 			if err != nil {
@@ -110,12 +126,17 @@ type HandlerMeta struct {
 	Output      any
 	OperationID string
 	Method      string
+	Spec        openapi.Spec
+}
+
+func (m *HandlerMeta) SetSpec(spec openapi.Spec) {
+	m.Spec = spec
 }
 
 type Error struct {
 	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Meta    map[string]string `json:"meta"`
+	Message string            `json:"message,omitempty"`
+	Meta    map[string]string `json:"meta,omitempty,omitzero"`
 	Err     error             `json:"-"`
 }
 
@@ -150,12 +171,12 @@ func NoopMiddleware(h http.Handler) http.Handler {
 	return h
 }
 
-func RegisterPost[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
+func RegisterPost[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) *HandlerMeta {
 	var i I
 	var o O
 
 	var h http.Handler = NewHandler(handler)
-	RegisterHandler(r, h, HandlerMeta{
+	return RegisterHandler(r, h, HandlerMeta{
 		Input:       i,
 		Output:      o,
 		OperationID: operationID,
@@ -163,12 +184,12 @@ func RegisterPost[I, O any](r *Router, operationID string, handler Handler[I, O]
 	}, middlewares...)
 }
 
-func RegisterGet[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) {
+func RegisterGet[I, O any](r *Router, operationID string, handler Handler[I, O], middlewares ...Middleware) *HandlerMeta {
 	var i I
 	var o O
 
 	var h http.Handler = NewHandler(handler)
-	RegisterHandler(r, h, HandlerMeta{
+	return RegisterHandler(r, h, HandlerMeta{
 		Input:       i,
 		Output:      o,
 		OperationID: operationID,
@@ -176,12 +197,12 @@ func RegisterGet[I, O any](r *Router, operationID string, handler Handler[I, O],
 	}, middlewares...)
 }
 
-func RegisterHandlerFunc(r *Router, meta HandlerMeta, h http.HandlerFunc, middlewares ...Middleware) {
+func RegisterHandlerFunc(r *Router, meta HandlerMeta, h http.HandlerFunc, middlewares ...Middleware) *HandlerMeta {
 	var handler http.Handler = h
-	RegisterHandler(r, handler, meta, middlewares...)
+	return RegisterHandler(r, handler, meta, middlewares...)
 }
 
-func RegisterHandler(r *Router, handler http.Handler, meta HandlerMeta, middlewares ...Middleware) {
+func RegisterHandler(r *Router, handler http.Handler, meta HandlerMeta, middlewares ...Middleware) *HandlerMeta {
 	for i := range middlewares {
 		handler = middlewares[i](handler)
 	}
@@ -192,6 +213,10 @@ func RegisterHandler(r *Router, handler http.Handler, meta HandlerMeta, middlewa
 	r.handlersMeta = append(r.handlersMeta, meta)
 	pattern := meta.Method + " /" + meta.OperationID
 	r.mux.Handle(pattern, handler)
-	pattern = http.MethodOptions + " /" + meta.OperationID
-	r.mux.Handle(pattern, handler)
+	if !GlobalOpts.SkipOptionMethod {
+		pattern = http.MethodOptions + " /" + meta.OperationID
+		r.mux.Handle(pattern, handler)
+	}
+
+	return &r.handlersMeta[len(r.handlersMeta)-1]
 }

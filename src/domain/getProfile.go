@@ -3,8 +3,8 @@ package domain
 import (
 	"context"
 
+	"github.com/treenq/treenq/pkg/auth"
 	"github.com/treenq/treenq/pkg/vel"
-	"github.com/treenq/treenq/pkg/vel/auth"
 )
 
 type GetProfileResponse struct {

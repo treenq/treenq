@@ -2,6 +2,7 @@ package resources
 
 import (
 	"github.com/treenq/treenq/pkg/vel"
+	"github.com/treenq/treenq/pkg/vel/openapi"
 	"github.com/treenq/treenq/src/domain"
 )
 
@@ -24,7 +25,9 @@ func NewRouter(handlers *domain.Handler, auth, githubAuth vel.Middleware, middle
 	vel.RegisterPost(router, "githubWebhook", handlers.GithubWebhook, githubAuth)
 
 	// treenq api
-	vel.RegisterPost(router, "logout", handlers.Logout, auth)
+	vel.RegisterPost(router, "logout", handlers.Logout, auth).SetSpec(openapi.Spec{
+		Description: "the api cleans cookies and logs out a user",
+	})
 	vel.RegisterPost(router, "info", handlers.Info, auth)
 	vel.RegisterPost(router, "getProfile", handlers.GetProfile, auth)
 	vel.RegisterPost(router, "getRepos", handlers.GetRepos, auth)

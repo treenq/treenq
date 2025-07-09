@@ -21,7 +21,6 @@ func main() {
 	}
 
 	wd, err := os.Getwd()
-	wd = "/Users/denis/projects/treenq"
 	if err != nil {
 		log.Fatalln("failed to getwd", err)
 	}

@@ -583,6 +583,7 @@ type ProgressMessage struct {
 	Final      bool          `json:"final"`
 	Timestamp  time.Time     `json:"timestamp"`
 	Deployment AppDeployment `json:"deployment,omitzero"`
+	ErrorCode  string        `json:"errorCode,omitempty"`
 }
 
 func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressRequest) (GetBuildProgressResponse, error) {
@@ -612,6 +613,46 @@ func (c *Client) GetBuildProgress(ctx context.Context, req GetBuildProgressReque
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return res, fmt.Errorf("failed to decode getBuildProgress response: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetLogsRequest struct {
+	RepoID string
+}
+
+type GetLogsResponse struct {
+	Message ProgressMessage `json:"message"`
+}
+
+func (c *Client) GetLogs(ctx context.Context, req GetLogsRequest) (GetLogsResponse, error) {
+	var res GetLogsResponse
+
+	q := make(url.Values)
+	q.Set("repoID", req.RepoID)
+
+	r, err := http.NewRequest("GET", c.baseUrl+"/getLogs?"+q.Encode(), nil)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getLogs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getLogs response: %w", err)
 	}
 
 	return res, nil

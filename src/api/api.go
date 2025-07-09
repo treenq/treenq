@@ -6,9 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/treenq/treenq/pkg/auth"
 	"github.com/treenq/treenq/pkg/crypto"
+	"github.com/treenq/treenq/pkg/treenq"
 	"github.com/treenq/treenq/pkg/vel"
-	"github.com/treenq/treenq/pkg/vel/auth"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"
@@ -26,7 +27,7 @@ func New(conf Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := vel.NewLogger(os.Stdout, slog.LevelDebug)
+	l := treenq.NewLogger(os.Stdout, slog.LevelDebug)
 
 	db, err := resources.OpenDB(conf.DbDsn, conf.MigrationsDir)
 	if err != nil {
@@ -80,5 +81,5 @@ func New(conf Config) (http.Handler, error) {
 		l,
 		conf.IsProd,
 	)
-	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, vel.NewLoggingMiddleware(l), vel.NewCorsMiddleware(conf.CorsAllowOrigin)).Mux(), nil
+	return resources.NewRouter(handlers, authMiddleware, githubAuthMiddleware, treenq.NewLoggingMiddleware(l), treenq.NewCorsMiddleware(conf.CorsAllowOrigin)).Mux(), nil
 }
