@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Client struct {
@@ -246,6 +247,51 @@ func (c *Client) TestGet(ctx context.Context, req GetQuery) (GetResp, error) {
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return res, fmt.Errorf("failed to decode testGet response: %w", err)
+	}
+
+	return res, nil
+}
+
+type TimeTestRequest struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Name      string    `json:"name"`
+}
+
+type TimeTestResponse struct {
+	ProcessedAt time.Time `json:"processedAt"`
+	ID          string    `json:"id"`
+}
+
+func (c *Client) TestTime(ctx context.Context, req TimeTestRequest) (TimeTestResponse, error) {
+	var res TimeTestResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/testTime", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call testTime: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode testTime response: %w", err)
 	}
 
 	return res, nil

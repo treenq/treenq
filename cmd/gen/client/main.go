@@ -37,7 +37,7 @@ func main() {
 	}
 	log.Println("filepath:", filePath)
 	defer f.Close()
-	err = gener.Generate(f)
+	err = gener.Generate(f, "go:default", "goimports")
 	if err != nil {
 		log.Fatalln(err)
 	}
