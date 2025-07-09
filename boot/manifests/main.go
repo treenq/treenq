@@ -15,6 +15,12 @@ func main() {
 	host := os.Args[1]
 	orgName := os.Args[2]
 
+	if _, err := url.Parse(host); err != nil {
+		fmt.Println("host must be a valid URL, e.g. http://localhost:8000")
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
 	var baseURL string
 	if orgName == "" {
 		baseURL = "https://github.com/settings/apps/new"
@@ -53,7 +59,7 @@ func main() {
 	u.RawQuery = q.Encode()
 	registrationURL := u.String()
 
-	envFileName := fmt.Sprintf("out.env", orgName)
+	envFileName := "out.env"
 	envFile, err := os.Create(envFileName)
 	if err != nil {
 		fmt.Printf("Error creating env file: %v\n", err)
@@ -83,11 +89,12 @@ REGISTRY_AUTH_TOKEN=
 CORS_ALLOW_ORIGIN='http://localhost:9000'
 IS_PROD=false
 
+#### delete this line and fill the config below ####### 
 GITHUB_CLIENT_ID=
 GITHUB_SECRET=
 GITHUB_PRIVATE_KEY=
 GITHUB_WEBHOOK_SECRET=
-GITHUB_WEBHOOK_URL=%s/githubWebhook
+GITHUB_WEBHOOK_SECRET_ENABLE=false
 GITHUB_REDIRECT_URL=%s/authCallback
 `, orgName, host, host)
 

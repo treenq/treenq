@@ -37,3 +37,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local
+*local.*
+
+# pulumi
+boot/do/.pulumi/history
+boot/do/.pulumi/backups/

@@ -3,7 +3,7 @@ import path from 'path'
 import devtools from 'solid-devtools/vite'
 import { defineConfig, ServerOptions } from 'vite'
 import solid from 'vite-plugin-solid'
-import IconSpritePlugin from './vite/icons'
+// import IconSpritePlugin from './vite/icons'
 const useProxy = process.env.USE_VITE_PROXY == 'true'
 
 let proxyServer: ServerOptions | undefined
@@ -15,8 +15,8 @@ if (useProxy) {
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, options) => {
-          proxy.on('proxyRes', (proxyRes, req, res) => {
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
             const cookies = proxyRes.headers['set-cookie']
             if (cookies) {
               proxyRes.headers['set-cookie'] = cookies.map((cookie) =>

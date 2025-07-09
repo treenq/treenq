@@ -31,10 +31,10 @@ export default function IconSpritePlugin() {
       // Generate during build
       return generateIconSprite()
     },
-    configureServer(server) {
+    configureServer(server: any) {
       // Regenerate during development whenever an icon is added
       server.watcher.add(path.join(process.cwd(), 'static', 'icons', '*.svg'))
-      server.watcher.on('change', async (changedPath) => {
+      server.watcher.on('change', async (changedPath: any) => {
         if (changedPath.endsWith('.svg')) return generateIconSprite()
       })
     },

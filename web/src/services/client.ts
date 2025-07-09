@@ -182,9 +182,9 @@ class HttpClient {
     return { data: {} as T }
   }
 
-  private async get<T>(path: string, opts?: RequestOptions): Promise<Result<T>> {
-    return await this.request('GET', path, opts)
-  }
+  // private async get<T>(path: string, opts?: RequestOptions): Promise<Result<T>> {
+  //   return await this.request('GET', path, opts)
+  // }
 
   private async post<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<Result<T>> {
     return await this.request('POST', path, { ...opts, body: JSON.stringify(body) })
