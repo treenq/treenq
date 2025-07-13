@@ -5,7 +5,7 @@ description: A guide to start using treenq
 
 ## Quick Start
 
-Treenq uses a simple `tq.json` configuration file to define your service deployment. This file should be placed in the root of your repository.
+Treenq uses a simple configuration file to define your service deployment. You can use either `tq.json` (JSON) or `tq.yaml` (YAML) format. If both files exist, `tq.json` takes priority. The configuration file should be placed in the root of your repository.
 
 ### Basic Configuration
 
@@ -19,6 +19,15 @@ Create a `tq.json` file with the following structure:
     "dockerfilePath": "Dockerfile"
   }
 }
+```
+
+Or alternatively, create a `tq.yaml` file:
+
+```yaml
+service:
+  name: my-app
+  httpPort: 8000
+  dockerfilePath: Dockerfile
 ```
 
 ### Configuration Options
@@ -55,6 +64,12 @@ By default a connected repository branch is released
 }
 ```
 
+```yaml
+service:
+  releaseOn:
+    branch: main
+```
+
 Or for tag-based releases:
 
 ```json
@@ -65,6 +80,12 @@ Or for tag-based releases:
     }
   }
 }
+```
+
+```yaml
+service:
+  releaseOn:
+    tagPrefix: v
 ```
 
 #### Resource Configuration
@@ -83,6 +104,16 @@ Configure compute resources using `computationResource`:
     }
   }
 }
+```
+
+```yaml
+service:
+  name: my-app
+  httpPort: 8000
+  computationResource:
+    cpuUnits: 1000
+    memoryMibs: 2048
+    diskGibs: 20
 ```
 
 **Resource Defaults:**
@@ -116,8 +147,26 @@ Configure compute resources using `computationResource`:
 }
 ```
 
+```yaml
+service:
+  name: web-api
+  dockerfilePath: Dockerfile
+  dockerContext: .
+  httpPort: 3000
+  releaseOn:
+    branch: main
+  replicas: 2
+  runtimeEnvs:
+    NODE_ENV: production
+    API_VERSION: v1
+  computationResource:
+    cpuUnits: 2000
+    memoryMibs: 4096
+    diskGibs: 50
+```
+
 ### Next Steps
 
-1. Add `tq.json` to your repository root
+1. Add `tq.json` or `tq.yaml` to your repository root
 2. Connect your GitHub repository to Treenq
 3. Push changes to trigger deployment

@@ -147,6 +147,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8Yc
 github.com/denisenkom/go-mssqldb v0.0.0-20191128021309-1d7a30a10f73/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
 github.com/dennypenta/vel v0.1.0 h1:RzqPKcqJSA1eV6GpbqL9oDcqJv44glC+hXQ2Mxc0BpI=
 github.com/dennypenta/vel v0.1.0/go.mod h1:TLIOT3lA5tGaIf1mzgnl/kz/pbAaTTICTKyChhl2K5E=
+github.com/dennypenta/vel v0.3.0 h1:Wx1XzPzDlQ9h5zE3n04XFOsApMfnb1ia/qUBSi9EGak=
+github.com/dennypenta/vel v0.3.0/go.mod h1:TLIOT3lA5tGaIf1mzgnl/kz/pbAaTTICTKyChhl2K5E=
 github.com/dhui/dktest v0.4.1 h1:/w+IWuDXVymg3IrRJCHHOkMK10m9aNVMOyD0X12YVTg=
 github.com/dhui/dktest v0.4.1/go.mod h1:DdOqcUpL7vgyP4GlF3X3w7HbSlz8cEQzwewPveYEQbA=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=

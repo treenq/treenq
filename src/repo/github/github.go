@@ -11,6 +11,7 @@ import (
 	cache "github.com/Code-Hex/go-generics-cache"
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/treenq/treenq/src/domain"
+	"sigs.k8s.io/yaml"
 )
 
 type TokenIssuer interface {
@@ -303,7 +304,27 @@ func (c *GithubClient) GetRepoSpace(ctx context.Context, installationID int, rep
 		return tqsdk.Space{}, fmt.Errorf("failed to issue an installation token: %w", err)
 	}
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/tq.json", repoFullName)
+	// Try tq.json first
+	space, err := c.getRepoSpaceFromFile(ctx, token, repoFullName, ref, "tq.json", true)
+	if err == nil {
+		return space, nil
+	}
+
+	// If tq.json not found, try tq.yaml
+	if err == domain.ErrNoTqJsonFound || err == domain.ErrSpaceNotFound {
+		space, yamlErr := c.getRepoSpaceFromFile(ctx, token, repoFullName, ref, "tq.yaml", false)
+		if yamlErr == nil {
+			return space, nil
+		}
+		// Return original JSON error if YAML also fails
+		return tqsdk.Space{}, err
+	}
+
+	return tqsdk.Space{}, err
+}
+
+func (c *GithubClient) getRepoSpaceFromFile(ctx context.Context, token, repoFullName, ref, filename string, isJSON bool) (tqsdk.Space, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s", repoFullName, filename)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return tqsdk.Space{}, fmt.Errorf("failed to create request: %w", err)
@@ -343,8 +364,15 @@ func (c *GithubClient) GetRepoSpace(ctx context.Context, installationID int, rep
 	}
 
 	var space tqsdk.Space
-	if err := json.Unmarshal(fileContent.Content, &space); err != nil {
-		return tqsdk.Space{}, domain.ErrTqIsNotValidJson
+	if isJSON {
+		if err := json.Unmarshal(fileContent.Content, &space); err != nil {
+			return tqsdk.Space{}, domain.ErrTqIsNotValidJson
+		}
+	} else {
+		// Use yaml.Unmarshal from sigs.k8s.io/yaml which handles both JSON and YAML
+		if err := yaml.Unmarshal(fileContent.Content, &space); err != nil {
+			return tqsdk.Space{}, domain.ErrTqIsNotValidJson
+		}
 	}
 
 	if err := space.Validate(); err != nil {
