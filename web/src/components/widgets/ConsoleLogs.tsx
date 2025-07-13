@@ -13,9 +13,15 @@ type ConsoleLogsProps = {
 
 export default function ConsoleLogs(props: ConsoleLogsProps) {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
+  const [showEmptyState, setShowEmptyState] = createSignal(false)
 
   createEffect(() => {
     httpClient.listenLogs(props.repoID, (data: GetBuildProgressMessage) => {
+      if (data.message.errorCode == 'NO_PODS_RUNNING') {
+        setShowEmptyState(true)
+        return
+      }
+
       setLogs((listMessage) => {
         return [...listMessage, data.message]
       })
@@ -28,7 +34,14 @@ export default function ConsoleLogs(props: ConsoleLogsProps) {
         <CardTitle>Service Logs</CardTitle>
       </div>
 
-      <Console classNames="mb-3" logs={logs()} />
+      <Console
+        classNames="mb-3"
+        logs={logs()}
+        emptyStateMessage={showEmptyState() ? 'No pods are running' : undefined}
+        emptyStateDescription={
+          showEmptyState() ? 'Deploy a workload to start reading the logs' : undefined
+        }
+      />
     </Card>
   )
 }

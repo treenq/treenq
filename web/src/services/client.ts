@@ -122,6 +122,37 @@ export type BuildProgressMessage = {
   errorCode: string
 }
 
+export type GetWorkloadStatsRequest = {
+  repoID: string
+}
+
+export type ReplicaInfo = {
+  running: number
+  pending: number
+  failed: number
+}
+
+export type VersionInfo = {
+  version: string
+  replicas: ReplicaInfo
+}
+
+export type WorkloadStats = {
+  name: string
+  replicas: {
+    desired: number
+    running: number
+    pending: number
+    failed: number
+  }
+  versions: VersionInfo[]
+  overallStatus: string
+}
+
+export type GetWorkloadStatsResponse = {
+  workloadStats: WorkloadStats
+}
+
 class HttpClient {
   constructor(
     private baseUrl: string,
@@ -238,6 +269,10 @@ class HttpClient {
 
   async getDeployment(req: GetDeploymentRequest): Promise<Result<GetDeploymentResponse>> {
     return await this.post('getDeployment', req)
+  }
+
+  async getWorkloadStats(req: GetWorkloadStatsRequest): Promise<Result<GetWorkloadStatsResponse>> {
+    return await this.post('getWorkloadStats', req)
   }
 
   listenProgress(deploymentID: string, callback: (data: GetBuildProgressMessage) => void) {

@@ -355,7 +355,7 @@ func (k *Kube) StreamLogs(ctx context.Context, rawConfig, repoID, spaceName stri
 	}
 
 	if len(pods.Items) == 0 {
-		return fmt.Errorf("no pods found in namespace %s", fullNsName)
+		return domain.ErrNoPodsRunning
 	}
 
 	var wg sync.WaitGroup
@@ -435,4 +435,101 @@ func (k *Kube) RemoveNamespace(ctx context.Context, kubeConfig, id, spaceName st
 	}
 
 	return nil
+}
+
+func (k *Kube) GetWorkloadStats(ctx context.Context, kubeConfig, repoID, spaceName string) (domain.WorkloadStats, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeConfig))
+	if err != nil {
+		return domain.WorkloadStats{}, fmt.Errorf("failed to create kube config from raw config: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return domain.WorkloadStats{}, fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	namespaceName := ns(spaceName, repoID)
+
+	deployments, err := clientset.AppsV1().Deployments(namespaceName).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return domain.WorkloadStats{}, fmt.Errorf("failed to list deployments: %w", err)
+	}
+
+	if len(deployments.Items) == 0 {
+		return domain.WorkloadStats{}, domain.ErrNoPodsRunning
+	}
+
+	deployment := deployments.Items[0]
+
+	pods, err := clientset.CoreV1().Pods(namespaceName).List(ctx, metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(deployment.Spec.Selector),
+	})
+	if err != nil {
+		return domain.WorkloadStats{}, fmt.Errorf("failed to list pods: %w", err)
+	}
+
+	desired := int(*deployment.Spec.Replicas)
+	running := 0
+	pending := 0
+	failed := 0
+
+	versionMap := make(map[string]*domain.ReplicaInfo)
+
+	for _, pod := range pods.Items {
+		version := "unknown"
+		if img := pod.Spec.Containers[0].Image; img != "" {
+			parts := strings.Split(img, ":")
+			if len(parts) > 1 {
+				version = parts[len(parts)-1]
+			}
+		}
+
+		if _, exists := versionMap[version]; !exists {
+			versionMap[version] = &domain.ReplicaInfo{}
+		}
+
+		switch pod.Status.Phase {
+		case corev1.PodRunning:
+			running++
+			versionMap[version].Running++
+		case corev1.PodPending:
+			pending++
+			versionMap[version].Pending++
+		case corev1.PodFailed:
+			failed++
+			versionMap[version].Failed++
+		default:
+			failed++
+			versionMap[version].Failed++
+		}
+	}
+
+	var versions []domain.VersionInfo
+	for ver, replicas := range versionMap {
+		versions = append(versions, domain.VersionInfo{
+			Version:  ver,
+			Replicas: *replicas,
+		})
+	}
+
+	overallStatus := "healthy"
+	if failed > 0 {
+		overallStatus = "failing"
+	} else if pending > 0 || running < desired {
+		overallStatus = "degraded"
+	}
+
+	stats := domain.WorkloadStats{
+		Name: deployment.Name,
+		Replicas: domain.Replicas{
+			Desired: desired,
+			Running: running,
+			Pending: pending,
+			Failed:  failed,
+		},
+		Versions:      versions,
+		OverallStatus: overallStatus,
+	}
+
+	return stats, nil
 }

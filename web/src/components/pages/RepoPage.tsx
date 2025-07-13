@@ -4,6 +4,7 @@ import Deploy from '@/components/widgets/Deploy'
 import Secrets from '@/components/widgets/Secrets'
 import { useNavigate } from '@solidjs/router'
 
+import WorkloadInfo from '@/components/widgets/WorkloadInfo'
 import { Routes } from '@/routes'
 
 export default function RepoPage() {
@@ -22,6 +23,7 @@ export default function RepoPage() {
       <div class="mb-6">
         <Button onClick={() => nav(-1)} textContent="Back" variant="outline"></Button>
       </div>
+      <WorkloadInfo />
       <div class="flex w-full flex-col gap-10">
         <Tabs defaultValue="deployments" class="w-full">
           <TabsList class="grid w-full grid-cols-2">

@@ -346,10 +346,6 @@ func (c *GithubClient) getRepoSpaceFromFile(ctx context.Context, token, repoFull
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return tqsdk.Space{}, domain.ErrSpaceNotFound
-	}
-
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
 			return tqsdk.Space{}, domain.ErrNoTqJsonFound

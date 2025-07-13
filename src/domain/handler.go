@@ -136,6 +136,7 @@ type Kube interface {
 	RemoveSecret(ctx context.Context, rawConfig string, space, repoID, key string) error
 	StreamLogs(ctx context.Context, rawConfig, repoID, spaceName string, logChan chan<- ProgressMessage) error
 	RemoveNamespace(ctx context.Context, rawConfig, id, nsName string) error
+	GetWorkloadStats(ctx context.Context, rawConfig, repoID, spaceName string) (WorkloadStats, error)
 }
 
 type OauthProvider interface {

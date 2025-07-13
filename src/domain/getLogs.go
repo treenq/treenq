@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,8 @@ type GetLogsRequest struct {
 type GetLogsResponse struct {
 	Message ProgressMessage `json:"message"`
 }
+
+var ErrNoPodsRunning = errors.New("not pods running")
 
 func (h *Handler) GetLogs(ctx context.Context, req GetLogsRequest) (GetLogsResponse, *vel.Error) {
 	w := vel.WriterFromContext(ctx)
@@ -43,6 +46,13 @@ func (h *Handler) GetLogs(ctx context.Context, req GetLogsRequest) (GetLogsRespo
 	go func() {
 		defer close(logChan)
 		err := h.kube.StreamLogs(ctx, h.kubeConfig, req.RepoID, profile.UserInfo.DisplayName, logChan)
+		if errors.Is(err, ErrNoPodsRunning) {
+			logChan <- ProgressMessage{
+				ErrorCode: "NO_PODS_RUNNING",
+			}
+			return
+		}
+
 		if err != nil {
 			logChan <- ProgressMessage{
 				Payload: fmt.Sprintf("Error streaming logs: %v", err),
