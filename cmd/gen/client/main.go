@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/treenq/treenq/pkg/vel"
-	"github.com/treenq/treenq/pkg/vel/gen"
+	"github.com/dennypenta/vel"
+	"github.com/dennypenta/vel/gen"
 	"github.com/treenq/treenq/src/resources"
 )
 

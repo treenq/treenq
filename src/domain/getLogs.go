@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 type GetLogsRequest struct {

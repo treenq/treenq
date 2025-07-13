@@ -9,7 +9,7 @@ import (
 	"github.com/treenq/treenq/pkg/auth"
 	"github.com/treenq/treenq/pkg/crypto"
 	"github.com/treenq/treenq/pkg/treenq"
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 	"github.com/treenq/treenq/src/domain"
 	"github.com/treenq/treenq/src/repo"
 	"github.com/treenq/treenq/src/repo/artifacts"

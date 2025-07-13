@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 type JwtIssuer struct {

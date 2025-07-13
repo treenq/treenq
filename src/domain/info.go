@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 var version = "develop" // unstable

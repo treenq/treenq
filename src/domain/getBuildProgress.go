@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 type GetBuildProgressRequest struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/treenq/treenq/pkg/auth"
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 type GetProfileResponse struct {

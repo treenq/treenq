@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 func (h *Handler) SyncGithubApp(ctx context.Context, _ struct{}) (GetReposResponse, *vel.Error) {

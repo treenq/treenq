@@ -15,7 +15,7 @@ import (
 	"time"
 
 	tqsdk "github.com/treenq/treenq/pkg/sdk"
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 	"golang.org/x/exp/maps"
 )
 

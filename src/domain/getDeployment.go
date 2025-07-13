@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/treenq/treenq/pkg/vel"
+	"github.com/dennypenta/vel"
 )
 
 var ErrDeploymentNotFound = errors.New("deployment not found")
