@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"github.com/dennypenta/vel"
+	tqsdk "github.com/treenq/treenq/pkg/sdk"
 	"golang.org/x/exp/maps"
 )
 

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dennypenta/vel"
 	"github.com/rs/xid"
 	"github.com/treenq/treenq/pkg/auth"
-	"github.com/dennypenta/vel"
 )
 
 var (
@@ -63,7 +63,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 	if oauthState == nil {
 		return GithubCallbackResponse{}, &vel.Error{
 			Code:    "COOKIE_IS_EMPTY",
-			Message: "cookie auth status is expected",
+			Message: "cookie authstate is expected",
 		}
 	}
 
