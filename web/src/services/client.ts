@@ -277,7 +277,7 @@ class HttpClient {
 
   listenProgress(
     deploymentID: string,
-    callback: (data: GetBuildProgressMessage, isFinish?: boolean) => void,
+    callback: (data: GetBuildProgressMessage, isFinish: boolean) => void,
   ) {
     const url = this.buildUrl('getBuildProgress', { deploymentID })
 
@@ -291,7 +291,7 @@ class HttpClient {
         callback(data, true)
         return
       }
-      callback(data)
+      callback(data, false)
     })
   }
 

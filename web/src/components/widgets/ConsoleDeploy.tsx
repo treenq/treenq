@@ -13,7 +13,7 @@ import { useTimer } from '@/hooks/useTimer'
 import { Routes } from '@/routes'
 import { deployStore } from '@/store/deployStore'
 import { VariantProps } from 'class-variance-authority'
-import { createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal, onCleanup } from 'solid-js'
 
 const STATUS_DEPLOYMENT: Record<DeploymentStatus, BadgeVariant> = {
   run: 'default',
@@ -26,41 +26,43 @@ type BadgeVariant = VariantProps<typeof badgeVariants>['variant']
 export default function ConsoleDeploy() {
   const [logs, setLogs] = createSignal<BuildProgressMessage[]>([])
   const [showEmptyState, setShowEmptyState] = createSignal(false)
-  const [timeDeploy, setTimeDeploy] = createSignal('0')
+  const [actualDuration, setActualDuration] = createSignal(0)
   const userName = userStore.user?.displayName
   const params = Routes.deploy.params()
   const { startTimer, time, finishTimer } = useTimer()
   createEffect(() => {
     if (!deployStore.deployment.id) {
       deployStore.getDeployment(params.id)
+    } else if (deployStore.deployment.status === 'run' && !actualDuration()) {
+      startTimer()
     }
   })
 
   httpClient.listenProgress(params.id, (data: GetBuildProgressMessage, isFinish: boolean) => {
     if (data.message.errorCode == 'NO_LOGS') {
+      finishTimer()
       setShowEmptyState(true)
-      return
-    }
-    if (isFinish) {
-      getTimeDeploy(logs()[0].timestamp, logs()[logs().length - 1].timestamp)
       return
     }
 
     setLogs((listMessage) => {
-      return [...listMessage, data.message]
+      const newLogs = [...listMessage, data.message]
+
+      if (isFinish && newLogs.length > 0) {
+        finishTimer()
+        const startTime = new Date(newLogs[0].timestamp)
+        const endTime = new Date(newLogs[newLogs.length - 1].timestamp)
+        const totalSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
+        setActualDuration(totalSeconds)
+      }
+
+      return newLogs
     })
   })
-  const getTimeDeploy = (start: string, finish: string) => {
-    const startDate: Date = new Date(start)
-    const finishDate: Date = new Date(finish)
 
-    const totalSeconds: number = Math.floor((finishDate.getTime() - startDate.getTime()) / 1000)
-
-    const seconds = totalSeconds % 60
-    const minutes = Math.round(totalSeconds > 60 ? (totalSeconds - seconds) / 60 : 0)
-
-    setTimeDeploy(`${minutes} m ${seconds} s`)
-  }
+  onCleanup(() => {
+    finishTimer()
+  })
 
   return (
     <Card class="p-6">
@@ -73,14 +75,18 @@ export default function ConsoleDeploy() {
       <div class="border-b-border mb-3 grid grid-cols-4 justify-between border-b border-solid pb-3">
         <div>
           <CardDescription>Duration</CardDescription>
-          <CardDescription class="mt-0">{`${time().minute} m ${time().second} s`}</CardDescription>
+          <CardDescription class="mt-0">
+            {actualDuration()
+              ? `${Math.floor(actualDuration() / 60)} m ${actualDuration() % 60} s`
+              : `${time().minute} m ${time().second} s`}
+          </CardDescription>
         </div>
         <div>
           <CardDescription>Branch</CardDescription>
           <CardDescription class="mt-0">{deployStore.deployment.branch}</CardDescription>
         </div>
         <div>
-          <CardDescription>Main</CardDescription>
+          <CardDescription>Commit</CardDescription>
           <CardDescription class="mt-0">{deployStore.deployment.sha.slice(0, 7)}</CardDescription>
         </div>
         <div>
