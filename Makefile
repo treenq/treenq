@@ -81,3 +81,19 @@ run-e2e-tests:
 unit-tests:
 	go test $$(go list ./... | grep -v e2e)
 
+start-e2e-local:
+	@echo "Cleaning up any existing processes on port 8000..."
+	lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+	docker compose down 
+	docker compose up -d
+	sleep 3
+	@echo "Starting server with local.env..."
+	set -a && . ./local.env && set +a && go run ./cmd/server/main.go &
+	@echo "Waiting for server to be ready..."
+	until $$(curl --output /dev/null --silent --fail http://localhost:8000/healthz); do printf '.'; sleep 1; done && echo "Service Ready!"
+	@echo "Running e2e tests..."
+	go test -v -count=1 ./e2e/...
+	@echo "Shutting down..."
+	lsof -ti :8000 | xargs kill -9 2>/dev/null
+	docker compose down
+

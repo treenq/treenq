@@ -109,6 +109,12 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 	}}, reposResponse, "installed repositories don't match")
 
+	// test that another user cannot access the repos
+	anotherReposResponse, err := anotherApiClient.GetRepos(ctx)
+	require.NoError(t, err, "another user should be able to call GetRepos but get empty result")
+	require.False(t, anotherReposResponse.Installation, "another user should not see installation")
+	require.Empty(t, anotherReposResponse.Repos, "another user should not see any repos")
+
 	// not connected repo can't be deployed
 	_, err = apiClient.Deploy(ctx, client.DeployRequest{
 		RepoID: reposResponse.Repos[1].TreenqID,
@@ -233,6 +239,14 @@ func TestGithubAppInstallation(t *testing.T) {
 		},
 		expectedBody: "Hello, main\n",
 	})
+
+	// test that another user cannot access the deployment
+	anotherDeployment, err := anotherApiClient.GetDeployment(ctx, client.GetDeploymentRequest{
+		DeploymentID: createdDeployment.Deployment.ID,
+	})
+	require.Equal(t, err, &client.Error{Code: "DEPLOYMENT_NOT_FOUND"}, "another user should not be able to access deployment")
+	require.Equal(t, anotherDeployment, client.GetDeploymentResponse{}, "another user should get empty deployment response")
+
 	assert.Equal(t, createdDeployment.Deployment.RepoID, reposResponse.Repos[0].TreenqID)
 	assert.EqualValues(t, createdDeployment.Deployment.Space, client.Space{
 		Service: client.Service{
@@ -317,6 +331,13 @@ func TestGithubAppInstallation(t *testing.T) {
 		RepoID: reposResponse.Repos[0].TreenqID,
 	})
 	require.NoError(t, err, "deployments list must be given")
+
+	// test that another user cannot access the deployments
+	anotherDeployments, err := anotherApiClient.GetDeployments(ctx, client.GetDeploymentsRequest{
+		RepoID: reposResponse.Repos[0].TreenqID,
+	})
+	require.NoError(t, err, "another user should be able to call GetDeployments but get empty result")
+	require.Empty(t, anotherDeployments.Deployments, "another user should not see any deployments")
 
 	for _, deployment := range deployments.Deployments {
 		assert.EqualValues(t, deployment.RepoID, reposResponse.Repos[0].TreenqID)
