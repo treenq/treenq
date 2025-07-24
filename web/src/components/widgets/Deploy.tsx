@@ -75,15 +75,7 @@ export default function Deploy(props: DeployProps) {
             <PopoverTrigger>
               <Button variant="outline" class="hover:bg-primary" aria-expanded={popoverOpen()}>
                 Manual Deploy
-                <svg class="ml-2 h-4 w-4" viewBox="0 0 20 20" fill="none">
-                  <path
-                    d="M6 8l4 4 4-4"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <SpriteIcon name="rocket" />
               </Button>
             </PopoverTrigger>
             <PopoverContent>
