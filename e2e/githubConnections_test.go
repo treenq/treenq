@@ -387,6 +387,28 @@ func testSecretsApi(t *testing.T, ctx context.Context, apiClient, anotherApiClie
 	require.NoError(t, err, "no error expected on empty secrets list")
 	require.Empty(t, secrets.Keys, "secrets are expected to be empty")
 
+	// Test invalid secret key validation
+	err = apiClient.SetSecret(ctx, client.SetSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "1INVALID",
+		Value:  "TEST",
+	})
+	require.Equal(t, err, &client.Error{Code: "INVALID_SECRET_KEY"}, "secret key starting with digit should be invalid")
+
+	err = apiClient.SetSecret(ctx, client.SetSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "INVALID@KEY",
+		Value:  "TEST",
+	})
+	require.Equal(t, err, &client.Error{Code: "INVALID_SECRET_KEY"}, "secret key with @ symbol should be invalid")
+
+	err = apiClient.SetSecret(ctx, client.SetSecretRequest{
+		RepoID: connectRepoRes.Repo.TreenqID,
+		Key:    "",
+		Value:  "TEST",
+	})
+	require.Equal(t, err, &client.Error{Code: "INVALID_SECRET_KEY"}, "empty secret key should be invalid")
+
 	revealSecretResponse, err := apiClient.RevealSecret(ctx, client.RevealSecretRequest{
 		RepoID: connectRepoRes.Repo.TreenqID,
 		Key:    "SECRET",

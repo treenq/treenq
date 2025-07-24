@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"regexp"
 
 	"github.com/dennypenta/vel"
 )
@@ -13,7 +14,22 @@ type SetSecretRequest struct {
 	Value  string `json:"value"`
 }
 
+var secretKeyRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_.-]*$`)
+
+func validateSecretKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	return secretKeyRegex.MatchString(key)
+}
+
 func (h *Handler) SetSecret(ctx context.Context, req SetSecretRequest) (struct{}, *vel.Error) {
+	if !validateSecretKey(req.Key) {
+		return struct{}{}, &vel.Error{
+			Code: "INVALID_SECRET_KEY",
+		}
+	}
+
 	profile, rpcErr := h.GetProfile(ctx, struct{}{})
 	if rpcErr != nil {
 		return struct{}{}, rpcErr

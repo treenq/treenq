@@ -33,9 +33,16 @@ type SecretTableRowProps = {
   secret?: Secret
   visible: Accessor<boolean>
   children: JSX.Element
+  showKeyValidation?: boolean
 }
 
 const secretButtonSizeClass = 'w-16'
+
+const validateSecretKey = (key: string): boolean => {
+  if (!key) return false
+  const regex = /^[a-zA-Z][a-zA-Z0-9_.-]*$/
+  return regex.test(key)
+}
 
 const SecretTableRow = ({
   isEditing,
@@ -44,7 +51,9 @@ const SecretTableRow = ({
   secret,
   children,
   visible,
+  showKeyValidation = false,
 }: SecretTableRowProps) => {
+  const isKeyValid = () => !showKeyValidation || validateSecretKey(inputs().key)
   return (
     <TableRow>
       <TableCell>
@@ -52,9 +61,16 @@ const SecretTableRow = ({
           <TextField
             value={inputs().key}
             onChange={(key) => setInputs((inputs) => ({ ...inputs, key }))}
+            validationState={showKeyValidation && !isKeyValid() ? 'invalid' : 'valid'}
           >
             <TextFieldInput placeholder="input name" />
           </TextField>
+          <Show when={inputs().key && showKeyValidation && !isKeyValid()}>
+            <div class="mt-1 text-sm text-red-600">
+              Key must start with a letter and contain only letters, numbers, underscores, dots, and
+              hyphens
+            </div>
+          </Show>
         </Show>
       </TableCell>
       <TableCell class="flex space-x-2">
@@ -100,6 +116,7 @@ const SecretRow = ({ repoID, secret }: SecretRowProps) => {
   }
 
   const updateSecret = async () => {
+    if (!validateSecretKey(inputs().key)) return
     const result = await secretStore.updateSecret(repoID, inputs().key, inputs().value)
     if (!result.success) return
     setIsEditing(false)
@@ -116,6 +133,7 @@ const SecretRow = ({ repoID, secret }: SecretRowProps) => {
         secret,
         revealSecret,
         visible,
+        showKeyValidation: isEditing(),
       }}
     >
       <div class="flex space-x-2">
@@ -127,7 +145,12 @@ const SecretRow = ({ repoID, secret }: SecretRowProps) => {
             </Button>
           }
         >
-          <Button class={secretButtonSizeClass} variant="default" onClick={updateSecret}>
+          <Button
+            class={secretButtonSizeClass}
+            variant="default"
+            onClick={updateSecret}
+            disabled={!validateSecretKey(inputs().key) || !inputs().value}
+          >
             Save
           </Button>
         </Show>
@@ -152,6 +175,7 @@ const AddSecretRow = ({ repoID }: AddSecretRowProps) => {
   const [inputs, setInputs] = createSignal<Secret>({ key: '', value: '' })
 
   const addSecret = async () => {
+    if (!validateSecretKey(inputs().key)) return
     const result = await secretStore.addSecret(repoID, inputs().key, inputs().value)
     if (!result.success) return
     setInputs({ key: '', value: '' })
@@ -163,10 +187,11 @@ const AddSecretRow = ({ repoID }: AddSecretRowProps) => {
       inputs={inputs}
       setInputs={setInputs}
       visible={() => true}
+      showKeyValidation={true}
     >
       <Button
         class={secretButtonSizeClass}
-        disabled={!inputs().key || !inputs().value}
+        disabled={!validateSecretKey(inputs().key) || !inputs().value}
         onClick={addSecret}
       >
         Add
