@@ -35,6 +35,23 @@ func (h *Handler) GetBuildProgress(ctx context.Context, req GetBuildProgressRequ
 		}
 	}
 
+	profile, rpcErr := h.GetProfile(ctx, struct{}{})
+	if rpcErr != nil {
+		return GetBuildProgressResponse{}, rpcErr
+	}
+	belongs, err := h.db.DeploymentBelongsToWorkspace(ctx, profile.UserInfo.CurrentWorkspace, req.DeploymentID)
+	if err != nil {
+		return GetBuildProgressResponse{}, &vel.Error{
+			Err:     err,
+			Message: "failed to verify whom a deployment belong to",
+		}
+	}
+	if !belongs {
+		return GetBuildProgressResponse{}, &vel.Error{
+			Code: "DEPLOYMENT_NOT_FOUND",
+		}
+	}
+
 	messages := progress.Get(ctx, req.DeploymentID)
 
 	for {

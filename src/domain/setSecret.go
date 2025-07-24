@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dennypenta/vel"
 )
@@ -18,7 +19,21 @@ func (h *Handler) SetSecret(ctx context.Context, req SetSecretRequest) (struct{}
 		return struct{}{}, rpcErr
 	}
 
-	err := h.kube.StoreSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key, req.Value)
+	workspace, err := h.db.GetWorkspaceByID(ctx, profile.UserInfo.CurrentWorkspace)
+	if err != nil {
+		if errors.Is(err, ErrWorkspaceNotFound) {
+			return struct{}{}, &vel.Error{
+				Code: "WORKSPACE_NOT_FOUND",
+			}
+		}
+
+		return struct{}{}, &vel.Error{
+			Message: "failed to get workspace info",
+			Err:     err,
+		}
+	}
+
+	err = h.kube.StoreSecret(ctx, h.kubeConfig, workspace.Name, req.RepoID, req.Key, req.Value)
 	if err != nil {
 		return struct{}{}, &vel.Error{
 			Message: "failed to store secret",
@@ -26,7 +41,7 @@ func (h *Handler) SetSecret(ctx context.Context, req SetSecretRequest) (struct{}
 		}
 	}
 
-	if err := h.db.SaveSecret(ctx, req.RepoID, req.Key, profile.UserInfo.DisplayName); err != nil {
+	if err := h.db.SaveSecret(ctx, req.RepoID, req.Key, profile.UserInfo.CurrentWorkspace); err != nil {
 		return struct{}{}, &vel.Error{
 			Message: "failed to save secret",
 			Err:     err,

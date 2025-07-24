@@ -99,21 +99,6 @@ type githubInstallationAccount struct {
 	Type  string `json:"type"`
 }
 
-func (c *GithubClient) issueJwt() (string, error) {
-	if c.cachedToken != "" && time.Until(c.cachedTokenAt) > time.Minute {
-		return c.cachedToken, nil
-	}
-
-	token, err := c.tokenIssuer.GenerateJwtToken(nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to issue jwt: %w", err)
-	}
-
-	c.cachedToken = token
-	c.cachedTokenAt = time.Now()
-	return token, nil
-}
-
 type githubRepositoriesResponse struct {
 	TotalCount   int                          `json:"total_count"`
 	Repositories []domain.InstalledRepository `json:"repositories"`

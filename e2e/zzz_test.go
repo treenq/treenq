@@ -14,9 +14,14 @@ import (
 var (
 	db         *sqlx.DB
 	tableNames = []string{
-		"users",
-		"installedRepos",
 		"deployments",
+		"secrets",
+		"spaces",
+		"installedRepos",
+		"installations",
+		"workspaceUsers",
+		"users",
+		"workspaces",
 	}
 	privateKey = `-----BEGIN PRIVATE KEY-----
 MIIJQgIBADANBgkqhkiG9w0BAQEFAASCCSwwggkoAgEAAoICAQC/BtAsp2BQBCCq
@@ -117,13 +122,43 @@ func clearDatabase() {
 }
 
 func createUser(userInfo client.UserInfo) (string, error) {
-	_, err := db.Exec(`
+	tx, err := db.Begin()
+	if err != nil {
+		return "", fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Insert user
+	_, err = tx.Exec(`
 		INSERT INTO users (id, email, displayName)
 		VALUES ($1, $2, $3)
-		RETURNING id
 	`, userInfo.ID, userInfo.Email, userInfo.DisplayName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Create a default workspace for the user
+	workspaceID := userInfo.ID
+	_, err = tx.Exec(`
+		INSERT INTO workspaces (id, name, githubOrgName)
+		VALUES ($1, $2, $3)
+	`, workspaceID, "default", "")
+	if err != nil {
+		return "", fmt.Errorf("failed to create workspace: %w", err)
+	}
+
+	// Link user to workspace
+	_, err = tx.Exec(`
+		INSERT INTO workspaceUsers (workspaceId, userId, role)
+		VALUES ($1, $2, 'owner')
+	`, workspaceID, userInfo.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to link user to workspace: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	issuer := auth.NewJwtIssuer("treenq-api", []byte(privateKey), []byte(publicKey), 24*time.Hour)
@@ -131,6 +166,7 @@ func createUser(userInfo client.UserInfo) (string, error) {
 		"id":          userInfo.ID,
 		"email":       userInfo.Email,
 		"displayName": userInfo.DisplayName,
+		"workspaces":  []string{workspaceID},
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)

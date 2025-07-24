@@ -45,7 +45,18 @@ func (h *Handler) GetLogs(ctx context.Context, req GetLogsRequest) (GetLogsRespo
 
 	go func() {
 		defer close(logChan)
-		err := h.kube.StreamLogs(ctx, h.kubeConfig, req.RepoID, profile.UserInfo.DisplayName, logChan)
+		workspace, err := h.db.GetWorkspaceByID(ctx, profile.UserInfo.CurrentWorkspace)
+		if err != nil {
+			if errors.Is(err, ErrWorkspaceNotFound) {
+				logChan <- ProgressMessage{
+					ErrorCode: "WORKSPACE_NOT_FOUND",
+					Payload:   err.Error(),
+				}
+			}
+
+			return
+		}
+		err = h.kube.StreamLogs(ctx, h.kubeConfig, req.RepoID, workspace.Name, logChan)
 		if errors.Is(err, ErrNoPodsRunning) {
 			logChan <- ProgressMessage{
 				ErrorCode: "NO_PODS_RUNNING",

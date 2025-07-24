@@ -16,12 +16,22 @@ var (
 	ErrRepoNotFound         = errors.New("repo not found")
 	ErrInstallationNotFound = errors.New("installation not found")
 	ErrUnauthorized         = errors.New("unauthorized: github token expired or invalid")
+	ErrWorkspaceNotFound    = errors.New("workspace not found")
 )
 
 type UserInfo struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"displayName"`
+	ID               string   `json:"id"`
+	Email            string   `json:"email"`
+	DisplayName      string   `json:"displayName"`
+	CurrentWorkspace string   `json:"currentWorkspace"`
+	Workspaces       []string `json:"workspaces"`
+}
+
+type Workspace struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	GithubOrgName string `json:"githubOrgName,omitempty"`
+	Role          string `json:"role"`
 }
 
 func (h *Handler) GithubAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +106,7 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 		"id":          savedUser.ID,
 		"email":       savedUser.Email,
 		"displayName": savedUser.DisplayName,
+		"workspaces":  savedUser.Workspaces,
 	})
 	if err != nil {
 		return GithubCallbackResponse{}, &vel.Error{

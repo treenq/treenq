@@ -28,7 +28,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		return ConnectBranchResponse{}, rpcErr
 	}
 
-	repo, err := h.db.GetRepoByID(ctx, profile.UserInfo.ID, req.RepoID)
+	repo, err := h.db.GetRepoByID(ctx, profile.UserInfo.CurrentWorkspace, req.RepoID)
 	if err != nil {
 		if errors.Is(err, ErrRepoNotFound) {
 			return ConnectBranchResponse{}, &vel.Error{
@@ -42,20 +42,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		}
 	}
 
-	installationID, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID, repo.FullName)
-	if err != nil {
-		if errors.Is(err, ErrInstallationNotFound) {
-			return ConnectBranchResponse{}, &vel.Error{
-				Code: "INSTALLATION_NOT_FOUND",
-			}
-		}
-		return ConnectBranchResponse{}, &vel.Error{
-			Message: "failed to get installation",
-			Err:     err,
-		}
-	}
-
-	space, err := h.githubClient.GetRepoSpace(ctx, installationID, repo.FullName, req.Branch)
+	space, err := h.githubClient.GetRepoSpace(ctx, repo.InstallationID, repo.FullName, req.Branch)
 	if err != nil {
 		if errors.Is(err, ErrNoTqJsonFound) {
 			return ConnectBranchResponse{}, &vel.Error{
@@ -72,7 +59,7 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		}
 	}
 
-	repo, err = h.db.ConnectRepo(ctx, profile.UserInfo.ID, req.RepoID, req.Branch, space)
+	repo, err = h.db.ConnectRepo(ctx, profile.UserInfo.CurrentWorkspace, req.RepoID, req.Branch, space)
 	if err != nil {
 		if errors.Is(err, ErrRepoNotFound) {
 			return ConnectBranchResponse{}, &vel.Error{
@@ -86,9 +73,5 @@ func (h *Handler) ConnectBranch(ctx context.Context, req ConnectBranchRequest) (
 		}
 	}
 
-	// _, deployErr := h.deployRepo(ctx, profile.UserInfo.DisplayName, repo, "", "", "", "")
-	// if deployErr != nil {
-	// 	return ConnectBranchResponse{}, deployErr
-	// }
 	return ConnectBranchResponse{Repo: repo}, nil
 }

@@ -15,7 +15,12 @@ type GetDeploymentsResponse struct {
 }
 
 func (h *Handler) GetDeployments(ctx context.Context, req GetDeploymentsRequest) (GetDeploymentsResponse, *vel.Error) {
-	history, err := h.db.GetDeployments(ctx, req.RepoID)
+	profile, rpcErr := h.GetProfile(ctx, struct{}{})
+	if rpcErr != nil {
+		return GetDeploymentsResponse{}, rpcErr
+	}
+
+	history, err := h.db.GetDeployments(ctx, profile.UserInfo.CurrentWorkspace, req.RepoID)
 	if err != nil {
 		return GetDeploymentsResponse{}, &vel.Error{
 			Message: "failed get deployment history",

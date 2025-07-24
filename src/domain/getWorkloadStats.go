@@ -46,7 +46,21 @@ func (h *Handler) GetWorkloadStats(ctx context.Context, req GetWorkloadStatsRequ
 		return GetWorkloadStatsResponse{}, rpcErr
 	}
 
-	stats, err := h.kube.GetWorkloadStats(ctx, h.kubeConfig, req.RepoID, profile.UserInfo.DisplayName)
+	workspace, err := h.db.GetWorkspaceByID(ctx, profile.UserInfo.CurrentWorkspace)
+	if err != nil {
+		if errors.Is(err, ErrWorkspaceNotFound) {
+			return GetWorkloadStatsResponse{}, &vel.Error{
+				Code: "WORKSPACE_NOT_FOUND",
+			}
+		}
+
+		return GetWorkloadStatsResponse{}, &vel.Error{
+			Message: "failed to get workspace info",
+			Err:     err,
+		}
+	}
+
+	stats, err := h.kube.GetWorkloadStats(ctx, h.kubeConfig, req.RepoID, workspace.Name)
 	if errors.Is(err, ErrNoPodsRunning) {
 		return GetWorkloadStatsResponse{}, &vel.Error{
 			Code: "NO_PODS_RUNNING",

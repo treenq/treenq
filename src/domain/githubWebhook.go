@@ -302,7 +302,7 @@ func countNotEmpty(vals ...string) int {
 	return notEmpty
 }
 
-func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo GithubRepository, fromDeploymentID, branch, sha, tag string) (AppDeployment, *vel.Error) {
+func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, workspace Workspace, repo GithubRepository, fromDeploymentID, branch, sha, tag string) (AppDeployment, *vel.Error) {
 	// validate the repo must run
 	if repo.Branch == "" {
 		return AppDeployment{}, &vel.Error{
@@ -341,7 +341,7 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 	}
 
 	if fromDeploymentID != "" {
-		fromDeployment, err := h.db.GetDeployment(ctx, fromDeploymentID)
+		fromDeployment, err := h.db.GetDeployment(ctx, workspace.ID, fromDeploymentID)
 		if err != nil {
 			if errors.Is(err, ErrDeploymentNotFound) {
 				return AppDeployment{}, &vel.Error{
@@ -371,12 +371,13 @@ func (h *Handler) deployRepo(ctx context.Context, userDisplayName string, repo G
 	go func() {
 		// prepare local goroutine scope
 		deployment := deployment
+		workspace := workspace
 		ctx := context.WithoutCancel(ctx)
 		ctx, cancel := context.WithTimeout(ctx, time.Second*300)
 		defer cancel()
 
 		// start the build process
-		deployment, err := h.buildApp(ctx, deployment, repo)
+		deployment, err := h.buildApp(ctx, deployment, repo, workspace)
 		if err != nil {
 			// update deployment status to failed
 			deployment.Status = DeployStatusFailed
@@ -541,7 +542,7 @@ func (w *progressWriter) Write(buf []byte) (int, error) {
 
 var progress = &ProgressBuf{Bufs: make(map[string]buf)}
 
-func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
+func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo GithubRepository, workspace Workspace) (AppDeployment, *vel.Error) {
 	if deployment.FromDeploymentID != "" {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "inspecting an image",
@@ -554,7 +555,7 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo G
 					Payload: "image not found, build is required",
 					Level:   slog.LevelWarn,
 				})
-				return h.buildFromRepo(ctx, deployment, repo)
+				return h.buildFromRepo(ctx, deployment, repo, workspace)
 			}
 			progress.Append(deployment.ID, ProgressMessage{
 				Payload: "failed to inspect an iamge",
@@ -570,13 +571,13 @@ func (h *Handler) buildApp(ctx context.Context, deployment AppDeployment, repo G
 			Level:   slog.LevelInfo,
 		})
 
-		return h.applyImage(ctx, repo.TreenqID, deployment, image)
+		return h.applyImage(ctx, repo.TreenqID, deployment, image, workspace)
 	}
 
-	return h.buildFromRepo(ctx, deployment, repo)
+	return h.buildFromRepo(ctx, deployment, repo, workspace)
 }
 
-func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, repo GithubRepository) (AppDeployment, *vel.Error) {
+func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, repo GithubRepository, workspace Workspace) (AppDeployment, *vel.Error) {
 	token := ""
 	if repo.Private {
 		var err error
@@ -731,15 +732,15 @@ func (h *Handler) buildFromRepo(ctx context.Context, deployment AppDeployment, r
 		Level:   slog.LevelInfo,
 	})
 
-	return h.applyImage(ctx, repo.TreenqID, deployment, image)
+	return h.applyImage(ctx, repo.TreenqID, deployment, image, workspace)
 }
 
-func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image) (AppDeployment, *vel.Error) {
+func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppDeployment, image Image, workspace Workspace) (AppDeployment, *vel.Error) {
 	progress.Append(deployment.ID, ProgressMessage{
 		Payload: "get avilable secret keys",
 		Level:   slog.LevelDebug,
 	})
-	secretKeys, err := h.db.GetRepositorySecretKeys(ctx, repoID, deployment.UserDisplayName)
+	secretKeys, err := h.db.GetRepositorySecretKeys(ctx, repoID, workspace.ID)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to get repo secret keys" + err.Error(),
@@ -760,7 +761,7 @@ func (h *Handler) applyImage(ctx context.Context, repoID string, deployment AppD
 		Payload: fmt.Sprintf("apply new image: %+v", image),
 		Level:   slog.LevelDebug,
 	})
-	appKubeDef, err := h.kube.DefineApp(ctx, repoID, deployment.UserDisplayName, deployment.Space, image, secretKeys)
+	appKubeDef, err := h.kube.DefineApp(ctx, repoID, workspace.Name, deployment.Space, image, secretKeys)
 	if err != nil {
 		progress.Append(deployment.ID, ProgressMessage{
 			Payload: "failed to define app" + err.Error(),
@@ -803,7 +804,20 @@ func (h *Handler) removeInstallation(ctx context.Context, installationID int, us
 			}
 		}
 
-		if err := h.kube.RemoveNamespace(ctx, h.kubeConfig, treenqRepo.TreenqID, userDisplayName); err != nil {
+		workspace, err := h.db.GetWorkspaceByUserDisplayName(ctx, userDisplayName)
+		if err != nil {
+			if errors.Is(err, ErrWorkspaceNotFound) {
+				return &vel.Error{
+					Code: "WORKSPACE_NOT_FOUND",
+				}
+			}
+			return &vel.Error{
+				Message: "failed to get workspace info",
+				Err:     err,
+			}
+		}
+
+		if err := h.kube.RemoveNamespace(ctx, h.kubeConfig, treenqRepo.TreenqID, workspace.Name); err != nil {
 			return &vel.Error{
 				Message: "failed to remove namespace",
 				Err:     err,

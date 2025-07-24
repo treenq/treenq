@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dennypenta/vel"
 )
@@ -20,7 +21,7 @@ func (h *Handler) RevealSecret(ctx context.Context, req RevealSecretRequest) (Re
 	if rpcErr != nil {
 		return RevealSecretResponse{}, rpcErr
 	}
-	exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, req.Key, profile.UserInfo.DisplayName)
+	exists, err := h.db.RepositorySecretKeyExists(ctx, req.RepoID, req.Key, profile.UserInfo.CurrentWorkspace)
 	if err != nil {
 		return RevealSecretResponse{}, &vel.Error{
 			Message: "failed to lookup a secret key",
@@ -33,7 +34,21 @@ func (h *Handler) RevealSecret(ctx context.Context, req RevealSecretRequest) (Re
 		}
 	}
 
-	value, err := h.kube.GetSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key)
+	workspace, err := h.db.GetWorkspaceByID(ctx, profile.UserInfo.CurrentWorkspace)
+	if err != nil {
+		if errors.Is(err, ErrWorkspaceNotFound) {
+			return RevealSecretResponse{}, &vel.Error{
+				Code: "WORKSPACE_NOT_FOUND",
+			}
+		}
+
+		return RevealSecretResponse{}, &vel.Error{
+			Message: "failed to get workspace info",
+			Err:     err,
+		}
+	}
+
+	value, err := h.kube.GetSecret(ctx, h.kubeConfig, workspace.Name, req.RepoID, req.Key)
 	if err != nil {
 		return RevealSecretResponse{}, &vel.Error{
 			Message: "failed to reveal secret",

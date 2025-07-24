@@ -18,7 +18,12 @@ type GetDeploymentResponse struct {
 }
 
 func (h *Handler) GetDeployment(ctx context.Context, req GetDeploymentRequest) (GetDeploymentResponse, *vel.Error) {
-	deployment, err := h.db.GetDeployment(ctx, req.DeploymentID)
+	profile, rpcErr := h.GetProfile(ctx, struct{}{})
+	if rpcErr != nil {
+		return GetDeploymentResponse{}, rpcErr
+	}
+
+	deployment, err := h.db.GetDeployment(ctx, profile.UserInfo.CurrentWorkspace, req.DeploymentID)
 	if err != nil {
 		if errors.Is(err, ErrDeploymentNotFound) {
 			return GetDeploymentResponse{}, &vel.Error{

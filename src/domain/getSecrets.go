@@ -19,7 +19,7 @@ func (h *Handler) GetSecrets(ctx context.Context, req GetSecretsRequest) (GetSec
 	if rpcErr != nil {
 		return GetSecretsResponse{}, rpcErr
 	}
-	keys, err := h.db.GetRepositorySecretKeys(ctx, req.RepoID, profile.UserInfo.DisplayName)
+	keys, err := h.db.GetRepositorySecretKeys(ctx, req.RepoID, profile.UserInfo.CurrentWorkspace)
 	if err != nil {
 		return GetSecretsResponse{}, &vel.Error{
 			Message: "failed to get secrets keys",

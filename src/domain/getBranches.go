@@ -20,7 +20,7 @@ func (h *Handler) GetBranches(ctx context.Context, req GetBranchesRequest) (GetB
 	if rpcErr != nil {
 		return GetBranchesResopnse{}, rpcErr
 	}
-	githubInstallationID, err := h.db.GetInstallationID(ctx, profile.UserInfo.ID, req.RepoName)
+	githubInstallationID, err := h.db.GetInstallationID(ctx, profile.UserInfo.CurrentWorkspace, req.RepoName)
 	if err != nil {
 		if errors.Is(err, ErrInstallationNotFound) {
 			return GetBranchesResopnse{}, &vel.Error{

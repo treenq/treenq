@@ -68,13 +68,18 @@ type Database interface {
 	// User domain
 	////////////////////////
 	GetOrCreateUser(ctx context.Context, user UserInfo) (UserInfo, error)
+	GetUserWorkspaces(ctx context.Context, userID string) ([]Workspace, error)
+	GetDefaultWorkspace(ctx context.Context, userID string) (Workspace, error)
+	GetWorkspaceByID(ctx context.Context, workspaceID string) (Workspace, error)
+	GetWorkspaceByUserDisplayName(ctx context.Context, userDisplayName string) (Workspace, error)
+	DeploymentBelongsToWorkspace(ctx context.Context, workspaceID, deploymentID string) (bool, error)
 
 	// Deployment domain
 	// ////////////////
 	SaveDeployment(ctx context.Context, def AppDeployment) (AppDeployment, error)
 	UpdateDeployment(ctx context.Context, def AppDeployment) error
-	GetDeployment(ctx context.Context, deploymentID string) (AppDeployment, error)
-	GetDeployments(ctx context.Context, repoID string) ([]AppDeployment, error)
+	GetDeployment(ctx context.Context, workspaceID, deploymentID string) (AppDeployment, error)
+	GetDeployments(ctx context.Context, workspaceID, repoID string) ([]AppDeployment, error)
 
 	// Github repos domain
 	// //////////////////////
@@ -82,22 +87,21 @@ type Database interface {
 	LinkAllGithubInstallations(ctx context.Context, profile UserInfo, installationsRepos map[int][]GithubRepository) error
 	SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []InstalledRepository) error
 	RemoveGithubRepos(ctx context.Context, installationID int, repos []InstalledRepository) error
-	GetGithubRepos(ctx context.Context, email string) ([]GithubRepository, bool, error)
-	GetInstallationID(ctx context.Context, userID, fullName string) (int, error)
-	SaveInstallation(ctx context.Context, userID string, githubID int) (string, error)
-	ConnectRepo(ctx context.Context, userID, repoID, branchName string, space tqsdk.Space) (GithubRepository, error)
+	GetGithubRepos(ctx context.Context, workspaceID string) ([]GithubRepository, bool, error)
+	GetInstallationID(ctx context.Context, workspaceID, fullName string) (int, error)
+	ConnectRepo(ctx context.Context, workspaceID, repoID, branchName string, space tqsdk.Space) (GithubRepository, error)
 	GetRepoByGithub(ctx context.Context, githubRepoID int) (GithubRepository, error)
-	GetRepoByID(ctx context.Context, userID, repoID string) (GithubRepository, error)
+	GetRepoByID(ctx context.Context, workspaceID, repoID string) (GithubRepository, error)
 	RepoIsConnected(ctx context.Context, repoID string) (bool, error)
 	GetSpace(ctx context.Context, repoID string) (tqsdk.Space, error)
 	SaveSpace(ctx context.Context, repoID string, space tqsdk.Space) error
 
 	// Secrets
 	// ////////////////////////
-	SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error
-	GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error)
-	RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error)
-	RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error
+	SaveSecret(ctx context.Context, repoID, key, workspaceID string) error
+	GetRepositorySecretKeys(ctx context.Context, repoID, workspaceID string) ([]string, error)
+	RepositorySecretKeyExists(ctx context.Context, repoID, key, workspaceID string) (bool, error)
+	RemoveSecret(ctx context.Context, repoID, key, workspaceID string) error
 
 	// Installation cleanup
 	// ////////////////////////

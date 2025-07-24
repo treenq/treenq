@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dennypenta/vel"
 )
@@ -17,14 +18,28 @@ func (h *Handler) RemoveSecret(ctx context.Context, req RemoveSecretRequest) (st
 		return struct{}{}, rpcErr
 	}
 
-	if err := h.db.RemoveSecret(ctx, req.RepoID, req.Key, profile.UserInfo.DisplayName); err != nil {
+	if err := h.db.RemoveSecret(ctx, req.RepoID, req.Key, profile.UserInfo.CurrentWorkspace); err != nil {
 		return struct{}{}, &vel.Error{
 			Message: "failed to remove secret from database",
 			Err:     err,
 		}
 	}
 
-	err := h.kube.RemoveSecret(ctx, h.kubeConfig, profile.UserInfo.DisplayName, req.RepoID, req.Key)
+	workspace, err := h.db.GetWorkspaceByID(ctx, profile.UserInfo.CurrentWorkspace)
+	if err != nil {
+		if errors.Is(err, ErrWorkspaceNotFound) {
+			return struct{}{}, &vel.Error{
+				Code: "WORKSPACE_NOT_FOUND",
+			}
+		}
+
+		return struct{}{}, &vel.Error{
+			Message: "failed to get workspace info",
+			Err:     err,
+		}
+	}
+
+	err = h.kube.RemoveSecret(ctx, h.kubeConfig, workspace.Name, req.RepoID, req.Key)
 	if err != nil {
 		return struct{}{}, &vel.Error{
 			Message: "failed to remove secret from Kubernetes",

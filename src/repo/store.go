@@ -18,6 +18,8 @@ import (
 	sq "github.com/Masterminds/squirrel"
 )
 
+const personalWorkspaceName = "default"
+
 type Store struct {
 	db *sqlx.DB
 	sq sq.StatementBuilderType
@@ -54,10 +56,29 @@ func (s *Store) GetOrCreateUser(ctx context.Context, user domain.UserInfo) (doma
 		return user, fmt.Errorf("failed to scan select GetOrCreateUser: %w", err)
 	}
 
+	// Get user's workspaces
+	workspaces, err := s.GetUserWorkspaces(ctx, user.ID)
+	if err != nil {
+		return user, fmt.Errorf("failed to get user workspaces: %w", err)
+	}
+
+	// Extract workspace IDs
+	workspaceIDs := make([]string, len(workspaces))
+	for i, workspace := range workspaces {
+		workspaceIDs[i] = workspace.ID
+	}
+	user.Workspaces = workspaceIDs
+
 	return user, nil
 }
 
 func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.UserInfo, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return user, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	id := xid.New().String()
 	query, args, err := s.sq.Insert("users").
 		Columns("id", "email", "displayName").
@@ -66,11 +87,21 @@ func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.Us
 	if err != nil {
 		return user, fmt.Errorf("failed to build query createUser: %w", err)
 	}
-	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return user, fmt.Errorf("failed to exec createUser: %w", err)
 	}
 
+	workspace, err := s.createDefaultWorkspaceForUser(ctx, tx, id)
+	if err != nil {
+		return user, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return user, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	user.ID = id
+	user.Workspaces = []string{workspace.ID}
 	return user, nil
 }
 
@@ -123,10 +154,15 @@ func (s *Store) UpdateDeployment(ctx context.Context, deployment domain.AppDeplo
 	return nil
 }
 
-func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt").
-		From("deployments").
-		Where(sq.Eq{"id": deploymentID}).
+func (s *Store) GetDeployment(ctx context.Context, workspaceID, deploymentID string) (domain.AppDeployment, error) {
+	query, args, err := s.sq.Select("d.id", "d.fromDeploymentId", "d.repoId", "d.space", "d.sha", "d.branch", "d.commitMessage",
+		"d.buildTag", "d.userDisplayName", "d.status", "d.createdAt", "d.updatedAt").
+		From("deployments d").
+		Join("installedRepos r ON d.repoId = r.id").
+		Where(sq.And{
+			sq.Eq{"d.id": deploymentID},
+			sq.Eq{"r.workspaceId": workspaceID},
+		}).
 		ToSql()
 	if err != nil {
 		return domain.AppDeployment{}, fmt.Errorf("failed to build GetDeployment query: %w", err)
@@ -152,11 +188,15 @@ func (s *Store) GetDeployment(ctx context.Context, deploymentID string) (domain.
 	return dep, nil
 }
 
-func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.AppDeployment, error) {
-	query, args, err := s.sq.Select("id", "fromDeploymentId", "repoId", "space", "sha", "branch", "commitMessage", "buildTag", "userDisplayName", "status", "createdAt", "updatedAt").
-		From("deployments").
-		Where(sq.Eq{"repoId": repoID}).
-		OrderBy("id DESC").
+func (s *Store) GetDeployments(ctx context.Context, workspaceID, repoID string) ([]domain.AppDeployment, error) {
+	query, args, err := s.sq.Select("d.id", "d.fromDeploymentId", "d.repoId", "d.space", "d.sha", "d.branch", "d.commitMessage", "d.buildTag", "d.userDisplayName", "d.status", "d.createdAt", "d.updatedAt").
+		From("deployments d").
+		Join("installedRepos r ON d.repoId = r.id").
+		Where(sq.And{
+			sq.Eq{"d.repoId": repoID},
+			sq.Eq{"r.workspaceId": workspaceID},
+		}).
+		OrderBy("d.id DESC").
 		Limit(20).
 		ToSql()
 	if err != nil {
@@ -192,6 +232,30 @@ func (s *Store) GetDeployments(ctx context.Context, repoID string) ([]domain.App
 	return deps, nil
 }
 
+func (s *Store) DeploymentBelongsToWorkspace(ctx context.Context, workspaceID, deploymentID string) (bool, error) {
+	query, args, err := s.sq.Select("1").
+		From("deployments d").
+		Join("installedRepos r ON d.repoId = r.id").
+		Where(sq.And{
+			sq.Eq{"d.id": deploymentID},
+			sq.Eq{"r.workspaceId": workspaceID},
+		}).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to build DeploymentBelongsToWorkspace query: %w", err)
+	}
+
+	var exists int
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to query DeploymentBelongsToWorkspace: %w", err)
+	}
+	return true, nil
+}
+
 // LinkGithub is called either on "created" app installation event
 // or on manual sync,
 // it cleans the previous installed repos state and inserts everything in the repos slice
@@ -207,7 +271,20 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, userDisplayN
 		return "", fmt.Errorf("failed to find user: %w", err)
 	}
 
-	treenqInstallationID, err := s.linkGithub(ctx, tx, installationID, userID, userDisplayName, repos)
+	workspace, err := s.GetDefaultWorkspace(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrWorkspaceNotFound) {
+			// User exists but doesn't have a default workspace - create one
+			workspace, err = s.createDefaultWorkspaceForUser(ctx, tx, userID)
+			if err != nil {
+				return "", fmt.Errorf("failed to create default workspace for user: %w", err)
+			}
+		} else {
+			return "", fmt.Errorf("failed to get default workspace: %w", err)
+		}
+	}
+
+	treenqInstallationID, err := s.linkGithub(ctx, tx, installationID, workspace.ID, repos)
 	if err != nil {
 		return "", err
 	}
@@ -217,23 +294,23 @@ func (s *Store) LinkGithub(ctx context.Context, installationID int, userDisplayN
 	return treenqInstallationID, nil
 }
 
-func (s *Store) linkGithub(ctx context.Context, querier Querier, installationID int, userID string, senderLogin string, repos []domain.InstalledRepository) (string, error) {
+func (s *Store) linkGithub(ctx context.Context, querier Querier, installationID int, workspaceID string, repos []domain.InstalledRepository) (string, error) {
 	timestamp := now()
 
 	// save a github app
-	treenqInstallationID, err := s.saveInstallation(ctx, querier, userID, installationID, timestamp)
+	treenqInstallationID, err := s.saveInstallation(ctx, querier, workspaceID, installationID, timestamp)
 	if err != nil {
 		return "", fmt.Errorf("failed to save installation: %w", err)
 	}
 
 	// clean previous state
-	err = s.removeInstalledRepos(ctx, userID, installationID, querier)
+	err = s.removeInstalledRepos(ctx, workspaceID, installationID, querier)
 	if err != nil {
 		return "", fmt.Errorf("failed to remove installed repos: %w", err)
 	}
 
 	// Insert repositories
-	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, querier)
+	err = s.insertInstalledRepos(ctx, repos, workspaceID, installationID, timestamp, querier)
 	if err != nil {
 		return "", fmt.Errorf("failed to save installed repos: %w", err)
 	}
@@ -250,7 +327,7 @@ func (s *Store) LinkAllGithubInstallations(ctx context.Context, profile domain.U
 	defer tx.Rollback()
 
 	for installationID, repos := range installationsRepos {
-		_, err := s.linkGithub(ctx, tx, installationID, profile.ID, profile.DisplayName, repos)
+		_, err := s.linkGithub(ctx, tx, installationID, profile.CurrentWorkspace, repos)
 		if err != nil {
 			return err
 		}
@@ -285,12 +362,12 @@ func (s *Store) getUserIDByDisplayName(ctx context.Context, senderLogin string, 
 
 func (s *Store) removeInstalledRepos(
 	ctx context.Context,
-	userID string,
+	workspaceID string,
 	installationID int,
 	q Querier,
 ) error {
 	repoQuery := s.sq.Delete("installedRepos").Where(sq.Eq{
-		"userId":         userID,
+		"workspaceId":    workspaceID,
 		"installationId": installationID,
 	})
 
@@ -309,7 +386,7 @@ func (s *Store) removeInstalledRepos(
 func (s *Store) insertInstalledRepos(
 	ctx context.Context,
 	repos []domain.InstalledRepository,
-	userID string,
+	workspaceID string,
 	installationID int,
 	createdAt time.Time,
 	q Querier,
@@ -319,7 +396,7 @@ func (s *Store) insertInstalledRepos(
 	}
 
 	repoQuery := s.sq.Insert("installedRepos").
-		Columns("id", "githubId", "fullName", "private", "branch", "installationId", "userId", "status", "createdAt")
+		Columns("id", "githubId", "fullName", "private", "branch", "installationId", "workspaceId", "status", "createdAt")
 
 	for _, repo := range repos {
 		id := xid.New().String()
@@ -330,7 +407,7 @@ func (s *Store) insertInstalledRepos(
 			repo.Private,
 			"",
 			installationID,
-			userID,
+			workspaceID,
 			domain.StatusRepoActive,
 			createdAt,
 		)
@@ -351,15 +428,38 @@ func (s *Store) insertInstalledRepos(
 }
 
 func (s *Store) SaveGithubRepos(ctx context.Context, installationID int, senderLogin string, repos []domain.InstalledRepository) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	userID, err := s.getUserIDByDisplayName(ctx, senderLogin, s.db)
 	if err != nil {
 		return err
 	}
 
+	workspace, err := s.GetDefaultWorkspace(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrWorkspaceNotFound) {
+			// User exists but doesn't have a default workspace - create one
+			workspace, err = s.createDefaultWorkspaceForUser(ctx, tx, userID)
+			if err != nil {
+				return fmt.Errorf("failed to create default workspace for user: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to get default workspace: %w", err)
+		}
+	}
+
 	timestamp := now()
-	err = s.insertInstalledRepos(ctx, repos, userID, installationID, timestamp, s.db)
+	err = s.insertInstalledRepos(ctx, repos, workspace.ID, installationID, timestamp, tx)
 	if err != nil {
 		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -391,10 +491,10 @@ func (s *Store) RemoveGithubRepos(ctx context.Context, installationID int, repos
 	return nil
 }
 
-func (s *Store) GetInstallationID(ctx context.Context, userID, repoName string) (int, error) {
+func (s *Store) GetInstallationID(ctx context.Context, workspaceID, repoName string) (int, error) {
 	q, args, err := s.sq.Select("installationId").
 		From("installedRepos").
-		Where(sq.Eq{"userId": userID, "fullName": repoName}).
+		Where(sq.Eq{"workspaceId": workspaceID, "fullName": repoName}).
 		ToSql()
 	if err != nil {
 		return 0, fmt.Errorf("failed to build instalaltions query: %w", err)
@@ -410,19 +510,13 @@ func (s *Store) GetInstallationID(ctx context.Context, userID, repoName string) 
 	return installationGithubID, nil
 }
 
-func (s *Store) SaveInstallation(ctx context.Context, userID string, githubID int) (string, error) {
-	timestamp := now()
-
-	return s.saveInstallation(ctx, s.db, userID, githubID, timestamp)
-}
-
-func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, githubID int, timestamp time.Time) (string, error) {
+func (s *Store) saveInstallation(ctx context.Context, q Querier, workspaceID string, githubID int, timestamp time.Time) (string, error) {
 	// First check if installation already exists
 	query, args, err := s.sq.Select("id").
 		From("installations").
 		Where(sq.Eq{
-			"githubId": githubID,
-			"userId":   userID,
+			"githubId":    githubID,
+			"workspaceId": workspaceID,
 		}).
 		ToSql()
 	if err != nil {
@@ -443,8 +537,8 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 	installationID = xid.New().String()
 
 	query, args, err = s.sq.Insert("installations").
-		Columns("id", "userId", "githubId", "createdAt").
-		Values(installationID, userID, githubID, timestamp).
+		Columns("id", "workspaceId", "githubId", "createdAt").
+		Values(installationID, workspaceID, githubID, timestamp).
 		ToSql()
 	if err != nil {
 		return "", fmt.Errorf("failed to build save installation query: %w", err)
@@ -457,14 +551,14 @@ func (s *Store) saveInstallation(ctx context.Context, q Querier, userID string, 
 	return installationID, nil
 }
 
-func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.GithubRepository, bool, error) {
-	hasInstallation, err := s.userHasInstallation(ctx, userID)
+func (s *Store) GetGithubRepos(ctx context.Context, workspaceID string) ([]domain.GithubRepository, bool, error) {
+	hasInstallation, err := s.workspaceHasInstallation(ctx, workspaceID)
 	if err != nil {
 		return nil, false, nil
 	}
 	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "status", "branch").
 		From("installedRepos").
-		Where(sq.Eq{"userId": userID}).
+		Where(sq.Eq{"workspaceId": workspaceID}).
 		OrderBy("id ASC").
 		ToSql()
 	if err != nil {
@@ -505,32 +599,32 @@ func (s *Store) GetGithubRepos(ctx context.Context, userID string) ([]domain.Git
 	return repos, hasInstallation, nil
 }
 
-func (s *Store) userHasInstallation(ctx context.Context, userID string) (bool, error) {
+func (s *Store) workspaceHasInstallation(ctx context.Context, workspaceID string) (bool, error) {
 	query, args, err := s.sq.Select("count(*)").
 		From("installations").
-		Where(sq.Eq{"userId": userID}).
+		Where(sq.Eq{"workspaceId": workspaceID}).
 		ToSql()
 	if err != nil {
-		return false, fmt.Errorf("failed to build userHasInstallation query: %w", err)
+		return false, fmt.Errorf("failed to build workspaceHasInstallation query: %w", err)
 	}
 
 	var count int
 	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&count); err != nil {
-		return false, fmt.Errorf("failed to scan userHasInstallation: %w", err)
+		return false, fmt.Errorf("failed to scan workspaceHasInstallation: %w", err)
 	}
 
 	return count > 0, nil
 }
 
-func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string, space tqsdk.Space) (domain.GithubRepository, error) {
+func (s *Store) ConnectRepo(ctx context.Context, workspaceID, repoID, branch string, space tqsdk.Space) (domain.GithubRepository, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return domain.GithubRepository{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	repo, err := s.connectRepo(ctx, tx, userID, repoID, branch)
+	repo, err := s.connectRepo(ctx, tx, workspaceID, repoID, branch)
 	if err != nil {
 		return repo, err
 	}
@@ -547,10 +641,10 @@ func (s *Store) ConnectRepo(ctx context.Context, userID, repoID, branch string, 
 	return repo, nil
 }
 
-func (s *Store) connectRepo(ctx context.Context, q Querier, userID, repoID, branch string) (domain.GithubRepository, error) {
+func (s *Store) connectRepo(ctx context.Context, q Querier, workspaceID, repoID, branch string) (domain.GithubRepository, error) {
 	query, args, err := s.sq.Update("installedRepos").
 		Set("branch", branch).
-		Where(sq.Eq{"id": repoID, "userId": userID}).
+		Where(sq.Eq{"id": repoID, "workspaceId": workspaceID}).
 		Suffix("RETURNING id, githubId, fullName, private, branch, status").
 		ToSql()
 	if err != nil {
@@ -663,11 +757,11 @@ func (s *Store) GetRepoByGithub(ctx context.Context, githubRepoID int) (domain.G
 	return repo, nil
 }
 
-func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (domain.GithubRepository, error) {
+func (s *Store) GetRepoByID(ctx context.Context, workspaceID string, repoID string) (domain.GithubRepository, error) {
 	var repo domain.GithubRepository
 	query, args, err := s.sq.Select("id", "githubId", "fullName", "private", "branch", "installationId", "status").
 		From("installedRepos").
-		Where(sq.Eq{"id": repoID, "userId": userID}).
+		Where(sq.Eq{"id": repoID, "workspaceId": workspaceID}).
 		ToSql()
 	if err != nil {
 		return repo, fmt.Errorf("failed to build GetRepoByID query: %w", err)
@@ -686,11 +780,11 @@ func (s *Store) GetRepoByID(ctx context.Context, userID string, repoID string) (
 	return repo, nil
 }
 
-func (s *Store) SaveSecret(ctx context.Context, repoID, key, userDisplayName string) error {
+func (s *Store) SaveSecret(ctx context.Context, repoID, key, workspaceID string) error {
 	createdAt := now()
 	query, args, err := s.sq.Insert("secrets").
-		Columns("repoId", "key", "userDisplayName", "createdAt").
-		Values(repoID, key, userDisplayName, createdAt).
+		Columns("repoId", "key", "workspaceId", "createdAt").
+		Values(repoID, key, workspaceID, createdAt).
 		Suffix("ON CONFLICT DO NOTHING").
 		ToSql()
 	if err != nil {
@@ -704,10 +798,10 @@ func (s *Store) SaveSecret(ctx context.Context, repoID, key, userDisplayName str
 	return nil
 }
 
-func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, userDisplayName string) ([]string, error) {
+func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, workspaceID string) ([]string, error) {
 	query, args, err := s.sq.Select("key").
 		From("secrets").
-		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName}).
+		Where(sq.Eq{"repoId": repoID, "workspaceId": workspaceID}).
 		OrderBy("createdAt ASC").
 		ToSql()
 	if err != nil {
@@ -736,10 +830,10 @@ func (s *Store) GetRepositorySecretKeys(ctx context.Context, repoID, userDisplay
 	return keys, nil
 }
 
-func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID, key, userDisplayName string) (bool, error) {
+func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID, key, workspaceID string) (bool, error) {
 	query, args, err := s.sq.Select("1").
 		From("secrets").
-		Where(sq.Eq{"repoId": repoID, "userDisplayName": userDisplayName, "key": key}).
+		Where(sq.Eq{"repoId": repoID, "workspaceId": workspaceID, "key": key}).
 		Limit(1).
 		ToSql()
 	if err != nil {
@@ -758,9 +852,9 @@ func (s *Store) RepositorySecretKeyExists(ctx context.Context, repoID, key, user
 	return true, nil
 }
 
-func (s *Store) RemoveSecret(ctx context.Context, repoID, key, userDisplayName string) error {
+func (s *Store) RemoveSecret(ctx context.Context, repoID, key, workspaceID string) error {
 	query, args, err := s.sq.Delete("secrets").
-		Where(sq.Eq{"repoId": repoID, "key": key, "userDisplayName": userDisplayName}).
+		Where(sq.Eq{"repoId": repoID, "key": key, "workspaceId": workspaceID}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build RemoveSecret query: %w", err)
@@ -856,4 +950,161 @@ func (s *Store) RemoveInstallation(ctx context.Context, installationID int) erro
 	}
 
 	return nil
+}
+
+func (s *Store) GetUserWorkspaces(ctx context.Context, userID string) ([]domain.Workspace, error) {
+	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
+		From("workspaces w").
+		Join("workspaceUsers wu ON w.id = wu.workspaceId").
+		Where(sq.Eq{"wu.userId": userID}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GetUserWorkspaces query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query GetUserWorkspaces: %w", err)
+	}
+	defer rows.Close()
+
+	var workspaces []domain.Workspace
+	var personal domain.Workspace
+	for rows.Next() {
+		var workspace domain.Workspace
+		var githubOrgName string
+		if err := rows.Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
+			return nil, fmt.Errorf("failed to scan GetUserWorkspaces row: %w", err)
+		}
+		if githubOrgName != "" {
+			workspace.GithubOrgName = githubOrgName
+		}
+		// default workspace is personal and ever goes first
+		if workspace.Name == personalWorkspaceName {
+			personal = workspace
+		} else {
+			workspaces = append(workspaces, workspace)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate GetUserWorkspaces rows: %w", err)
+	}
+
+	return append([]domain.Workspace{personal}, workspaces...), nil
+}
+
+func (s *Store) GetDefaultWorkspace(ctx context.Context, userID string) (domain.Workspace, error) {
+	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
+		From("workspaces w").
+		Join("workspaceUsers wu ON w.id = wu.workspaceId").
+		Where(sq.Eq{"wu.userId": userID, "w.name": personalWorkspaceName}).
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build GetDefaultWorkspace query: %w", err)
+	}
+
+	var workspace domain.Workspace
+	var githubOrgName string
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return workspace, domain.ErrWorkspaceNotFound
+		}
+		return workspace, fmt.Errorf("failed to scan GetDefaultWorkspace: %w", err)
+	}
+
+	if githubOrgName != "" {
+		workspace.GithubOrgName = githubOrgName
+	}
+
+	return workspace, nil
+}
+
+func (s *Store) GetWorkspaceByID(ctx context.Context, workspaceID string) (domain.Workspace, error) {
+	query, args, err := s.sq.Select("id", "name", "githubOrgName").
+		From("workspaces").
+		Where(sq.Eq{"id": workspaceID}).
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build GetWorkspaceByID query: %w", err)
+	}
+
+	var workspace domain.Workspace
+	var githubOrgName string
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return workspace, domain.ErrWorkspaceNotFound
+		}
+		return workspace, fmt.Errorf("failed to scan GetWorkspaceByID: %w", err)
+	}
+
+	if githubOrgName != "" {
+		workspace.GithubOrgName = githubOrgName
+	}
+
+	return workspace, nil
+}
+
+func (s *Store) GetWorkspaceByUserDisplayName(ctx context.Context, userDisplayName string) (domain.Workspace, error) {
+	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
+		From("workspaces w").
+		Join("workspaceUsers wu ON w.id = wu.workspaceId").
+		Join("users u ON wu.userId = u.id").
+		Where(sq.Eq{"u.displayName": userDisplayName}).
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build GetWorkspaceByUserDisplayName query: %w", err)
+	}
+
+	var workspace domain.Workspace
+	var githubOrgName string
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return workspace, domain.ErrWorkspaceNotFound
+		}
+		return workspace, fmt.Errorf("failed to scan GetWorkspaceByUserDisplayName: %w", err)
+	}
+
+	if githubOrgName != "" {
+		workspace.GithubOrgName = githubOrgName
+	}
+
+	return workspace, nil
+}
+
+// createDefaultWorkspaceForUser creates a default workspace for a user within an existing transaction
+func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, userID string) (domain.Workspace, error) {
+	workspaceID := xid.New().String()
+	workspaceName := xid.New().String()
+
+	// Create the workspace
+	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
+		Columns("id", "name").
+		Values(workspaceID, personalWorkspaceName).
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, workspaceQuery, workspaceArgs...); err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to create default workspace: %w", err)
+	}
+
+	// Link user to workspace
+	userWorkspaceQuery, userWorkspaceArgs, err := s.sq.Insert("workspaceUsers").
+		Columns("workspaceId", "userId", "role").
+		Values(workspaceID, userID, "admin").
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build workspace user query: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, userWorkspaceQuery, userWorkspaceArgs...); err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to add user to workspace: %w", err)
+	}
+
+	return domain.Workspace{
+		ID:   workspaceID,
+		Name: workspaceName,
+		Role: "admin",
+	}, nil
 }
