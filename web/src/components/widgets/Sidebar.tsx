@@ -1,7 +1,7 @@
 // File: web/src/components/widgets/Sidebar.tsx
 import { createEffect, createSignal, For, Show } from 'solid-js'
 
-import { ChevronRight, LayoutGrid, Settings } from '@/components/icons'
+import { SpriteIcon } from '@/components/icons/SpriteIcon'
 
 /*
 1) fix style (text, colors, position)
@@ -25,7 +25,7 @@ interface SidebarChild {
 }
 
 interface SidebarItemProps {
-  icon: typeof ChevronRight
+  icon: string
   label: string
   isActive?: boolean
   href?: string
@@ -39,7 +39,7 @@ export function AppSidebar() {
       label: 'workspace',
     },
     {
-      icon: LayoutGrid,
+      icon: 'layout-grid',
       label: 'Projects',
       isActive: true,
       href: '/projects',
@@ -50,7 +50,7 @@ export function AppSidebar() {
       label: 'account',
     },
     {
-      icon: Settings,
+      icon: 'settings',
       label: 'Settings',
       href: '#',
     },
@@ -86,7 +86,7 @@ export function AppSidebar() {
                       <SidebarMenuItem>
                         <SidebarMenuButton>
                           <a href={(item as SidebarItemProps).href} class="flex items-center">
-                            {(item as SidebarItemProps).icon({})}
+                            <SpriteIcon name={(item as SidebarItemProps).icon} />
                             <span>{(item as SidebarItemProps).label}</span>
                           </a>
                         </SidebarMenuButton>
@@ -98,10 +98,10 @@ export function AppSidebar() {
                         <CollapsibleTrigger class="group flex w-full">
                           <SidebarMenuButton>
                             <div class="flex items-center">
-                              {(item as SidebarItemProps).icon({})}
+                              <SpriteIcon name={(item as SidebarItemProps).icon} />
                               <span>{(item as SidebarItemProps).label}</span>
                             </div>
-                            <ChevronRight class="group-data-expanded:rotate-90" />
+                            <SpriteIcon name="chevron-right" class="group-data-expanded:rotate-90" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>

@@ -1,4 +1,4 @@
-import { Branch } from '@/components/icons'
+import { SpriteIcon } from '@/components/icons/SpriteIcon'
 import { A } from '@/components/ui/A'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -111,7 +111,7 @@ export default function Deploy(props: DeployProps) {
                     Deploy a tag
                   </Button>
                   <Button variant="outline" class="mt-2" onClick={() => doDeploy()}>
-                    Deploy <Branch />
+                    Deploy <SpriteIcon name="branch" />
                     {repo()?.branch}
                   </Button>
                 </div>

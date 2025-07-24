@@ -1,4 +1,4 @@
-import { Eye, EyeOff } from '@/components/icons'
+import { SpriteIcon } from '@/components/icons/SpriteIcon'
 import { Button } from '@/components/ui/Button'
 import {
   Table,
@@ -136,8 +136,8 @@ const SecretRow = ({ repoID, secret }: SecretRowProps) => {
           size="icon"
           onClick={() => (visible() ? setVisible(false) : toggleVisible())}
         >
-          <Show when={visible()} fallback={<Eye />}>
-            <EyeOff />
+          <Show when={visible()} fallback={<SpriteIcon name="eye" />}>
+            <SpriteIcon name="eye-off" />
           </Show>
         </Button>
         <Button variant="destructive" onClick={deleteSecret}>

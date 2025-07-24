@@ -1,4 +1,4 @@
-import { GitHub } from '@/components/icons'
+import { SpriteIcon } from '@/components/icons/SpriteIcon'
 import { Button } from '@/components/ui/Button'
 import { Routes } from '@/routes'
 
@@ -15,7 +15,7 @@ export default function Auth() {
         <h2>Sign In to Treenq</h2>
 
         <Button onClick={handleAuth} variant="outline" size="xxl" class="flex w-60 justify-end">
-          <GitHub />
+          <SpriteIcon name="github" />
           Sign In with GitHub
         </Button>
       </div>

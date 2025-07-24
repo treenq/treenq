@@ -1080,8 +1080,8 @@ func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, u
 
 	// Create the workspace
 	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
-		Columns("id", "name").
-		Values(workspaceID, personalWorkspaceName).
+		Columns("id", "name", "githubOrgName").
+		Values(workspaceID, personalWorkspaceName, "").
 		ToSql()
 	if err != nil {
 		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
