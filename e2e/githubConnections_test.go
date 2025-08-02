@@ -597,3 +597,26 @@ func validateDeployedServiceResponse(t *testing.T, expectedHost, expectedBody st
 
 	require.NoError(t, lastErr, "service validation failed")
 }
+
+func TestCreateWorkspace(t *testing.T) {
+	clearDatabase()
+
+	// create a user and obtain its token
+	user := client.UserInfo{ID: xid.New().String(), Email: "test@mail.com", DisplayName: "testing"}
+	userToken, err := createUser(user)
+	require.NoError(t, err, "user must be created")
+
+	require.NoError(t, err, "user must be created")
+
+	ctx := context.Background()
+	apiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+		"Authorization": "Bearer " + userToken,
+	})
+
+	workspaceResponse, err := apiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
+		UserID:        user.ID,
+		WorkspaceName: "Example Workspace",
+	})
+	require.NoError(t, err, "user should be able to create a workspace")
+	require.Equal(t, workspaceResponse.CreatedWorkspace.Name, "Example Workspace", "returned workspace should have the same name as requested")
+}
