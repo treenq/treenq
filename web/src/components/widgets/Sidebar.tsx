@@ -18,6 +18,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/Sidebar'
 import { reposStore } from '@/store/repoStore'
+import { workspaceStore } from '@/store/workspaceStore'
 
 interface SidebarChild {
   label: string
@@ -41,11 +42,7 @@ export function AppSidebar() {
     {
       icon: 'layout-grid',
       label: 'Workspaces',
-      children: [
-        { label: 'Workspace 1', href: '#' },
-        { label: 'Workspace 2', href: '#' },
-        { label: 'Workspace 3', href: '#' },
-      ],
+      children: [],
     },
     {
       icon: 'plus',
@@ -73,9 +70,16 @@ export function AppSidebar() {
 
   createEffect(() => {
     const reposList = reposStore.repos.map((it) => ({ label: it.fullName, href: '#' }))
+    const workspacesList = workspaceStore.workspaces.map((it) => ({
+      label: it.name,
+      href: '#',
+    }))
     const updated = sidebarItemsSkeleton.map((item) => {
       if (item.label === 'Projects' && 'children' in item) {
         return { ...item, children: reposList }
+      }
+      if (item.label === 'Workspaces' && 'children' in item) {
+        return { ...item, children: workspacesList }
       }
       return item
     })
