@@ -7,12 +7,14 @@ export default function IconSpritePlugin() {
     const iconsDir = path.join(process.cwd(), 'public/static', 'icons')
     const files = await fs.readdir(iconsDir)
     let symbols = ''
+    const iconNames: string[] = []
 
     // Build up the SVG sprite from the SVG files
     for (const file of files) {
       if (!file.endsWith('.svg')) continue
       let svgContent = await fs.readFile(path.join(iconsDir, file), 'utf8')
       const id = file.replace('.svg', '')
+      iconNames.push(id)
       svgContent = svgContent
         .replace(/id="[^"]+"/, '') // Remove any existing id
         .replace('<svg', `<symbol id="${id}"`) // Change <svg> to <symbol>
@@ -23,6 +25,11 @@ export default function IconSpritePlugin() {
     // Write the SVG sprite to a file in the static folder
     const sprite = `<svg width="0" height="0" style="display: none">\n\n${symbols}</svg>`
     await fs.writeFile(path.join(process.cwd(), 'public/static', 'icon-sprite.svg'), sprite)
+
+    // generate ts file for icon names
+    const dtsContent = `export type IconName = ${iconNames.map((name) => `'${name}'`).join(' | ')};\n`
+    const dtsFilePath = path.join(process.cwd(), 'src/components/icons', 'icon-names.ts')
+    await fs.writeFile(dtsFilePath, dtsContent)
   }
 
   return {
