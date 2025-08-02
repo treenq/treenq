@@ -1108,3 +1108,35 @@ func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, u
 		Role: "admin",
 	}, nil
 }
+
+func (s *Store) CreateWorkspace(ctx context.Context, userID string, workspaceName string) (domain.Workspace, error) {
+	workspaceID := xid.New().String()
+
+	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
+		Columns("id", "name", "githubOrgName").
+		Values(workspaceID, workspaceName, "").
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
+	}
+	if _, err := s.db.ExecContext(ctx, workspaceQuery, workspaceArgs...); err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to create workspace: %w", err)
+	}
+
+	userWorkspaceQuery, userWorkspaceArgs, err := s.sq.Insert("workspaceUsers").
+		Columns("workspaceID", "userID", "role").
+		Values(workspaceID, userID, "admin").
+		ToSql()
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to build workspace user query: %w", err)
+	}
+	if _, err := s.db.ExecContext(ctx, userWorkspaceQuery, userWorkspaceArgs...); err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to add user to workspace: %w", err)
+	}
+
+	return domain.Workspace{
+		ID:   workspaceID,
+		Name: workspaceName,
+		Role: "admin",
+	}, nil
+}
