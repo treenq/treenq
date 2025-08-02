@@ -40,6 +40,20 @@ export function AppSidebar() {
     },
     {
       icon: 'layout-grid',
+      label: 'Workspaces',
+      children: [
+        { label: 'Workspace 1', href: '#' },
+        { label: 'Workspace 2', href: '#' },
+        { label: 'Workspace 3', href: '#' },
+      ],
+    },
+    {
+      icon: 'plus',
+      label: 'Create Workspace',
+      href: '#',
+    },
+    {
+      icon: 'layout-grid',
       label: 'Projects',
       isActive: true,
       href: '/projects',
@@ -85,8 +99,11 @@ export function AppSidebar() {
                     fallback={
                       <SidebarMenuItem>
                         <SidebarMenuButton>
-                          <a href={(item as SidebarItemProps).href} class="flex items-center">
-                            <SpriteIcon name={(item as SidebarItemProps).icon} />
+                          <a
+                            href={(item as SidebarItemProps).href}
+                            class="flex w-full items-center"
+                          >
+                            <SpriteIcon name={(item as SidebarItemProps).icon} class="mr-2 w-6" />
                             <span>{(item as SidebarItemProps).label}</span>
                           </a>
                         </SidebarMenuButton>
@@ -101,7 +118,10 @@ export function AppSidebar() {
                               <SpriteIcon name={(item as SidebarItemProps).icon} />
                               <span>{(item as SidebarItemProps).label}</span>
                             </div>
-                            <SpriteIcon name="chevron-right" class="group-data-expanded:rotate-90" />
+                            <SpriteIcon
+                              name="chevron-right"
+                              class="group-data-expanded:rotate-90"
+                            />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
