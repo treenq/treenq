@@ -31,7 +31,6 @@ type Workspace struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	GithubOrgName string `json:"githubOrgName,omitempty"`
-	Role          string `json:"role"`
 }
 
 func (h *Handler) GithubAuthHandler(w http.ResponseWriter, r *http.Request) {
