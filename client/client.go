@@ -252,11 +252,17 @@ type GetProfileResponse struct {
 }
 
 type UserInfo struct {
-	ID               string   `json:"id"`
-	Email            string   `json:"email"`
-	DisplayName      string   `json:"displayName"`
-	CurrentWorkspace string   `json:"currentWorkspace"`
-	Workspaces       []string `json:"workspaces"`
+	ID               string      `json:"id"`
+	Email            string      `json:"email"`
+	DisplayName      string      `json:"displayName"`
+	CurrentWorkspace string      `json:"currentWorkspace"`
+	Workspaces       []Workspace `json:"workspaces"`
+}
+
+type Workspace struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	GithubOrgName string `json:"githubOrgName,omitempty"`
 }
 
 func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
@@ -926,19 +932,11 @@ func (c *Client) GetWorkloadStats(ctx context.Context, req GetWorkloadStatsReque
 }
 
 type CreateWorkspaceRequest struct {
-	UserID        string `json:"userID"`
 	WorkspaceName string `json:"workspaceName"`
 }
 
 type CreateWorkspaceResponse struct {
 	CreatedWorkspace Workspace `json:"createdWorkspace"`
-}
-
-type Workspace struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	GithubOrgName string `json:"githubOrgName,omitempty"`
-	Role          string `json:"role"`
 }
 
 func (c *Client) CreateWorkspace(ctx context.Context, req CreateWorkspaceRequest) (CreateWorkspaceResponse, error) {
