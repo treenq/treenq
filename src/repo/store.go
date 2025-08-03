@@ -1025,24 +1025,20 @@ func (s *Store) getWorkspace(ctx context.Context, id, userID, userDisplayName st
 	return workspace, nil
 }
 
-// createDefaultWorkspaceForUser creates a default workspace for a user within an existing transaction
-func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, userID string) (domain.Workspace, error) {
+func (s *Store) createWorkspace(ctx context.Context, tx *sql.Tx, userID string, workspaceName string) (domain.Workspace, error) {
 	workspaceID := xid.New().String()
-	workspaceName := xid.New().String()
 
-	// Create the workspace
 	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
 		Columns("id", "name", "githubOrgName").
-		Values(workspaceID, personalWorkspaceName, "").
+		Values(workspaceID, workspaceName, "").
 		ToSql()
 	if err != nil {
 		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, workspaceQuery, workspaceArgs...); err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to create default workspace: %w", err)
+		return domain.Workspace{}, fmt.Errorf("failed to create workspace: %w", err)
 	}
 
-	// Link user to workspace
 	userWorkspaceQuery, userWorkspaceArgs, err := s.sq.Insert("workspaceUsers").
 		Columns("workspaceId", "userId", "role").
 		Values(workspaceID, userID, "admin").
@@ -1060,34 +1056,17 @@ func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, u
 	}, nil
 }
 
+// createDefaultWorkspaceForUser creates a default workspace for a user within an existing transaction
+func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, userID string) (domain.Workspace, error) {
+	return s.createWorkspace(ctx, tx, userID, personalWorkspaceName)
+}
+
 func (s *Store) CreateWorkspace(ctx context.Context, userID string, workspaceName string) (domain.Workspace, error) {
-	workspaceID := xid.New().String()
-
-	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
-		Columns("id", "name", "githubOrgName").
-		Values(workspaceID, workspaceName, "").
-		ToSql()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
+		return domain.Workspace{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
-	if _, err := s.db.ExecContext(ctx, workspaceQuery, workspaceArgs...); err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to create workspace: %w", err)
-	}
+	defer tx.Rollback()
 
-	userWorkspaceQuery, userWorkspaceArgs, err := s.sq.Insert("workspaceUsers").
-		Columns("workspaceID", "userID", "role").
-		Values(workspaceID, userID, "admin").
-		ToSql()
-	if err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to build workspace user query: %w", err)
-	}
-	if _, err := s.db.ExecContext(ctx, userWorkspaceQuery, userWorkspaceArgs...); err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to add user to workspace: %w", err)
-	}
-
-	return domain.Workspace{
-		ID:   workspaceID,
-		Name: workspaceName,
-		Role: "admin",
-	}, nil
+	return s.createWorkspace(ctx, tx, userID, workspaceName)
 }
