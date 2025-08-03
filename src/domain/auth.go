@@ -20,18 +20,17 @@ var (
 )
 
 type UserInfo struct {
-	ID               string   `json:"id"`
-	Email            string   `json:"email"`
-	DisplayName      string   `json:"displayName"`
-	CurrentWorkspace string   `json:"currentWorkspace"`
-	Workspaces       []string `json:"workspaces"`
+	ID               string      `json:"id"`
+	Email            string      `json:"email"`
+	DisplayName      string      `json:"displayName"`
+	CurrentWorkspace string      `json:"currentWorkspace"`
+	Workspaces       []Workspace `json:"workspaces"`
 }
 
 type Workspace struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	GithubOrgName string `json:"githubOrgName,omitempty"`
-	Role          string `json:"role"`
 }
 
 func (h *Handler) GithubAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +105,6 @@ func (h *Handler) GithubCallbackHandler(ctx context.Context, req CodeExchangeReq
 		"id":          savedUser.ID,
 		"email":       savedUser.Email,
 		"displayName": savedUser.DisplayName,
-		"workspaces":  savedUser.Workspaces,
 	})
 	if err != nil {
 		return GithubCallbackResponse{}, &vel.Error{

@@ -1,8 +1,10 @@
 import { cn } from '@/components/ui/utils'
 import { JSX } from 'solid-js'
 
+import { IconName } from './icon-names'
+
 export type SpriteIconProps = {
-  name: string
+  name: IconName
   size?: number
   class?: string
 }

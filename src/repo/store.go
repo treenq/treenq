@@ -61,13 +61,7 @@ func (s *Store) GetOrCreateUser(ctx context.Context, user domain.UserInfo) (doma
 	if err != nil {
 		return user, fmt.Errorf("failed to get user workspaces: %w", err)
 	}
-
-	// Extract workspace IDs
-	workspaceIDs := make([]string, len(workspaces))
-	for i, workspace := range workspaces {
-		workspaceIDs[i] = workspace.ID
-	}
-	user.Workspaces = workspaceIDs
+	user.Workspaces = workspaces
 
 	return user, nil
 }
@@ -101,7 +95,7 @@ func (s *Store) createUser(ctx context.Context, user domain.UserInfo) (domain.Us
 	}
 
 	user.ID = id
-	user.Workspaces = []string{workspace.ID}
+	user.Workspaces = []domain.Workspace{workspace}
 	return user, nil
 }
 
@@ -953,7 +947,7 @@ func (s *Store) RemoveInstallation(ctx context.Context, installationID int) erro
 }
 
 func (s *Store) GetUserWorkspaces(ctx context.Context, userID string) ([]domain.Workspace, error) {
-	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
+	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName").
 		From("workspaces w").
 		Join("workspaceUsers wu ON w.id = wu.workspaceId").
 		Where(sq.Eq{"wu.userId": userID}).
@@ -972,12 +966,8 @@ func (s *Store) GetUserWorkspaces(ctx context.Context, userID string) ([]domain.
 	var personal domain.Workspace
 	for rows.Next() {
 		var workspace domain.Workspace
-		var githubOrgName string
-		if err := rows.Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
+		if err := rows.Scan(&workspace.ID, &workspace.Name, &workspace.GithubOrgName); err != nil {
 			return nil, fmt.Errorf("failed to scan GetUserWorkspaces row: %w", err)
-		}
-		if githubOrgName != "" {
-			workspace.GithubOrgName = githubOrgName
 		}
 		// default workspace is personal and ever goes first
 		if workspace.Name == personalWorkspaceName {
@@ -994,80 +984,42 @@ func (s *Store) GetUserWorkspaces(ctx context.Context, userID string) ([]domain.
 	return append([]domain.Workspace{personal}, workspaces...), nil
 }
 
+func (s *Store) GetWorkspaceByID(ctx context.Context, workspaceID string) (domain.Workspace, error) {
+	return s.getWorkspace(ctx, workspaceID, "", "")
+}
+
 func (s *Store) GetDefaultWorkspace(ctx context.Context, userID string) (domain.Workspace, error) {
-	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
-		From("workspaces w").
-		Join("workspaceUsers wu ON w.id = wu.workspaceId").
-		Where(sq.Eq{"wu.userId": userID, "w.name": personalWorkspaceName}).
-		ToSql()
+	return s.getWorkspace(ctx, "", userID, "")
+}
+
+func (s *Store) GetWorkspaceByUserDisplayName(ctx context.Context, userDisplayName string) (domain.Workspace, error) {
+	return s.getWorkspace(ctx, "", "", userDisplayName)
+}
+
+func (s *Store) getWorkspace(ctx context.Context, id, userID, userDisplayName string) (domain.Workspace, error) {
+	q := s.sq.Select("w.id", "w.name", "w.githubOrgName").
+		From("workspaces w")
+	if id != "" {
+		q = q.Where(sq.Eq{"id": id})
+	} else if userID != "" {
+		q = q.Join("workspaceUsers wu ON w.id = wu.workspaceId").
+			Where(sq.Eq{"wu.userId": userID})
+	} else if userDisplayName != "" {
+		q = q.Join("workspaceUsers wu ON w.id = wu.workspaceId").
+			Join("users u ON wu.userId = u.id").
+			Where(sq.Eq{"u.displayName": userDisplayName})
+	}
+	query, args, err := q.ToSql()
 	if err != nil {
 		return domain.Workspace{}, fmt.Errorf("failed to build GetDefaultWorkspace query: %w", err)
 	}
 
 	var workspace domain.Workspace
-	var githubOrgName string
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &workspace.GithubOrgName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return workspace, domain.ErrWorkspaceNotFound
 		}
 		return workspace, fmt.Errorf("failed to scan GetDefaultWorkspace: %w", err)
-	}
-
-	if githubOrgName != "" {
-		workspace.GithubOrgName = githubOrgName
-	}
-
-	return workspace, nil
-}
-
-func (s *Store) GetWorkspaceByID(ctx context.Context, workspaceID string) (domain.Workspace, error) {
-	query, args, err := s.sq.Select("id", "name", "githubOrgName").
-		From("workspaces").
-		Where(sq.Eq{"id": workspaceID}).
-		ToSql()
-	if err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to build GetWorkspaceByID query: %w", err)
-	}
-
-	var workspace domain.Workspace
-	var githubOrgName string
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return workspace, domain.ErrWorkspaceNotFound
-		}
-		return workspace, fmt.Errorf("failed to scan GetWorkspaceByID: %w", err)
-	}
-
-	if githubOrgName != "" {
-		workspace.GithubOrgName = githubOrgName
-	}
-
-	return workspace, nil
-}
-
-func (s *Store) GetWorkspaceByUserDisplayName(ctx context.Context, userDisplayName string) (domain.Workspace, error) {
-	query, args, err := s.sq.Select("w.id", "w.name", "w.githubOrgName", "wu.role").
-		From("workspaces w").
-		Join("workspaceUsers wu ON w.id = wu.workspaceId").
-		Join("users u ON wu.userId = u.id").
-		Where(sq.Eq{"u.displayName": userDisplayName}).
-		Limit(1).
-		ToSql()
-	if err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to build GetWorkspaceByUserDisplayName query: %w", err)
-	}
-
-	var workspace domain.Workspace
-	var githubOrgName string
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&workspace.ID, &workspace.Name, &githubOrgName, &workspace.Role); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return workspace, domain.ErrWorkspaceNotFound
-		}
-		return workspace, fmt.Errorf("failed to scan GetWorkspaceByUserDisplayName: %w", err)
-	}
-
-	if githubOrgName != "" {
-		workspace.GithubOrgName = githubOrgName
 	}
 
 	return workspace, nil
@@ -1105,7 +1057,6 @@ func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, u
 	return domain.Workspace{
 		ID:   workspaceID,
 		Name: workspaceName,
-		Role: "admin",
 	}, nil
 }
 

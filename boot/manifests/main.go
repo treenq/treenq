@@ -49,6 +49,7 @@ func main() {
 	q.Set("contents", "read")
 	q.Set("metadata", "read")
 	q.Set("pull_requests", "read")
+	q.Set("email_addresses", "read")
 
 	// webhook events
 	q.Add("events[]", "push")
