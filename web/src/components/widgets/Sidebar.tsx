@@ -8,6 +8,7 @@ import { SpriteIcon } from '@/components/icons/SpriteIcon'
 2) add A link on href elements
 
 */
+import { IconName } from '@/components/icons/icon-names'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible'
 import {
   Sidebar,
@@ -18,7 +19,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/Sidebar'
 import { reposStore } from '@/store/repoStore'
-import { workspaceStore } from '@/store/workspaceStore'
+import { userStore } from '@/store/userStore'
 
 interface SidebarChild {
   label: string
@@ -26,7 +27,7 @@ interface SidebarChild {
 }
 
 interface SidebarItemProps {
-  icon: string
+  icon: IconName
   label: string
   isActive?: boolean
   href?: string
@@ -70,10 +71,11 @@ export function AppSidebar() {
 
   createEffect(() => {
     const reposList = reposStore.repos.map((it) => ({ label: it.fullName, href: '#' }))
-    const workspacesList = workspaceStore.workspaces.map((it) => ({
-      label: it.name,
-      href: '#',
-    }))
+    const workspacesList =
+      userStore.user?.workspaces.map((it) => ({
+        label: it.name,
+        href: '#',
+      })) || []
     const updated = sidebarItemsSkeleton.map((item) => {
       if (item.label === 'Projects' && 'children' in item) {
         return { ...item, children: reposList }
