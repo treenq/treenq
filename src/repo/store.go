@@ -1068,5 +1068,13 @@ func (s *Store) CreateWorkspace(ctx context.Context, userID string, workspaceNam
 	}
 	defer tx.Rollback()
 
-	return s.createWorkspace(ctx, tx, userID, workspaceName)
+	workspace, err := s.createWorkspace(ctx, tx, userID, workspaceName)
+	if err != nil {
+		return workspace, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return workspace, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return workspace, nil
 }
