@@ -153,6 +153,20 @@ export type GetWorkloadStatsResponse = {
   workloadStats: WorkloadStats
 }
 
+export type CreateWorkspaceRequest = {
+  workspaceName: string
+}
+
+export type Workspace = {
+  id: string
+  name: string
+  githubOrgName?: string
+}
+
+export type CreateWorkspaceResponse = {
+  createdWorkspace: Workspace
+}
+
 class HttpClient {
   constructor(
     private baseUrl: string,
@@ -273,6 +287,10 @@ class HttpClient {
 
   async getWorkloadStats(req: GetWorkloadStatsRequest): Promise<Result<GetWorkloadStatsResponse>> {
     return await this.post('getWorkloadStats', req)
+  }
+
+  async createWorkspace(req: CreateWorkspaceRequest): Promise<Result<CreateWorkspaceResponse>> {
+    return await this.post('createWorkspace', req)
   }
 
   listenProgress(
