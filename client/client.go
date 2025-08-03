@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"time"
@@ -27,6 +28,19 @@ func NewClient(baseUrl string, client *http.Client, headers map[string]string) *
 		client:  client,
 		baseUrl: baseUrl,
 		headers: h,
+	}
+}
+
+func (c *Client) WithHeaders(headers map[string]string) *Client {
+	hCopy := make(http.Header, len(c.headers)+len(headers))
+	maps.Copy(hCopy, c.headers)
+	for k, v := range headers {
+		hCopy.Set(k, v)
+	}
+	return &Client{
+		client:  c.client,
+		baseUrl: c.baseUrl,
+		headers: hCopy,
 	}
 }
 

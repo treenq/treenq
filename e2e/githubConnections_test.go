@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
+	"github.com/treenq/treenq/pkg/treenq"
 )
 
 //go:embed testdata/appInstall.json
@@ -617,6 +618,10 @@ func TestCreateWorkspace(t *testing.T) {
 	anotherApiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
 		"Authorization": "Bearer " + anotherToken,
 	})
+	profileResponse, err := apiClient.GetProfile(ctx)
+	apiClient = apiClient.WithHeaders(map[string]string{
+		treenq.WorkspaceHeader: profileResponse.UserInfo.Workspaces[0].ID,
+	})
 
 	firstWorkspaceResponse, err := apiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
 		WorkspaceName: "Example Workspace",
@@ -630,7 +635,7 @@ func TestCreateWorkspace(t *testing.T) {
 	require.NoError(t, err, "user should be able to create a workspace")
 	require.Equal(t, secondWorkspaceResponse.CreatedWorkspace.Name, "Second Workspace", "returned workspace should have the same name as requested")
 
-	profileResponse, err := apiClient.GetProfile(ctx)
+	profileResponse, err = apiClient.GetProfile(ctx)
 	fmt.Println(profileResponse.UserInfo.Workspaces)
 	require.NoError(t, err, "getting profile shouldn't return an error")
 	require.Equal(t, profileResponse.UserInfo.Workspaces, [2]client.Workspace{firstWorkspaceResponse.CreatedWorkspace, secondWorkspaceResponse.CreatedWorkspace}, "user profile should include all accessable workspaces")
