@@ -618,9 +618,18 @@ func TestCreateWorkspace(t *testing.T) {
 	anotherApiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
 		"Authorization": "Bearer " + anotherToken,
 	})
+
 	profileResponse, err := apiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	profileDefaultWorkspace := profileResponse.UserInfo.Workspaces[0]
 	apiClient = apiClient.WithHeaders(map[string]string{
-		treenq.WorkspaceHeader: profileResponse.UserInfo.Workspaces[0].ID,
+		treenq.WorkspaceHeader: profileDefaultWorkspace.ID,
+	})
+	anotherProfileResponse, err := anotherApiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	anotherProfileDefaultWorkspace := anotherProfileResponse.UserInfo.Workspaces[0]
+	anotherApiClient = anotherApiClient.WithHeaders(map[string]string{
+		treenq.WorkspaceHeader: anotherProfileDefaultWorkspace.ID,
 	})
 
 	firstWorkspaceResponse, err := apiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
@@ -636,9 +645,10 @@ func TestCreateWorkspace(t *testing.T) {
 	require.Equal(t, secondWorkspaceResponse.CreatedWorkspace.Name, "Second Workspace", "returned workspace should have the same name as requested")
 
 	profileResponse, err = apiClient.GetProfile(ctx)
-	fmt.Println(profileResponse.UserInfo.Workspaces)
 	require.NoError(t, err, "getting profile shouldn't return an error")
-	require.Equal(t, profileResponse.UserInfo.Workspaces, [2]client.Workspace{firstWorkspaceResponse.CreatedWorkspace, secondWorkspaceResponse.CreatedWorkspace}, "user profile should include all accessable workspaces")
+	require.EqualValues(t, profileResponse.UserInfo.Workspaces, [3]client.Workspace{
+		profileDefaultWorkspace, firstWorkspaceResponse.CreatedWorkspace, secondWorkspaceResponse.CreatedWorkspace,
+	}, "user profile should include all accessable workspaces")
 
 	thirdWorkspaceResponse, err := anotherApiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
 		WorkspaceName: "Another User Workspace",
@@ -646,7 +656,9 @@ func TestCreateWorkspace(t *testing.T) {
 	require.NoError(t, err, "user should be able to create a workspace")
 	require.Equal(t, thirdWorkspaceResponse.CreatedWorkspace.Name, "Another User Workspace", "returned workspace should have the same name as requested")
 
-	profileResponse, err = anotherApiClient.GetProfile(ctx)
+	anotherProfileResponse, err = anotherApiClient.GetProfile(ctx)
 	require.NoError(t, err, "getting profile shouldn't return an error")
-	require.Equal(t, profileResponse.UserInfo.Workspaces, [1]string{thirdWorkspaceResponse.CreatedWorkspace.ID}, "user should be able to access only their own workspaces")
+	require.EqualValues(t, anotherProfileResponse.UserInfo.Workspaces, [2]client.Workspace{
+		anotherProfileDefaultWorkspace, thirdWorkspaceResponse.CreatedWorkspace,
+	}, "user should be able to access only their own workspaces")
 }
