@@ -207,6 +207,7 @@ class HttpClient {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
+        't-workspace': localStorage.getItem('currentWorkspace') || '',
         ...opts.headers,
       },
     })

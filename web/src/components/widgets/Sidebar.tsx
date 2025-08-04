@@ -24,6 +24,7 @@ import { userStore } from '@/store/userStore'
 interface SidebarChild {
   label: string
   href: string
+  onClick?: () => void
 }
 
 interface SidebarItemProps {
@@ -75,6 +76,7 @@ export function AppSidebar() {
       userStore.user?.workspaces.map((it) => ({
         label: it.name,
         href: '#',
+        onClick: () => localStorage.setItem('currentWorkspace', it.id),
       })) || []
     const updated = sidebarItemsSkeleton.map((item) => {
       if (item.label === 'Projects' && 'children' in item) {
@@ -135,7 +137,10 @@ export function AppSidebar() {
                             <For each={(item as SidebarItemProps).children}>
                               {(child) => (
                                 <SidebarMenuItem>
-                                  <SidebarMenuButton class="hover:bg-sidebar-primary">
+                                  <SidebarMenuButton
+                                    class="hover:bg-sidebar-primary"
+                                    onClick={child.onClick}
+                                  >
                                     <a href={child.href}>{child.label}</a>
                                   </SidebarMenuButton>
                                 </SidebarMenuItem>

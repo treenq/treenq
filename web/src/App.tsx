@@ -42,7 +42,10 @@ function App(): JSX.Element {
   onMount(() => {
     const fetchUser = async () => {
       try {
-        await userStore.getProfile()
+        const user = await userStore.getProfile()
+        if (!localStorage.getItem('currentWorkspace')) {
+          localStorage.setItem('currentWorkspace', user.workspaces[0].id)
+        }
       } finally {
         setIsLoading(false)
       }
