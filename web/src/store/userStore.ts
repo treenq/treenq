@@ -29,6 +29,17 @@ function createUserStore() {
       await httpClient.logout()
     },
     getProfile: getProfile,
+    createWorkspace: async (workspaceName: string) => {
+      if (!store.user) return
+      const res = await httpClient.createWorkspace({ workspaceName })
+      if ('error' in res) return
+      setStore({
+        user: {
+          ...store.user,
+          workspaces: [...store.user.workspaces, res.data.createdWorkspace],
+        },
+      })
+    },
   })
 }
 

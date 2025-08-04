@@ -30,6 +30,7 @@ interface SidebarChild {
 interface SidebarItemProps {
   icon: IconName
   label: string
+  onClick?: () => void
   isActive?: boolean
   href?: string
   children?: SidebarChild[]
@@ -49,7 +50,11 @@ export function AppSidebar() {
     {
       icon: 'plus',
       label: 'Create Workspace',
-      href: '#',
+      onClick: () => {
+        const workspaceName = prompt('Enter New Workspace Name')
+        if (!workspaceName) return
+        userStore.createWorkspace(workspaceName)
+      },
     },
     {
       icon: 'layout-grid',
@@ -106,7 +111,7 @@ export function AppSidebar() {
                     when={(item as SidebarItemProps).children}
                     fallback={
                       <SidebarMenuItem>
-                        <SidebarMenuButton>
+                        <SidebarMenuButton onClick={(item as SidebarItemProps).onClick}>
                           <a
                             href={(item as SidebarItemProps).href}
                             class="flex w-full items-center"
