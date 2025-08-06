@@ -73,6 +73,7 @@ type Database interface {
 	GetWorkspaceByID(ctx context.Context, workspaceID string) (Workspace, error)
 	GetWorkspaceByUserDisplayName(ctx context.Context, userDisplayName string) (Workspace, error)
 	DeploymentBelongsToWorkspace(ctx context.Context, workspaceID, deploymentID string) (bool, error)
+	CreateWorkspace(ctx context.Context, userID string, workspaceName string) (Workspace, error)
 
 	// Deployment domain
 	// ////////////////

@@ -8,6 +8,7 @@ import { SpriteIcon } from '@/components/icons/SpriteIcon'
 2) add A link on href elements
 
 */
+import { IconName } from '@/components/icons/icon-names'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible'
 import {
   Sidebar,
@@ -18,15 +19,18 @@ import {
   SidebarProvider,
 } from '@/components/ui/Sidebar'
 import { reposStore } from '@/store/repoStore'
+import { userStore } from '@/store/userStore'
 
 interface SidebarChild {
   label: string
   href: string
+  onClick?: () => void
 }
 
 interface SidebarItemProps {
-  icon: string
+  icon: IconName
   label: string
+  onClick?: () => void
   isActive?: boolean
   href?: string
   children?: SidebarChild[]
@@ -37,6 +41,20 @@ export function AppSidebar() {
     {
       type: 'divider',
       label: 'workspace',
+    },
+    {
+      icon: 'layout-grid',
+      label: 'Workspaces',
+      children: [],
+    },
+    {
+      icon: 'plus',
+      label: 'Create Workspace',
+      onClick: () => {
+        const workspaceName = prompt('Enter New Workspace Name')
+        if (!workspaceName) return
+        userStore.createWorkspace(workspaceName)
+      },
     },
     {
       icon: 'layout-grid',
@@ -59,9 +77,18 @@ export function AppSidebar() {
 
   createEffect(() => {
     const reposList = reposStore.repos.map((it) => ({ label: it.fullName, href: '#' }))
+    const workspacesList =
+      userStore.user?.workspaces.map((it) => ({
+        label: it.name,
+        href: '#',
+        onClick: () => localStorage.setItem('currentWorkspace', it.id),
+      })) || []
     const updated = sidebarItemsSkeleton.map((item) => {
       if (item.label === 'Projects' && 'children' in item) {
         return { ...item, children: reposList }
+      }
+      if (item.label === 'Workspaces' && 'children' in item) {
+        return { ...item, children: workspacesList }
       }
       return item
     })
@@ -84,9 +111,12 @@ export function AppSidebar() {
                     when={(item as SidebarItemProps).children}
                     fallback={
                       <SidebarMenuItem>
-                        <SidebarMenuButton>
-                          <a href={(item as SidebarItemProps).href} class="flex items-center">
-                            <SpriteIcon name={(item as SidebarItemProps).icon} />
+                        <SidebarMenuButton onClick={(item as SidebarItemProps).onClick}>
+                          <a
+                            href={(item as SidebarItemProps).href}
+                            class="flex w-full items-center"
+                          >
+                            <SpriteIcon name={(item as SidebarItemProps).icon} class="mr-2 w-6" />
                             <span>{(item as SidebarItemProps).label}</span>
                           </a>
                         </SidebarMenuButton>
@@ -101,7 +131,10 @@ export function AppSidebar() {
                               <SpriteIcon name={(item as SidebarItemProps).icon} />
                               <span>{(item as SidebarItemProps).label}</span>
                             </div>
-                            <SpriteIcon name="chevron-right" class="group-data-expanded:rotate-90" />
+                            <SpriteIcon
+                              name="chevron-right"
+                              class="group-data-expanded:rotate-90"
+                            />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -109,7 +142,10 @@ export function AppSidebar() {
                             <For each={(item as SidebarItemProps).children}>
                               {(child) => (
                                 <SidebarMenuItem>
-                                  <SidebarMenuButton class="hover:bg-sidebar-primary">
+                                  <SidebarMenuButton
+                                    class="hover:bg-sidebar-primary"
+                                    onClick={child.onClick}
+                                  >
                                     <a href={child.href}>{child.label}</a>
                                   </SidebarMenuButton>
                                 </SidebarMenuItem>

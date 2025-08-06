@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"time"
@@ -27,6 +28,19 @@ func NewClient(baseUrl string, client *http.Client, headers map[string]string) *
 		client:  client,
 		baseUrl: baseUrl,
 		headers: h,
+	}
+}
+
+func (c *Client) WithHeaders(headers map[string]string) *Client {
+	hCopy := make(http.Header, len(c.headers)+len(headers))
+	maps.Copy(hCopy, c.headers)
+	for k, v := range headers {
+		hCopy.Set(k, v)
+	}
+	return &Client{
+		client:  c.client,
+		baseUrl: c.baseUrl,
+		headers: hCopy,
 	}
 }
 
@@ -252,9 +266,17 @@ type GetProfileResponse struct {
 }
 
 type UserInfo struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"displayName"`
+	ID               string      `json:"id"`
+	Email            string      `json:"email"`
+	DisplayName      string      `json:"displayName"`
+	CurrentWorkspace string      `json:"currentWorkspace"`
+	Workspaces       []Workspace `json:"workspaces"`
+}
+
+type Workspace struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	GithubOrgName string `json:"githubOrgName,omitempty"`
 }
 
 func (c *Client) GetProfile(ctx context.Context) (GetProfileResponse, error) {
@@ -853,4 +875,115 @@ func (c *Client) RemoveSecret(ctx context.Context, req RemoveSecretRequest) erro
 	}
 
 	return nil
+}
+
+type GetWorkloadStatsRequest struct {
+	RepoID string `json:"repoID"`
+}
+
+type GetWorkloadStatsResponse struct {
+	WorkloadStats WorkloadStats `json:"workloadStats"`
+}
+
+type WorkloadStats struct {
+	Name          string        `json:"name"`
+	Replicas      Replicas      `json:"replicas"`
+	Versions      []VersionInfo `json:"versions"`
+	OverallStatus string        `json:"overallStatus"`
+}
+
+type Replicas struct {
+	Desired int `json:"desired"`
+	Running int `json:"running"`
+	Pending int `json:"pending"`
+	Failed  int `json:"failed"`
+}
+
+type VersionInfo struct {
+	Version  string      `json:"version"`
+	Replicas ReplicaInfo `json:"replicas"`
+}
+
+type ReplicaInfo struct {
+	Running int `json:"running"`
+	Pending int `json:"pending"`
+	Failed  int `json:"failed"`
+}
+
+func (c *Client) GetWorkloadStats(ctx context.Context, req GetWorkloadStatsRequest) (GetWorkloadStatsResponse, error) {
+	var res GetWorkloadStatsResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/getWorkloadStats", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call getWorkloadStats: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode getWorkloadStats response: %w", err)
+	}
+
+	return res, nil
+}
+
+type CreateWorkspaceRequest struct {
+	WorkspaceName string `json:"workspaceName"`
+}
+
+type CreateWorkspaceResponse struct {
+	CreatedWorkspace Workspace `json:"createdWorkspace"`
+}
+
+func (c *Client) CreateWorkspace(ctx context.Context, req CreateWorkspaceRequest) (CreateWorkspaceResponse, error) {
+	var res CreateWorkspaceResponse
+
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return res, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	body := bytes.NewBuffer(bodyBytes)
+
+	r, err := http.NewRequest("POST", c.baseUrl+"/createWorkspace", body)
+	if err != nil {
+		return res, fmt.Errorf("failed to create request: %w", err)
+	}
+	r = r.WithContext(ctx)
+	r.Header = c.headers
+
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return res, fmt.Errorf("failed to call createWorkspace: %w", err)
+	}
+	defer resp.Body.Close()
+
+	err = HandleErr(resp)
+	if err != nil {
+		return res, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return res, fmt.Errorf("failed to decode createWorkspace response: %w", err)
+	}
+
+	return res, nil
 }

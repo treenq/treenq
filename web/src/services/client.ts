@@ -23,6 +23,7 @@ export type UserInfo = {
   id: string
   email: string
   displayName: string
+  workspaces: Workspace[]
 }
 
 export type ApiErrorPayload = {
@@ -153,6 +154,20 @@ export type GetWorkloadStatsResponse = {
   workloadStats: WorkloadStats
 }
 
+export type CreateWorkspaceRequest = {
+  workspaceName: string
+}
+
+export type Workspace = {
+  id: string
+  name: string
+  githubOrgName?: string
+}
+
+export type CreateWorkspaceResponse = {
+  createdWorkspace: Workspace
+}
+
 class HttpClient {
   constructor(
     private baseUrl: string,
@@ -192,6 +207,7 @@ class HttpClient {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
+        't-workspace': localStorage.getItem('currentWorkspace') || '',
         ...opts.headers,
       },
     })
@@ -273,6 +289,10 @@ class HttpClient {
 
   async getWorkloadStats(req: GetWorkloadStatsRequest): Promise<Result<GetWorkloadStatsResponse>> {
     return await this.post('getWorkloadStats', req)
+  }
+
+  async createWorkspace(req: CreateWorkspaceRequest): Promise<Result<CreateWorkspaceResponse>> {
+    return await this.post('createWorkspace', req)
   }
 
   listenProgress(

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/treenq/treenq/client"
+	"github.com/treenq/treenq/pkg/treenq"
 )
 
 //go:embed testdata/appInstall.json
@@ -596,4 +597,68 @@ func validateDeployedServiceResponse(t *testing.T, expectedHost, expectedBody st
 	}
 
 	require.NoError(t, lastErr, "service validation failed")
+}
+
+func TestCreateWorkspace(t *testing.T) {
+	clearDatabase()
+
+	// create a user and obtain its token
+	user := client.UserInfo{ID: xid.New().String(), Email: "test@mail.com", DisplayName: "testing"}
+	userToken, err := createUser(user)
+	require.NoError(t, err, "user must be created")
+
+	anotherUser := client.UserInfo{ID: xid.New().String(), Email: "test2@mail.com", DisplayName: "testing2"}
+	anotherToken, err := createUser(anotherUser)
+	require.NoError(t, err, "user must be created")
+
+	ctx := context.Background()
+	apiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+		"Authorization": "Bearer " + userToken,
+	})
+	anotherApiClient := client.NewClient("http://localhost:8000", http.DefaultClient, map[string]string{
+		"Authorization": "Bearer " + anotherToken,
+	})
+
+	profileResponse, err := apiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	profileDefaultWorkspace := profileResponse.UserInfo.Workspaces[0]
+	apiClient = apiClient.WithHeaders(map[string]string{
+		treenq.WorkspaceHeader: profileDefaultWorkspace.ID,
+	})
+	anotherProfileResponse, err := anotherApiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	anotherProfileDefaultWorkspace := anotherProfileResponse.UserInfo.Workspaces[0]
+	anotherApiClient = anotherApiClient.WithHeaders(map[string]string{
+		treenq.WorkspaceHeader: anotherProfileDefaultWorkspace.ID,
+	})
+
+	firstWorkspaceResponse, err := apiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
+		WorkspaceName: "Example Workspace",
+	})
+	require.NoError(t, err, "user should be able to create a workspace")
+	require.Equal(t, firstWorkspaceResponse.CreatedWorkspace.Name, "Example Workspace", "returned workspace should have the same name as requested")
+
+	secondWorkspaceResponse, err := apiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
+		WorkspaceName: "Second Workspace",
+	})
+	require.NoError(t, err, "user should be able to create a workspace")
+	require.Equal(t, secondWorkspaceResponse.CreatedWorkspace.Name, "Second Workspace", "returned workspace should have the same name as requested")
+
+	profileResponse, err = apiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	require.EqualValues(t, profileResponse.UserInfo.Workspaces, [3]client.Workspace{
+		profileDefaultWorkspace, firstWorkspaceResponse.CreatedWorkspace, secondWorkspaceResponse.CreatedWorkspace,
+	}, "user profile should include all accessable workspaces")
+
+	thirdWorkspaceResponse, err := anotherApiClient.CreateWorkspace(ctx, client.CreateWorkspaceRequest{
+		WorkspaceName: "Another User Workspace",
+	})
+	require.NoError(t, err, "user should be able to create a workspace")
+	require.Equal(t, thirdWorkspaceResponse.CreatedWorkspace.Name, "Another User Workspace", "returned workspace should have the same name as requested")
+
+	anotherProfileResponse, err = anotherApiClient.GetProfile(ctx)
+	require.NoError(t, err, "getting profile shouldn't return an error")
+	require.EqualValues(t, anotherProfileResponse.UserInfo.Workspaces, [2]client.Workspace{
+		anotherProfileDefaultWorkspace, thirdWorkspaceResponse.CreatedWorkspace,
+	}, "user should be able to access only their own workspaces")
 }

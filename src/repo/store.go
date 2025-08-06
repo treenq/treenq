@@ -1025,24 +1025,20 @@ func (s *Store) getWorkspace(ctx context.Context, id, userID, userDisplayName st
 	return workspace, nil
 }
 
-// createDefaultWorkspaceForUser creates a default workspace for a user within an existing transaction
-func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, userID string) (domain.Workspace, error) {
+func (s *Store) createWorkspace(ctx context.Context, tx *sql.Tx, userID string, workspaceName string) (domain.Workspace, error) {
 	workspaceID := xid.New().String()
-	workspaceName := xid.New().String()
 
-	// Create the workspace
 	workspaceQuery, workspaceArgs, err := s.sq.Insert("workspaces").
 		Columns("id", "name", "githubOrgName").
-		Values(workspaceID, personalWorkspaceName, "").
+		Values(workspaceID, workspaceName, "").
 		ToSql()
 	if err != nil {
 		return domain.Workspace{}, fmt.Errorf("failed to build workspace query: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, workspaceQuery, workspaceArgs...); err != nil {
-		return domain.Workspace{}, fmt.Errorf("failed to create default workspace: %w", err)
+		return domain.Workspace{}, fmt.Errorf("failed to create workspace: %w", err)
 	}
 
-	// Link user to workspace
 	userWorkspaceQuery, userWorkspaceArgs, err := s.sq.Insert("workspaceUsers").
 		Columns("workspaceId", "userId", "role").
 		Values(workspaceID, userID, "admin").
@@ -1058,4 +1054,27 @@ func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, u
 		ID:   workspaceID,
 		Name: workspaceName,
 	}, nil
+}
+
+// createDefaultWorkspaceForUser creates a default workspace for a user within an existing transaction
+func (s *Store) createDefaultWorkspaceForUser(ctx context.Context, tx *sql.Tx, userID string) (domain.Workspace, error) {
+	return s.createWorkspace(ctx, tx, userID, personalWorkspaceName)
+}
+
+func (s *Store) CreateWorkspace(ctx context.Context, userID string, workspaceName string) (domain.Workspace, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.Workspace{}, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	workspace, err := s.createWorkspace(ctx, tx, userID, workspaceName)
+	if err != nil {
+		return workspace, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return workspace, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return workspace, nil
 }
