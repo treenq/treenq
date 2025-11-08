@@ -4,147 +4,101 @@
 
 # treenq
 
-An open-source Platform as Code for Kubernetes to simplify app delivery, cloud resource provisioning, and infrastructure management.
+An open-source Platform to simplify app delivery.
 
 ## Demo
 
 TBD
 
-# Treenq
-
-> ### 🚧 **Pre-Alpha Notice**: _The project is in pre-alpha stage, the alpha test planned in_ **2025 Q2**
-
-Treenq is a Platform as a Service (as Code) solves the infrastructure and App Delivery complexity in Kubernetes.
+> ## 🚧 **Pre-Alpha Notice**: _The project is in pre-alpha stage.
 
 Early-stage teams need:
 
-- 🚀 **Fast & affordable CI/CD** – Build and deploy apps without complex pipelines.
-- 🛠 **Database & cloud resources** – Provision services seamlessly.
-- 🔐 **Secure secrets & configurations** – Manage credentials and settings effortlessly.
-- ⚡ **Instant previews** – Get early feedback with temporary environments.
+- **Fast & affordable build** – Build and deploy apps with no docker registry/build step.
+- **Secrets & configurations** – Manage credentials and settings effortlessly.
 
 Treenq solves this problem.
 
-And finally you can install an open source platform and use it for free in order to get:
-
-- 🚀 **App Delivery** – Deploy from Dockerfile/Containerfile or build & run commands.
-- 🌍 **Custom Domains** – Instantly get a third-level domain for your app.
-- 🗄️ **Database Provisioning** – Securely provision and inject database credentials.
-- ⚖️ **Optimized Resource Allocation** – Use minimal cloud resources efficiently.
-
-And many more planned Features:
-
-- 🏗 **Environment Management** – Easily configure dev, staging, and production.
-- 📊 **API-Level Metrics & Alerts** – Track and optimize performance.
-- 🔄 **Local-to-Cloud Deployment** – Push from your machine to test environments.
-- 🔧 **Per-Environment Config Export** – Get configuration files to run apps locally.
-
 ## Documentation
 
-TBD
+TBD, expect it [there](https://treenq.com/started/get-started)
 
 ## Motivation
 
 Most PaaS solutions are closed-source, costly, and lock you into their ecosystem.
 Treenq offers a fully open-source alternative, giving you full control over your app management and infrastructure.
 
-Treenq is designed to prioritize Application Management over infrastructure concerns. While it provides helpful constraints, self-hosting allows full access to your Kubernetes cluster.
-
-Many teams end up building complex **Internal Developer Platforms (IDPs)**.
-Treenq isn’t meant to replace IDPs but to offer **fast, streamlined app delivery**, letting engineers focus on shipping code.
+Treenq is designed to prioritize Application Management over infrastructure concerns.
 
 ## Contributor guide
 
 ⭐ **Enjoying Treenq?**
 Support the project by giving it a star on GitHub! Your support helps us grow!
 
+Or follow updates in our [discord](https://discord.gg/4HB3vEnYW9)
+
 ### How to contribute
 
 📢 **Want to contribute?**
 We welcome all contributions! Before submitting code, please open an issue to discuss your changes.
-
-### How to run locally
-
-- Install [Go](https://go.dev/doc/install)
-- Install Docker/Colima/Podman for running dev environment
-- Mac users only: install macFUSE: `brew install macfuse`
-- Run the dev environment: `make start-e2e-test-env`
-- Attach remote debugger, here is example for vscode launch.json:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "go",
-      "name": "debug remote service",
-      "mode": "remote",
-      "request": "attach",
-      "port": 40000,
-      "substitutePath": [
-        {
-          "from": "${env:HOME}/projects/treenq",
-          "to": "/app"
-        },
-        {
-          "from": "${env:HOME}/go/pkg/mod/",
-          "to": "/go/pkg/mod/"
-        }
-      ]
-    }
-  ]
-}
-```
 
 #### Run e2e tests
 
 Run `make run-e2e-tests` or if you already run local setup in docker-compose then `go test -v -count=1 -race ./e2e/...`.
 
 Alternatively you can run your dev setup for e2e tests manually.
-Running a dev container locally for e2e tests require additional security options.
-This tip will also help to run the service inside a container.
-
-###### Option 1: podman
-
-`podman run --device /dev/fuse:rw localhost/treenq`
-
-###### Option 2: docker/colima
-
-Docker is able running only a privileged container:
-`docker run --privileged  -it treenq`
 
 #### Docker setup explained
 
-Dockerfile contains 4 staging:
+## Roadmap
 
-- build stage, to actually gather all the dependencies
-- build dev stage, it installs delve to be able to debug the app, compile without optimizations and starts
-- build prod builds with compiler optimizations
-- last stage runs it from prod build, not ready yes, but supposed to run the binary in alpine (scratch image doesn't seem possible)
+Below I shortly present the goals of the project in a its stages of development
 
-docker-compose represents a base setup to run locally the service dependencies
-docker-compose.e2e-ci can be used to run the e2e tests, keep volumes and test it
-docker-compose.e2e mirrors e2e-ci, but allows attaching a debugger, uses a `dev` docker image target build
-docker-compose.staging is used to run a staging environment, doesn't include a database
-
-Some integration tests use go-testcontainers, for colima users it requires explicit config of docker host,
-in a file `~/.testcontainers.properties` add `docker.host=unix:///${HOME}/.colima/default/docker.sock`, more info in the doc:
-https://golang.testcontainers.org/features/configuration/#docker-host-detection
-
-### Run web locally
-
-There are 2 commands to run web locally
-
-- `npm run local` allows running a local web, it's supposed to have a backend locally as well
-- `npm run dev` allows running a web only, it requires additional configuration described below
-
-### Run locally web only
-
-If you want to develop locally only frontend and not interested in running treenq backend locally it requires to use vite proxy server in order to support same site cookies.
-Add web/.env.local file with the following content:
-
-```sh
-APP_API_HOST=http://localhost:9000/api
-APP_GITHUB_APP_NAME=treenq-staging
-USE_VITE_PROXY=true
-```
+* Pre Alpha version (we are here)
+  - [ ] CLI as a UI
+  - [ ] Single VM app deployment only
+  - [ ] deploy right from the app source folder
+  - [ ] docker as app runtime
+  - [ ] build logs available
+  - [ ] deploy history
+  - [ ] rollback to any point in history is available
+  - [ ] no docker registry required to deploy a container
+  - [ ] domain and TLS via zero configuration
+  - [ ] infra state is saved locally, no additional backend installation on the VM to consume CPU/RAM
+* Alpha, complete stack to deploy home labs
+  - [ ] Multi nodes deployment, a service per node
+  - [ ] Secrets API
+  - [ ] Remote infra state: s3
+* Beta, stack becomes observable
+  - [ ] Logging collection
+  - [ ] Metrics collection
+  - [ ] Computation resource monitoring
+  - [ ] Server terminal
+* Release candidate 1.0, stack becomes reliable
+  - [ ] Disk backup to a configured driver: s3
+  - [ ] Health check / failover
+  - [ ] Replicas scaling
+  - [ ] Zero downtime / rolling update
+  - [ ] Resource management quotas
+  - [ ] Same nodes replication
+  - [ ] Cross nodes replication
+  - [ ] Nodes selectors
+  - [ ] Inner service networking
+* Release 1.0, stack becomes team suitable
+  - [ ] Central control plane is available, public API
+  - [ ] Team, orgs, etc.
+  - [ ] Github orgs blueprint
+  - [ ] Deploy on Github events
+  - [ ] Deploy from your CI
+  - [ ] Deploy from remote docker registry
+  - [ ] Buildpacks / railpacks
+  - [ ] Environments
+* Post 1.0, dev friendly, cloud available
+  - [ ] Install apps from templates
+  - [ ] Mirror service traffic to another target
+  - [ ] Branch preview
+  - [ ] Deploy from local changes instantly
+  - [ ] Infra boot: prepare VMs for apps
+  - [ ] Infra provision, VPC configuration, inner networking API
+  - [ ] Multi tenancy
+  - [ ] Track cost
